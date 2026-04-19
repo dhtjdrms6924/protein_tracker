@@ -20,10 +20,13 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
 }
 .login-box h1 { color: #cba6f7; font-size: 1.5rem; text-align: center; }
 .login-box p { color: #a6adc8; font-size: 0.85rem; text-align: center; }
-.login-box input {
+.login-box input,
+.login-box input[type=number] {
   padding: 11px 14px; border-radius: 8px; border: 1px solid #45475a;
   background: #1e1e2e; color: #cdd6f4; font-size: 0.95rem;
+  width: 100%;
 }
+.login-box input:focus { outline: none; border-color: #cba6f7; }
 .login-box input:focus { outline: none; border-color: #cba6f7; }
 .login-box label { font-size: 0.78rem; color: #a6adc8; margin-bottom: -6px; }
 .signup-row { display: flex; gap: 8px; }
@@ -272,11 +275,41 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
 /* ── 모바일 반응형 ── */
 @media (max-width: 640px) {
   #app-screen { flex-direction: column; }
-  #sidebar { width: 100%; min-width: unset; flex-direction: row; flex-wrap: wrap; padding: 12px; gap: 10px; }
-  #sidebar h2 { width: 100%; }
-  .sidebar-section { flex: 1; min-width: 140px; }
+
+  #sidebar {
+    width: 100%; min-width: unset;
+    flex-direction: column;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  /* 상단: 타이틀 + 탭 네비 + 유저정보 를 한 줄씩 */
+  #sidebar h2 { font-size: 1rem; }
+
+  .sidebar-nav {
+    display: flex; gap: 6px;
+  }
+  .nav-btn {
+    flex: 1; padding: 10px 4px; font-size: 0.82rem;
+  }
+
+  /* 유저 정보 + 로그아웃/삭제 버튼을 가로로 */
+  .sidebar-section:nth-child(3) {
+    flex-direction: row; align-items: center;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .sidebar-section:nth-child(3) .user-info { flex: 1 1 100%; }
+  .sidebar-section:nth-child(3) .user-sub { flex: 1 1 100%; margin-top: -6px; }
+  .sidebar-section:nth-child(3) .btn-logout,
+  .sidebar-section:nth-child(3) .btn-danger {
+    flex: 1; padding: 9px; font-size: 0.8rem;
+  }
+
+  /* API키 + 프로필 섹션은 기본적으로 숨기고 펼치기 버튼으로 */
+  .sidebar-collapsible { display: none; }
+  .sidebar-collapsible.open { display: flex; flex-direction: column; gap: 7px; }
+
   #main { padding: 12px; }
-  .album-grid { grid-template-columns: repeat(auto-fill, minmax(80px,1fr)); }
 }
 </style>
 </head>
@@ -341,26 +374,31 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
       <button class="btn-danger" onclick="showDeleteConfirm()">🗑 계정 삭제</button>
     </div>
 
+    <!-- 수정: h3에 onclick 추가, 내용에 sidebar-collapsible 추가 -->
     <div class="sidebar-section">
-      <h3>🔑 Gemini API 키</h3>
-      <label>API Key</label>
-      <input type="password" id="api-key-input" placeholder="AIza...">
-      <button class="btn-save" onclick="saveApiKey()">저장</button>
-      <span id="api-save-msg" style="font-size:.76rem;color:#a6e3a1;"></span>
+      <h3 onclick="toggleSideSection(this)" style="cursor:pointer">🔑 Gemini API 키 <span style="float:right;font-size:0.8rem">▾</span></h3>
+      <div class="sidebar-collapsible">
+        <label>API Key</label>
+        <input type="password" id="api-key-input" placeholder="AIza...">
+        <button class="btn-save" onclick="saveApiKey()">저장</button>
+        <span id="api-save-msg" style="font-size:.76rem;color:#a6e3a1;"></span>
+      </div>
     </div>
 
     <div class="sidebar-section">
-      <h3>🎯 프로필 & 목표</h3>
-      <label>닉네임</label>
-      <input type="text" id="profile-nickname">
-      <label>실제 이름</label>
-      <input type="text" id="profile-display-name">
-      <label>체중 (kg)</label>
-      <input type="number" id="weight-input" placeholder="70" min="0" step="0.1">
-      <label>목표 배수 (체중×?)</label>
-      <input type="number" id="multiplier-input" placeholder="1.5" min="0" step="0.1">
-      <button class="btn-save" onclick="saveProfile()">저장</button>
-      <div id="goal-display">목표: 설정 없음</div>
+      <h3 onclick="toggleSideSection(this)" style="cursor:pointer">🎯 프로필 & 목표 <span style="float:right;font-size:0.8rem">▾</span></h3>
+      <div class="sidebar-collapsible">
+        <label>닉네임</label>
+        <input type="text" id="profile-nickname">
+        <label>실제 이름</label>
+        <input type="text" id="profile-display-name">
+        <label>체중 (kg)</label>
+        <input type="number" id="weight-input" placeholder="70" min="0" step="0.1">
+        <label>목표 배수 (체중×?)</label>
+        <input type="number" id="multiplier-input" placeholder="1.5" min="0" step="0.1">
+        <button class="btn-save" onclick="saveProfile()">저장</button>
+        <div id="goal-display">목표: 설정 없음</div>
+      </div>
     </div>
   </aside>
 
@@ -486,6 +524,15 @@ const today = new Date().toISOString().slice(0,10);
 let goalProtein = 0;
 let selectedFile = null;
 let searchTimer = null;
+
+function toggleSideSection(h3El) {
+  // 모바일에서만 동작
+  if (window.innerWidth > 640) return;
+  const content = h3El.nextElementSibling;
+  content.classList.toggle('open');
+  const arrow = h3El.querySelector('span');
+  if (arrow) arrow.textContent = content.classList.contains('open') ? '▴' : '▾';
+}
 
 // ══════════════════════════════════════════
 //  로그인 / 회원가입
