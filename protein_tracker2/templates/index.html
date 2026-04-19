@@ -15,7 +15,8 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
 }
 .login-box {
   background: #313244; border-radius: 16px; padding: 36px 32px;
-  width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px;
+  width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px;
+  max-height: 90vh; overflow-y: auto;
 }
 .login-box h1 { color: #cba6f7; font-size: 1.5rem; text-align: center; }
 .login-box p { color: #a6adc8; font-size: 0.85rem; text-align: center; }
@@ -24,6 +25,9 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
   background: #1e1e2e; color: #cdd6f4; font-size: 0.95rem;
 }
 .login-box input:focus { outline: none; border-color: #cba6f7; }
+.login-box label { font-size: 0.78rem; color: #a6adc8; margin-bottom: -6px; }
+.signup-row { display: flex; gap: 8px; }
+.signup-row input { flex: 1; }
 .btn-primary {
   background: #cba6f7; color: #1e1e2e; border: none;
   padding: 11px; border-radius: 8px; font-weight: 700; font-size: 0.95rem; cursor: pointer;
@@ -39,6 +43,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
 .login-msg.success { color: #a6e3a1; }
 .login-toggle { font-size: 0.82rem; color: #a6adc8; text-align: center; cursor: pointer; }
 .login-toggle span { color: #cba6f7; text-decoration: underline; }
+.form-divider { border: none; border-top: 1px solid #45475a; margin: 4px 0; }
 
 /* ───── 앱 화면 ───── */
 #app-screen { display: none; flex-direction: row; min-height: 100vh; }
@@ -46,11 +51,12 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
 /* ── 사이드바 ── */
 #sidebar {
   width: 240px; min-width: 240px; background: #1e1e2e; color: #cdd6f4;
-  padding: 20px 14px; display: flex; flex-direction: column; gap: 16px;
+  padding: 20px 14px; display: flex; flex-direction: column; gap: 14px;
+  overflow-y: auto;
 }
 #sidebar h2 { font-size: 1.1rem; color: #cba6f7; }
 #sidebar label { font-size: 0.78rem; color: #a6adc8; }
-#sidebar input[type=text], #sidebar input[type=password] {
+#sidebar input[type=text], #sidebar input[type=password], #sidebar input[type=number] {
   width: 100%; padding: 7px 9px; border-radius: 6px; border: 1px solid #45475a;
   background: #313244; color: #cdd6f4; font-size: 0.83rem; margin-top: 3px;
 }
@@ -62,22 +68,27 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
 }
 .btn-save:hover { background: #b4befe; }
 #goal-display { font-size: 0.82rem; color: #a6e3a1; }
-.user-info { font-size: 0.82rem; color: #a6e3a1; }
+.user-info { font-size: 0.88rem; color: #a6e3a1; font-weight: 600; }
+.user-sub { font-size: 0.75rem; color: #6c7086; }
 .btn-logout {
   background: #45475a; color: #cdd6f4; border: none; padding: 7px;
   border-radius: 6px; cursor: pointer; font-size: 0.8rem;
 }
 .btn-logout:hover { background: #585b70; }
-.sidebar-nav { display: flex; gap: 5px; }
+.btn-danger {
+  background: transparent; color: #f38ba8; border: 1px solid #f38ba8; padding: 7px;
+  border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 600;
+}
+.btn-danger:hover { background: #f38ba8; color: #1e1e2e; }
+.sidebar-nav { display: flex; gap: 5px; flex-wrap: wrap; }
 .nav-btn {
   flex: 1; padding: 9px 4px; background: #313244; border: none;
-  color: #cdd6f4; cursor: pointer; border-radius: 7px; font-weight: 600; font-size: 0.82rem;
+  color: #cdd6f4; cursor: pointer; border-radius: 7px; font-weight: 600; font-size: 0.78rem;
 }
 .nav-btn.active { background: #cba6f7; color: #1e1e2e; }
 
 /* ── 메인 ── */
 #main { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 16px; max-width: 860px; }
-h1 { font-size: 1.4rem; font-weight: 700; }
 
 .date-bar { display: flex; align-items: center; gap: 10px; }
 .date-bar input[type=date] { padding: 7px 11px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.95rem; }
@@ -110,13 +121,13 @@ h1 { font-size: 1.4rem; font-weight: 700; }
 .result-item {
   background: #f8f8ff; border: 1px solid #e0d9ff; border-radius: 10px;
   padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  transition: opacity .2s;
 }
 .result-item .food-info { flex: 1; }
 .result-item .food-name { font-weight: 700; font-size: 0.9rem; }
 .result-item .food-detail { font-size: 0.76rem; color: #888; margin-top: 2px; }
 .db-badge { font-size: 0.68rem; background: #a6e3a1; color: #1e4a1e; padding: 2px 6px; border-radius: 99px; margin-left: 5px; }
 .ai-badge { font-size: 0.68rem; background: #fab387; color: #5a2e00; padding: 2px 6px; border-radius: 99px; margin-left: 5px; }
-.protein-val { font-weight: 700; color: #40a02b; font-size: 0.95rem; white-space: nowrap; }
 
 .qty-box { display: flex; align-items: center; gap: 5px; }
 .qty-input { width: 48px; padding: 5px; border: 1px solid #ddd; border-radius: 6px; text-align: center; font-size: 0.83rem; }
@@ -125,6 +136,16 @@ h1 { font-size: 1.4rem; font-weight: 700; }
   border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; white-space: nowrap;
 }
 .btn-add:hover { background: #2d7a1f; }
+.btn-exclude {
+  background: #f38ba8; color: #fff; border: none; padding: 6px 10px;
+  border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; white-space: nowrap;
+}
+.btn-exclude:hover { background: #e05c7a; }
+.btn-add-all {
+  margin-top: 12px; width: 100%; background: #40a02b; color: #fff; border: none;
+  padding: 10px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 700;
+}
+.btn-add-all:hover { background: #2d7a1f; }
 
 /* ── 수동 검색 ── */
 #search-wrap input { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.88rem; }
@@ -155,20 +176,95 @@ h1 { font-size: 1.4rem; font-weight: 700; }
 
 /* ── 달력 ── */
 .main-content { display: none; }
-.main-content.active { display: flex; flex-direction: column; }
+.main-content.active { display: flex; flex-direction: column; gap: 16px; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; margin-top: 12px; }
 .cal-day {
   background: #fff; aspect-ratio: 1; border-radius: 10px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   cursor: pointer; transition: transform .15s; box-shadow: 0 1px 4px rgba(0,0,0,.06);
 }
-.cal-day:hover { transform: translateY(-2px); }
+.cal-day:hover { transform: translateY(-2px); background: #f3f0ff; }
 .cal-day.empty { background: transparent; box-shadow: none; cursor: default; }
+.cal-day.empty:hover { transform: none; }
 .cal-day .day-num { font-weight: 700; font-size: 1rem; }
 .cal-day .day-prot { font-size: 0.72rem; color: #888; }
 .cal-day.success { border: 2px solid #a6e3a1; }
 .cal-day.fail { border: 2px solid #f38ba8; }
 .cal-day.today { background: #f3f0ff; border: 2px solid #cba6f7; }
+
+/* ── 날짜 상세 패널 ── */
+#day-detail-panel {
+  display: none; background: #fff; border-radius: 12px;
+  padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,.1); margin-top: 4px;
+}
+#day-detail-panel.show { display: block; }
+.detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.detail-header h3 { font-size: 1rem; font-weight: 700; color: #1e1e2e; }
+.btn-close-detail {
+  background: #eee; border: none; border-radius: 6px; padding: 5px 10px;
+  cursor: pointer; font-size: 0.8rem; color: #555;
+}
+.detail-protein-bar { margin-bottom: 14px; }
+.detail-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.detail-photo {
+  width: 90px; height: 90px; border-radius: 8px; object-fit: cover; cursor: pointer;
+  border: 2px solid #e0d9ff; transition: transform .15s;
+}
+.detail-photo:hover { transform: scale(1.05); }
+.detail-meal-list { display: flex; flex-direction: column; gap: 6px; }
+.detail-meal-item {
+  background: #f0fff4; border: 1px solid #b2f2bb; border-radius: 8px;
+  padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;
+}
+.detail-meal-item .dm-name { font-weight: 600; font-size: 0.85rem; }
+.detail-meal-item .dm-detail { font-size: 0.73rem; color: #666; }
+.detail-meal-item .dm-protein { font-weight: 700; color: #40a02b; font-size: 0.85rem; white-space: nowrap; }
+
+/* ── 앨범 ── */
+.album-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px,1fr)); gap: 10px; margin-top: 12px; }
+.album-item { position: relative; border-radius: 10px; overflow: hidden; aspect-ratio: 1; }
+.album-item img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; transition: transform .2s; }
+.album-item img:hover { transform: scale(1.04); }
+.album-date {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(0,0,0,.5); color: #fff; font-size: 0.68rem;
+  padding: 3px 5px; text-align: center;
+}
+.album-download {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(0,0,0,.55); color: #fff; border: none; border-radius: 5px;
+  padding: 3px 6px; font-size: 0.7rem; cursor: pointer; opacity: 0; transition: opacity .2s;
+}
+.album-item:hover .album-download { opacity: 1; }
+
+/* ── 라이트박스 ── */
+#lightbox {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85);
+  z-index: 1000; align-items: center; justify-content: center;
+}
+#lightbox.show { display: flex; }
+#lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 10px; }
+#lightbox-close {
+  position: absolute; top: 18px; right: 22px; font-size: 2rem;
+  color: #fff; cursor: pointer; line-height: 1;
+}
+
+/* ── 모달 (계정 삭제 확인) ── */
+#confirm-modal {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  z-index: 999; align-items: center; justify-content: center;
+}
+#confirm-modal.show { display: flex; }
+.modal-box {
+  background: #313244; border-radius: 14px; padding: 28px 24px;
+  max-width: 340px; width: 90%; display: flex; flex-direction: column; gap: 14px;
+}
+.modal-box h3 { color: #f38ba8; font-size: 1rem; }
+.modal-box p { color: #a6adc8; font-size: 0.85rem; line-height: 1.5; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions button { flex: 1; padding: 10px; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; font-size: 0.88rem; }
+.modal-cancel { background: #45475a; color: #cdd6f4; }
+.modal-confirm { background: #f38ba8; color: #1e1e2e; }
 
 .spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid #ccc; border-top-color: #cba6f7; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -180,17 +276,8 @@ h1 { font-size: 1.4rem; font-weight: 700; }
   #sidebar h2 { width: 100%; }
   .sidebar-section { flex: 1; min-width: 140px; }
   #main { padding: 12px; }
+  .album-grid { grid-template-columns: repeat(auto-fill, minmax(80px,1fr)); }
 }
-.btn-exclude {
-  background: #f38ba8; color: #fff; border: none; padding: 6px 10px;
-  border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; white-space: nowrap;
-}
-.btn-exclude:hover { background: #e05c7a; }
-.btn-add-all {
-  margin-top: 12px; width: 100%; background: #40a02b; color: #fff; border: none;
-  padding: 10px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 700;
-}
-.btn-add-all:hover { background: #2d7a1f; }
 </style>
 </head>
 <body>
@@ -201,9 +288,28 @@ h1 { font-size: 1.4rem; font-weight: 700; }
     <h1>🥩 단백질 트래커</h1>
     <p id="login-subtitle">계정에 로그인하세요</p>
 
-    <input type="text" id="auth-username" placeholder="아이디" autocomplete="username">
-    <input type="password" id="auth-password" placeholder="비밀번호" autocomplete="current-password"
-           onkeydown="if(event.key==='Enter') doLogin()">
+    <!-- 로그인 폼 -->
+    <div id="login-fields">
+      <input type="text" id="auth-username" placeholder="아이디" autocomplete="username">
+      <input type="password" id="auth-password" placeholder="비밀번호" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+
+    <!-- 회원가입 추가 필드 -->
+    <div id="signup-fields" style="display:none; flex-direction:column; gap:10px;">
+      <hr class="form-divider">
+      <label>닉네임 (앱에서 표시될 이름)</label>
+      <input type="text" id="signup-nickname" placeholder="예: 헬창민수">
+      <label>실제 이름 (선택)</label>
+      <input type="text" id="signup-display-name" placeholder="예: 김민수">
+      <hr class="form-divider">
+      <label>체중 (kg)</label>
+      <div class="signup-row">
+        <input type="number" id="signup-weight" placeholder="70" min="0" step="0.1">
+        <input type="number" id="signup-multiplier" placeholder="배수 (예: 1.5)" min="0" step="0.1" value="1.5">
+      </div>
+      <p style="font-size:0.74rem;color:#6c7086;">체중 × 배수 = 하루 단백질 목표 (g)</p>
+    </div>
 
     <button class="btn-primary" id="auth-main-btn" onclick="doLogin()">로그인</button>
     <button class="btn-secondary" id="auth-sub-btn" onclick="toggleAuthMode()">회원가입</button>
@@ -225,11 +331,14 @@ h1 { font-size: 1.4rem; font-weight: 700; }
     <div class="sidebar-nav">
       <button class="nav-btn active" id="btn-tracker" onclick="switchTab('tracker')">트래커</button>
       <button class="nav-btn" id="btn-history" onclick="switchTab('history')">기록</button>
+      <button class="nav-btn" id="btn-album" onclick="switchTab('album')">앨범</button>
     </div>
 
     <div class="sidebar-section">
-      <div class="user-info">👤 <span id="username-display"></span></div>
+      <div class="user-info">👤 <span id="nickname-display"></span></div>
+      <div class="user-sub" id="username-display-sub"></div>
       <button class="btn-logout" onclick="doLogout()">로그아웃</button>
+      <button class="btn-danger" onclick="showDeleteConfirm()">🗑 계정 삭제</button>
     </div>
 
     <div class="sidebar-section">
@@ -241,12 +350,16 @@ h1 { font-size: 1.4rem; font-weight: 700; }
     </div>
 
     <div class="sidebar-section">
-      <h3>🎯 단백질 목표</h3>
+      <h3>🎯 프로필 & 목표</h3>
+      <label>닉네임</label>
+      <input type="text" id="profile-nickname">
+      <label>실제 이름</label>
+      <input type="text" id="profile-display-name">
       <label>체중 (kg)</label>
-      <input type="text" id="weight-input" placeholder="70">
+      <input type="number" id="weight-input" placeholder="70" min="0" step="0.1">
       <label>목표 배수 (체중×?)</label>
-      <input type="text" id="multiplier-input" placeholder="1.5">
-      <button class="btn-save" onclick="saveGoal()">저장</button>
+      <input type="number" id="multiplier-input" placeholder="1.5" min="0" step="0.1">
+      <button class="btn-save" onclick="saveProfile()">저장</button>
       <div id="goal-display">목표: 설정 없음</div>
     </div>
   </aside>
@@ -309,17 +422,74 @@ h1 { font-size: 1.4rem; font-weight: 700; }
           🟢 목표 달성 &nbsp; 🔴 목표 미달 &nbsp; 🟣 오늘
         </div>
       </div>
+
+      <!-- 날짜 상세 패널 -->
+      <div id="day-detail-panel">
+        <div class="detail-header">
+          <h3 id="detail-date-title">날짜 선택</h3>
+          <button class="btn-close-detail" onclick="closeDayDetail()">✕ 닫기</button>
+        </div>
+        <!-- 단백질 미니 바 -->
+        <div class="detail-protein-bar">
+          <div id="detail-progress-label" style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:5px;">
+            <span id="detail-protein-text"></span>
+            <span id="detail-protein-goal"></span>
+          </div>
+          <div style="background:#eee;border-radius:99px;height:10px;overflow:hidden;">
+            <div id="detail-progress-bar" style="height:100%;border-radius:99px;transition:width .4s;background:linear-gradient(90deg,#a6e3a1,#40a02b);width:0%"></div>
+          </div>
+        </div>
+        <!-- 사진 -->
+        <div id="detail-photos" class="detail-photos"></div>
+        <!-- 식사 목록 -->
+        <div id="detail-meals" class="detail-meal-list"></div>
+        <div id="detail-empty" style="color:#aaa;font-size:0.83rem;display:none;">이 날은 기록이 없어요.</div>
+      </div>
+    </div>
+
+    <!-- 앨범 탭 -->
+    <div id="content-album" class="main-content">
+      <div class="card">
+        <div class="section-title">🖼️ 내 음식 사진 앨범</div>
+        <div id="album-grid" class="album-grid"></div>
+        <div id="album-empty" style="display:none;color:#aaa;font-size:0.83rem;margin-top:10px;">아직 업로드한 사진이 없어요.</div>
+      </div>
     </div>
 
   </main>
 </div>
 
+<!-- 라이트박스 -->
+<div id="lightbox" onclick="closeLightbox()">
+  <span id="lightbox-close">✕</span>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<!-- 계정 삭제 확인 모달 -->
+<div id="confirm-modal">
+  <div class="modal-box">
+    <h3>⚠️ 계정을 삭제하시겠습니까?</h3>
+    <p>모든 식사 기록과 업로드한 사진이 <strong style="color:#f38ba8">영구적으로 삭제</strong>됩니다. 이 작업은 되돌릴 수 없습니다.</p>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeDeleteConfirm()">취소</button>
+      <button class="modal-confirm" onclick="deleteAccount()">삭제</button>
+    </div>
+  </div>
+</div>
+
 <script>
+// ══════════════════════════════════════════
+//  상태
+// ══════════════════════════════════════════
+let isSignupMode = false;
+const today = new Date().toISOString().slice(0,10);
+let goalProtein = 0;
+let selectedFile = null;
+let searchTimer = null;
+
 // ══════════════════════════════════════════
 //  로그인 / 회원가입
 // ══════════════════════════════════════════
-let isSignupMode = false;
-
 function toggleAuthMode() {
   isSignupMode = !isSignupMode;
   document.getElementById('login-subtitle').textContent = isSignupMode ? '새 계정 만들기' : '계정에 로그인하세요';
@@ -329,6 +499,7 @@ function toggleAuthMode() {
   document.getElementById('auth-toggle-text').innerHTML = isSignupMode
     ? '이미 계정이 있으신가요? <span onclick="toggleAuthMode()">로그인</span>'
     : '계정이 없으신가요? <span onclick="toggleAuthMode()">회원가입</span>';
+  document.getElementById('signup-fields').style.display = isSignupMode ? 'flex' : 'none';
   document.getElementById('login-msg').textContent = '';
 }
 
@@ -349,7 +520,7 @@ async function doLogin() {
   const data = await res.json();
   if (data.status === 'success') {
     setLoginMsg('', false);
-    showApp(data.username);
+    showApp(data);
   } else {
     setLoginMsg(data.message || '로그인 실패', true);
   }
@@ -358,10 +529,14 @@ async function doLogin() {
 async function doSignup() {
   const username = document.getElementById('auth-username').value.trim();
   const password = document.getElementById('auth-password').value.trim();
+  const nickname = document.getElementById('signup-nickname').value.trim();
+  const display_name = document.getElementById('signup-display-name').value.trim();
+  const weight = parseFloat(document.getElementById('signup-weight').value) || 0;
+  const multiplier = parseFloat(document.getElementById('signup-multiplier').value) || 1.5;
   if (!username || !password) { setLoginMsg('아이디와 비밀번호를 입력해주세요.', true); return; }
   const res = await fetch('/api/signup', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({username, password})
+    body: JSON.stringify({username, password, nickname, display_name, weight, multiplier})
   });
   const data = await res.json();
   if (data.status === 'success') {
@@ -380,45 +555,48 @@ async function doLogout() {
   document.getElementById('auth-password').value = '';
 }
 
-function showApp(username) {
+function showApp(userData) {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'flex';
-  document.getElementById('username-display').textContent = username;
-  initApp();
+  applyUserData(userData);
+  initApp(userData);
 }
 
-// ══════════════════════════════════════════
-//  앱 초기화 (로그인 후 호출)
-// ══════════════════════════════════════════
-const today = new Date().toISOString().slice(0,10);
-let goalProtein = 0;
-let selectedFile = null;
-let searchTimer = null;
-
-async function initApp() {
-  document.getElementById('date-input').value = today;
-  document.getElementById('date-input').onchange = () => loadMeals();
-
-  const s = await fetch('/api/settings').then(r => r.json());
-  if (s.api_key) document.getElementById('api-key-input').value = s.api_key;
-  if (s.weight) document.getElementById('weight-input').value = s.weight;
-  if (s.multiplier) document.getElementById('multiplier-input').value = s.multiplier;
-  if (s.weight && s.multiplier) {
-    goalProtein = parseFloat(s.weight) * parseFloat(s.multiplier);
+function applyUserData(userData) {
+  const nickname = userData.nickname || userData.username;
+  const displayName = userData.display_name || nickname;
+  document.getElementById('nickname-display').textContent = nickname;
+  document.getElementById('username-display-sub').textContent = '@' + userData.username + (displayName !== nickname ? ' · ' + displayName : '');
+  document.getElementById('profile-nickname').value = nickname;
+  document.getElementById('profile-display-name').value = displayName;
+  if (userData.weight) document.getElementById('weight-input').value = userData.weight;
+  if (userData.multiplier) document.getElementById('multiplier-input').value = userData.multiplier;
+  if (userData.weight && userData.multiplier) {
+    goalProtein = parseFloat(userData.weight) * parseFloat(userData.multiplier);
     document.getElementById('goal-display').textContent = `목표: ${goalProtein.toFixed(0)}g`;
     document.getElementById('progress-goal').textContent = `목표: ${goalProtein.toFixed(0)}g`;
   }
-  loadMeals();
 }
 
 // 페이지 로드 시 세션 유지 확인
 window.addEventListener('load', async () => {
   const res = await fetch('/api/check-login');
   const data = await res.json();
-  if (data.logged_in) {
-    showApp(data.username);
-  }
+  if (data.logged_in) showApp(data);
 });
+
+// ══════════════════════════════════════════
+//  앱 초기화
+// ══════════════════════════════════════════
+async function initApp(userData) {
+  document.getElementById('date-input').value = today;
+  document.getElementById('date-input').onchange = () => loadMeals();
+
+  const s = await fetch('/api/settings').then(r => r.json());
+  if (s.api_key) document.getElementById('api-key-input').value = s.api_key;
+
+  loadMeals();
+}
 
 // ══════════════════════════════════════════
 //  탭 전환
@@ -429,6 +607,7 @@ function switchTab(id) {
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
   document.getElementById('btn-' + id).classList.add('active');
   if (id === 'history') loadHistory();
+  if (id === 'album') loadAlbum();
 }
 
 // ══════════════════════════════════════════
@@ -442,14 +621,44 @@ async function saveApiKey() {
   setTimeout(() => msg.textContent = '', 2000);
 }
 
-async function saveGoal() {
-  const w = document.getElementById('weight-input').value.trim();
-  const m = document.getElementById('multiplier-input').value.trim();
-  await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({weight: w, multiplier: m})});
-  goalProtein = parseFloat(w) * parseFloat(m);
+async function saveProfile() {
+  const nickname = document.getElementById('profile-nickname').value.trim();
+  const display_name = document.getElementById('profile-display-name').value.trim();
+  const weight = parseFloat(document.getElementById('weight-input').value) || 0;
+  const multiplier = parseFloat(document.getElementById('multiplier-input').value) || 1.5;
+
+  await fetch('/api/user/profile', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({nickname, display_name, weight, multiplier})
+  });
+
+  goalProtein = weight * multiplier;
   document.getElementById('goal-display').textContent = `목표: ${goalProtein.toFixed(0)}g`;
   document.getElementById('progress-goal').textContent = `목표: ${goalProtein.toFixed(0)}g`;
-  updateProgress();
+  document.getElementById('nickname-display').textContent = nickname;
+  document.getElementById('username-display-sub').textContent =
+    document.getElementById('username-display-sub').textContent.split(' · ')[0] +
+    (display_name && display_name !== nickname ? ' · ' + display_name : '');
+  updateProgress(null); // 재계산
+  alert('✅ 프로필이 저장됐어요!');
+}
+
+// ══════════════════════════════════════════
+//  계정 삭제
+// ══════════════════════════════════════════
+function showDeleteConfirm() { document.getElementById('confirm-modal').classList.add('show'); }
+function closeDeleteConfirm() { document.getElementById('confirm-modal').classList.remove('show'); }
+
+async function deleteAccount() {
+  const res = await fetch('/api/account', { method: 'DELETE' });
+  const data = await res.json();
+  if (data.status === 'success') {
+    closeDeleteConfirm();
+    alert('계정이 삭제되었습니다.');
+    location.reload();
+  } else {
+    alert('삭제 실패: ' + (data.error || '알 수 없는 오류'));
+  }
 }
 
 // ══════════════════════════════════════════
@@ -500,7 +709,6 @@ function renderResults(foods, imagePath) {
   if (!foods.length) { container.innerHTML = '<div style="color:#aaa;font-size:.83rem">음식을 인식하지 못했어요.</div>'; return; }
   container.innerHTML = '';
 
-  // 각 음식 데이터를 배열에 보관 (제외 상태 포함)
   window._analyzeResults = foods.map((food, idx) => ({ ...food, excluded: false, idx }));
   window._analyzeImagePath = imagePath;
 
@@ -527,7 +735,6 @@ function renderResults(foods, imagePath) {
     container.appendChild(div);
   });
 
-  // 모두 추가 버튼
   const addAllBtn = document.createElement('button');
   addAllBtn.className = 'btn-add-all';
   addAllBtn.textContent = '✅ 모두 추가하기';
@@ -578,7 +785,6 @@ async function addAllMeals() {
     });
   }
 
-  // 분석 영역 초기화
   document.getElementById('result-list').innerHTML = '';
   document.getElementById('preview-img').style.display = 'none';
   document.getElementById('analyze-btn').style.display = 'none';
@@ -626,7 +832,6 @@ async function addMealCommon(food) {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({...food, date: d})
   });
-  // 검색창만 초기화
   document.getElementById('search-input').value = '';
   document.getElementById('search-results').innerHTML = '';
   loadMeals();
@@ -641,19 +846,6 @@ function addMealFromSearch(cd, name, protein, kcal, fat, carb, unit) {
     fat_g: fat ? (fat * qty).toFixed(1) : null,
     carb_g: carb ? (carb * qty).toFixed(1) : null,
     amount: qty + (unit ? ' × ' + unit : '인분')
-  });
-}
-
-function addMealFromAnalyze(idx, name, protein, imgPath, cd, dbMatch) {
-  const qty = parseFloat(document.getElementById('ai-qty-' + idx).value) || 1;
-  addMealCommon({
-    food_name: name, food_cd: cd || null,
-    protein_g: (protein * qty).toFixed(1),
-    energy_kcal: dbMatch ? (dbMatch.energy_kcal * qty).toFixed(0) : null,
-    fat_g: dbMatch ? (dbMatch.fat_g * qty).toFixed(1) : null,
-    carb_g: dbMatch ? (dbMatch.carb_g * qty).toFixed(1) : null,
-    amount: qty + '인분',
-    image_path: imgPath
   });
 }
 
@@ -694,6 +886,11 @@ async function loadMeals() {
 }
 
 function updateProgress(total) {
+  if (total === null) {
+    // 목표만 다시 계산
+    const cur = parseFloat(document.getElementById('progress-text').textContent.replace(/[^0-9.]/g,'')) || 0;
+    total = cur;
+  }
   document.getElementById('progress-text').textContent = `오늘 섭취: ${total.toFixed(1)}g`;
   if (goalProtein > 0) {
     const pct = Math.min(100, (total / goalProtein) * 100);
@@ -704,7 +901,7 @@ function updateProgress(total) {
 }
 
 // ══════════════════════════════════════════
-//  월간 달력
+//  월간 달력 + 날짜 상세
 // ══════════════════════════════════════════
 async function loadHistory() {
   const now = new Date();
@@ -741,13 +938,118 @@ async function loadHistory() {
     const cell = document.createElement('div');
     cell.className = cls;
     cell.innerHTML = `<div class="day-num">${i}</div><div class="day-prot">${total > 0 ? total.toFixed(0)+'g' : ''}</div>`;
-    cell.onclick = () => {
-      document.getElementById('date-input').value = dayStr;
-      switchTab('tracker');
-      loadMeals();
-    };
+    cell.onclick = () => openDayDetail(dayStr, goal);
     container.appendChild(cell);
   }
+}
+
+async function openDayDetail(dayStr, goal) {
+  const panel = document.getElementById('day-detail-panel');
+  panel.classList.add('show');
+
+  const formatted = dayStr.replace(/-/g, '.').slice(2); // 예: 25.04.19
+  document.getElementById('detail-date-title').textContent = `📅 ${formatted} 상세 기록`;
+
+  // 로딩 표시
+  document.getElementById('detail-meals').innerHTML = '<div style="color:#aaa;font-size:.83rem">불러오는 중...</div>';
+  document.getElementById('detail-photos').innerHTML = '';
+  document.getElementById('detail-empty').style.display = 'none';
+
+  const res = await fetch(`/api/day-detail?date=${dayStr}`).then(r => r.json());
+  const { meals, photos, total_protein } = res;
+
+  // 단백질 바
+  const effectiveGoal = goal || goalProtein;
+  const pct = effectiveGoal > 0 ? Math.min(100, (total_protein / effectiveGoal) * 100) : 0;
+  document.getElementById('detail-protein-text').textContent = `섭취: ${parseFloat(total_protein).toFixed(1)}g`;
+  document.getElementById('detail-protein-goal').textContent = effectiveGoal > 0 ? `목표: ${effectiveGoal.toFixed(0)}g` : '';
+  const bar = document.getElementById('detail-progress-bar');
+  bar.style.width = pct + '%';
+  bar.style.background = pct >= 100 ? 'linear-gradient(90deg,#cba6f7,#89b4fa)' : 'linear-gradient(90deg,#a6e3a1,#40a02b)';
+
+  // 사진
+  const photoContainer = document.getElementById('detail-photos');
+  photoContainer.innerHTML = '';
+  photos.forEach(fname => {
+    const img = document.createElement('img');
+    img.className = 'detail-photo';
+    img.src = `/static/uploads/${fname}`;
+    img.onclick = () => openLightbox(`/static/uploads/${fname}`);
+    photoContainer.appendChild(img);
+  });
+
+  // 식사 목록
+  const mealContainer = document.getElementById('detail-meals');
+  mealContainer.innerHTML = '';
+  if (!meals.length) {
+    document.getElementById('detail-empty').style.display = 'block';
+    return;
+  }
+  meals.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'detail-meal-item';
+    div.innerHTML = `
+      <div>
+        <div class="dm-name">${m.food_name}</div>
+        <div class="dm-detail">${m.amount||''} ${m.energy_kcal ? '· '+m.energy_kcal+'kcal' : ''}</div>
+      </div>
+      <div class="dm-protein">${parseFloat(m.protein_g).toFixed(1)}g</div>
+    `;
+    mealContainer.appendChild(div);
+  });
+}
+
+function closeDayDetail() {
+  document.getElementById('day-detail-panel').classList.remove('show');
+}
+
+// ══════════════════════════════════════════
+//  앨범
+// ══════════════════════════════════════════
+async function loadAlbum() {
+  const container = document.getElementById('album-grid');
+  const empty = document.getElementById('album-empty');
+  container.innerHTML = '<div style="color:#aaa;font-size:.83rem">불러오는 중...</div>';
+  empty.style.display = 'none';
+
+  const photos = await fetch('/api/album').then(r => r.json());
+  container.innerHTML = '';
+
+  if (!photos.length) {
+    empty.style.display = 'block';
+    return;
+  }
+
+  photos.forEach(p => {
+    const url = `/static/uploads/${p.image_path}`;
+    const dateLabel = p.date || '';
+    const item = document.createElement('div');
+    item.className = 'album-item';
+    item.innerHTML = `
+      <img src="${url}" alt="${dateLabel}" loading="lazy" onclick="openLightbox('${url}')">
+      <div class="album-date">${dateLabel}</div>
+      <button class="album-download" onclick="downloadPhoto('${url}','${p.image_path}')">⬇</button>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function downloadPhoto(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+}
+
+// ══════════════════════════════════════════
+//  라이트박스
+// ══════════════════════════════════════════
+function openLightbox(src) {
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox').classList.add('show');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('show');
 }
 </script>
 </body>

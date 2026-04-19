@@ -1,6 +1,6 @@
-import os, json, uuid, sqlite3
+import os, json, uuid, sqlite3, shutil
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session, send_from_directory
 from PIL import Image
 from google import genai
 from google.genai import types
@@ -13,15 +13,26 @@ DB_PATH = "food_nutrition.db"
 
 
 # ─────────────────────────────────────────
-# DB 초기화 (앱 시작 시 테이블 보장)
+# DB 초기화
 # ─────────────────────────────────────────
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        nickname TEXT DEFAULT '',
+        display_name TEXT DEFAULT '',
+        weight REAL DEFAULT 0,
+        multiplier REAL DEFAULT 1.5
     )""")
+    # 기존 users 테이블에 컬럼 없으면 추가
+    for col, defval in [("nickname","''"), ("display_name","''"), ("weight","0"), ("multiplier","1.5")]:
+        try:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT DEFAULT {defval}")
+        except Exception:
+            pass
+
     conn.execute("""CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY, value TEXT
     )""")
@@ -36,7 +47,6 @@ def init_db():
         energy_kcal REAL, fat_g REAL, carb_g REAL,
         image_path TEXT, created_at TEXT
     )""")
-    # 기존 meals 테이블에 user_id 없으면 추가
     try:
         conn.execute("ALTER TABLE meals ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0")
     except Exception:
@@ -132,11 +142,24 @@ def api_signup():
     data = request.json
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
+    nickname = data.get("nickname", "").strip()
+    display_name = data.get("display_name", "").strip()
+    weight = data.get("weight", 0)
+    multiplier = data.get("multiplier", 1.5)
+
     if not username or not password:
         return jsonify({"status": "error", "message": "아이디와 비밀번호를 입력해주세요."}), 400
+    if not nickname:
+        nickname = username
+    if not display_name:
+        display_name = nickname
+
     conn = get_conn()
     try:
-        conn.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        conn.execute(
+            "INSERT INTO users (username, password, nickname, display_name, weight, multiplier) VALUES (?, ?, ?, ?, ?, ?)",
+            (username, password, nickname, display_name, weight, multiplier)
+        )
         conn.commit()
     except sqlite3.IntegrityError:
         conn.close()
@@ -151,13 +174,23 @@ def api_login():
     password = data.get("password", "").strip()
     conn = get_conn()
     user = conn.execute(
-        "SELECT id, username FROM users WHERE username=? AND password=?", (username, password)
+        "SELECT id, username, nickname, display_name, weight, multiplier FROM users WHERE username=? AND password=?",
+        (username, password)
     ).fetchone()
     conn.close()
     if user:
         session["user_id"] = user["id"]
         session["username"] = user["username"]
-        return jsonify({"status": "success", "username": user["username"]})
+        session["nickname"] = user["nickname"] or user["username"]
+        session["display_name"] = user["display_name"] or user["nickname"] or user["username"]
+        return jsonify({
+            "status": "success",
+            "username": user["username"],
+            "nickname": user["nickname"] or user["username"],
+            "display_name": user["display_name"] or user["nickname"] or user["username"],
+            "weight": user["weight"],
+            "multiplier": user["multiplier"]
+        })
     return jsonify({"status": "error", "message": "아이디 또는 비밀번호가 틀렸습니다."}), 401
 
 @app.route("/api/logout")
@@ -170,7 +203,58 @@ def api_check_login():
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"logged_in": False}), 200
-    return jsonify({"logged_in": True, "username": session.get("username")}), 200
+    conn = get_conn()
+    user = conn.execute(
+        "SELECT username, nickname, display_name, weight, multiplier FROM users WHERE id=?", (user_id,)
+    ).fetchone()
+    conn.close()
+    if not user:
+        return jsonify({"logged_in": False}), 200
+    return jsonify({
+        "logged_in": True,
+        "username": user["username"],
+        "nickname": user["nickname"] or user["username"],
+        "display_name": user["display_name"] or user["nickname"] or user["username"],
+        "weight": user["weight"],
+        "multiplier": user["multiplier"]
+    }), 200
+
+@app.route("/api/account", methods=["DELETE"])
+def api_delete_account():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인이 필요합니다."}), 401
+    conn = get_conn()
+    # 해당 유저의 식사 이미지 파일 삭제
+    meals = conn.execute("SELECT image_path FROM meals WHERE user_id=?", (user_id,)).fetchall()
+    for m in meals:
+        if m["image_path"]:
+            path = os.path.join(UPLOAD_FOLDER, m["image_path"])
+            if os.path.exists(path):
+                os.remove(path)
+    conn.execute("DELETE FROM meals WHERE user_id=?", (user_id,))
+    conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+    conn.commit()
+    conn.close()
+    session.clear()
+    return jsonify({"status": "success"})
+
+@app.route("/api/user/profile", methods=["POST"])
+def api_update_profile():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인이 필요합니다."}), 401
+    data = request.json
+    conn = get_conn()
+    conn.execute("""
+        UPDATE users SET nickname=?, display_name=?, weight=?, multiplier=?
+        WHERE id=?
+    """, (data.get("nickname"), data.get("display_name"), data.get("weight"), data.get("multiplier"), user_id))
+    conn.commit()
+    conn.close()
+    session["nickname"] = data.get("nickname")
+    session["display_name"] = data.get("display_name")
+    return jsonify({"status": "ok"})
 
 # ─────────────────────────────────────────
 # 메인 라우트
@@ -268,11 +352,50 @@ def api_stats_monthly():
         FROM meals WHERE date LIKE ? AND user_id=?
         GROUP BY date
     """, (f"{month}%", user_id)).fetchall()
+    user = conn.execute("SELECT weight, multiplier FROM users WHERE id=?", (user_id,)).fetchone()
     conn.close()
-    settings = get_settings()
-    w = float(settings.get('weight', 0) or 0)
-    m = float(settings.get('multiplier', 0) or 0)
+    w = float(user["weight"] or 0) if user else 0
+    m = float(user["multiplier"] or 0) if user else 0
     return jsonify({"goal": w * m, "data": [dict(r) for r in rows]})
+
+@app.route("/api/day-detail")
+def api_day_detail():
+    """특정 날짜의 식사 목록 + 사진 목록 반환"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인 필요"}), 401
+    date = request.args.get("date")
+    conn = get_conn()
+    meals = conn.execute(
+        "SELECT * FROM meals WHERE date=? AND user_id=? ORDER BY created_at",
+        (date, user_id)
+    ).fetchall()
+    conn.close()
+    meals_list = [dict(m) for m in meals]
+    total_protein = sum(float(m["protein_g"] or 0) for m in meals_list)
+    # 사진은 image_path 있는 식사에서 중복 제거
+    seen = set()
+    photos = []
+    for m in meals_list:
+        if m["image_path"] and m["image_path"] not in seen:
+            seen.add(m["image_path"])
+            photos.append(m["image_path"])
+    return jsonify({"meals": meals_list, "photos": photos, "total_protein": total_protein})
+
+@app.route("/api/album")
+def api_album():
+    """유저의 전체 사진 앨범 (날짜별)"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인 필요"}), 401
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT DISTINCT image_path, date, created_at
+        FROM meals WHERE user_id=? AND image_path IS NOT NULL AND image_path != ''
+        ORDER BY created_at DESC
+    """, (user_id,)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, threaded=True)
