@@ -390,8 +390,9 @@ def api_album():
         return jsonify({"error": "로그인 필요"}), 401
     conn = get_conn()
     rows = conn.execute("""
-        SELECT DISTINCT image_path, date, created_at
+        SELECT image_path, date, MIN(created_at) as created_at
         FROM meals WHERE user_id=? AND image_path IS NOT NULL AND image_path != ''
+        GROUP BY image_path
         ORDER BY created_at DESC
     """, (user_id,)).fetchall()
     conn.close()
