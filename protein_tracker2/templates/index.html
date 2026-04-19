@@ -181,6 +181,16 @@ h1 { font-size: 1.4rem; font-weight: 700; }
   .sidebar-section { flex: 1; min-width: 140px; }
   #main { padding: 12px; }
 }
+.btn-exclude {
+  background: #f38ba8; color: #fff; border: none; padding: 6px 10px;
+  border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; white-space: nowrap;
+}
+.btn-exclude:hover { background: #e05c7a; }
+.btn-add-all {
+  margin-top: 12px; width: 100%; background: #40a02b; color: #fff; border: none;
+  padding: 10px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 700;
+}
+.btn-add-all:hover { background: #2d7a1f; }
 </style>
 </head>
 <body>
@@ -489,6 +499,11 @@ function renderResults(foods, imagePath) {
   const container = document.getElementById('result-list');
   if (!foods.length) { container.innerHTML = '<div style="color:#aaa;font-size:.83rem">음식을 인식하지 못했어요.</div>'; return; }
   container.innerHTML = '';
+
+  // 각 음식 데이터를 배열에 보관 (제외 상태 포함)
+  window._analyzeResults = foods.map((food, idx) => ({ ...food, excluded: false, idx }));
+  window._analyzeImagePath = imagePath;
+
   foods.forEach((food, idx) => {
     const isDB = !!food.db_match;
     const baseProtein = parseFloat(food.protein_g || 0);
@@ -498,6 +513,7 @@ function renderResults(foods, imagePath) {
       : food.estimated_amount || '';
     const div = document.createElement('div');
     div.className = 'result-item';
+    div.id = `result-item-${idx}`;
     div.innerHTML = `
       <div class="food-info">
         <div class="food-name">${food.name}${badge}</div>
@@ -505,11 +521,70 @@ function renderResults(foods, imagePath) {
       </div>
       <div class="qty-box">
         <input type="number" class="qty-input" id="ai-qty-${idx}" value="1" min="0.1" step="0.1">
-        <button class="btn-add" onclick="addMealFromAnalyze(${idx},'${food.name}',${baseProtein},'${imagePath}','${food.db_match?food.db_match.food_cd:''}',${JSON.stringify(food.db_match||null)})">+추가</button>
+        <button class="btn-exclude" onclick="excludeItem(${idx})">✕ 제외</button>
       </div>
     `;
     container.appendChild(div);
   });
+
+  // 모두 추가 버튼
+  const addAllBtn = document.createElement('button');
+  addAllBtn.className = 'btn-add-all';
+  addAllBtn.textContent = '✅ 모두 추가하기';
+  addAllBtn.onclick = addAllMeals;
+  container.appendChild(addAllBtn);
+}
+
+function excludeItem(idx) {
+  window._analyzeResults[idx].excluded = true;
+  const el = document.getElementById(`result-item-${idx}`);
+  if (el) el.style.opacity = '0.35';
+  const btn = el.querySelector('.btn-exclude');
+  if (btn) { btn.textContent = '↩ 복구'; btn.onclick = () => restoreItem(idx); }
+}
+
+function restoreItem(idx) {
+  window._analyzeResults[idx].excluded = false;
+  const el = document.getElementById(`result-item-${idx}`);
+  if (el) el.style.opacity = '1';
+  const btn = el.querySelector('.btn-exclude');
+  if (btn) { btn.textContent = '✕ 제외'; btn.onclick = () => excludeItem(idx); }
+}
+
+async function addAllMeals() {
+  const results = window._analyzeResults || [];
+  const imagePath = window._analyzeImagePath || '';
+  const d = document.getElementById('date-input').value;
+  const toAdd = results.filter(f => !f.excluded);
+  if (!toAdd.length) { alert('추가할 음식이 없어요.'); return; }
+
+  for (const food of toAdd) {
+    const qty = parseFloat(document.getElementById(`ai-qty-${food.idx}`)?.value) || 1;
+    const dbMatch = food.db_match || null;
+    const cdRaw = dbMatch ? dbMatch.food_cd : '';
+    await fetch('/api/meals', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        date: d,
+        food_name: food.name,
+        food_cd: cdRaw || null,
+        protein_g: (parseFloat(food.protein_g || 0) * qty).toFixed(1),
+        energy_kcal: dbMatch ? (dbMatch.energy_kcal * qty).toFixed(0) : null,
+        fat_g: dbMatch ? (dbMatch.fat_g * qty).toFixed(1) : null,
+        carb_g: dbMatch ? (dbMatch.carb_g * qty).toFixed(1) : null,
+        amount: qty + '인분',
+        image_path: imagePath
+      })
+    });
+  }
+
+  // 분석 영역 초기화
+  document.getElementById('result-list').innerHTML = '';
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('analyze-btn').style.display = 'none';
+  selectedFile = null;
+  window._analyzeResults = [];
+  loadMeals();
 }
 
 // ══════════════════════════════════════════
@@ -551,13 +626,9 @@ async function addMealCommon(food) {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({...food, date: d})
   });
-  // 입력창 초기화
+  // 검색창만 초기화
   document.getElementById('search-input').value = '';
   document.getElementById('search-results').innerHTML = '';
-  document.getElementById('result-list').innerHTML = '';
-  document.getElementById('preview-img').style.display = 'none';
-  document.getElementById('analyze-btn').style.display = 'none';
-  selectedFile = null;
   loadMeals();
 }
 
