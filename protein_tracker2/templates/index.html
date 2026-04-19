@@ -627,6 +627,17 @@ window.addEventListener('load', async () => {
   const res = await fetch('/api/check-login');
   const data = await res.json();
   if (data.logged_in) showApp(data);
+
+  // 카메라 장치가 있으면 file input에 capture 속성 추가
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const hasCamera = devices.some(d => d.kind === 'videoinput');
+    if (hasCamera) {
+      document.getElementById('file-input').setAttribute('capture', 'environment');
+    }
+  } catch (e) {
+    // 권한 없거나 지원 안 하면 그냥 무시
+  }
 });
 
 // ══════════════════════════════════════════
@@ -845,26 +856,88 @@ async function searchFood(q) {
   const container = document.getElementById('search-results');
   if (!q.trim()) { container.innerHTML = ''; return; }
   searchTimer = setTimeout(async () => {
+    container.innerHTML = '<div style="color:#aaa;font-size:.82rem;padding:6px"><span class="spinner"></span> 검색 중...</div>';
     const data = await fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r => r.json());
     container.innerHTML = '';
-    if (!data.length) { container.innerHTML = '<div style="color:#aaa;font-size:.82rem;padding:6px">검색 결과가 없어요.</div>'; return; }
-    data.forEach(item => {
-      const div = document.createElement('div');
-      div.className = 'search-item';
-      div.innerHTML = `
-        <div style="flex:1">
-          <div class="si-name">${item.name}</div>
-          <div class="si-detail">${item.category||''} · ${item.std_unit||''}</div>
-        </div>
-        <div class="si-protein">${item.protein_g}g</div>
-        <div class="qty-box">
-          <input type="number" class="qty-input" id="qty-${item.food_cd}" value="1" min="0.1" step="0.1">
-          <button class="btn-add" onclick="addMealFromSearch('${item.food_cd}','${item.name.replace(/'/g,"\\'")}',${item.protein_g},${item.energy_kcal||0},${item.fat_g||0},${item.carb_g||0},'${item.std_unit||''}')">+추가</button>
-        </div>
+
+    if (data.length) {
+      // DB 결과 표시
+      data.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'search-item';
+        div.innerHTML = `
+          <div style="flex:1">
+            <div class="si-name">${item.name}</div>
+            <div class="si-detail">${item.category||''} · ${item.std_unit||''}</div>
+          </div>
+          <div class="si-protein">${item.protein_g}g</div>
+          <div class="qty-box">
+            <input type="number" class="qty-input" id="qty-${item.food_cd}" value="1" min="0.1" step="0.1">
+            <button class="btn-add" onclick="addMealFromSearch('${item.food_cd}','${item.name.replace(/'/g,"\\'")}',${item.protein_g},${item.energy_kcal||0},${item.fat_g||0},${item.carb_g||0},'${item.std_unit||''}')">+추가</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // DB 결과 없으면 AI 검색 버튼 표시
+    if (!data.length) {
+      const aiDiv = document.createElement('div');
+      aiDiv.style.cssText = 'color:#aaa;font-size:.82rem;padding:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;';
+      aiDiv.innerHTML = `
+        <span>DB에 없는 음식이에요.</span>
+        <button class="btn-add" style="background:#cba6f7;color:#1e1e2e;" onclick="searchWithAI('${q.replace(/'/g,"\\'")}')">🤖 AI로 검색</button>
       `;
-      container.appendChild(div);
-    });
+      container.appendChild(aiDiv);
+    }
   }, 300);
+}
+
+async function searchWithAI(foodName) {
+  const container = document.getElementById('search-results');
+  container.innerHTML = '<div style="color:#aaa;font-size:.82rem;padding:6px"><span class="spinner"></span> AI가 영양 정보를 찾는 중...</div>';
+  try {
+    const res = await fetch('/api/search-ai', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({food_name: foodName})
+    });
+    const item = await res.json();
+    if (item.error) {
+      container.innerHTML = `<div style="color:#f38ba8;font-size:.82rem;padding:6px">❌ ${item.error}</div>`;
+      return;
+    }
+    container.innerHTML = '';
+    const aiId = 'ai-' + Date.now();
+    const div = document.createElement('div');
+    div.className = 'search-item';
+    div.innerHTML = `
+      <div style="flex:1">
+        <div class="si-name">${item.name} <span class="ai-badge">AI</span></div>
+        <div class="si-detail">${item.std_unit||'1인분'} · kcal ${item.energy_kcal||'?'}</div>
+      </div>
+      <div class="si-protein">${item.protein_g}g</div>
+      <div class="qty-box">
+        <input type="number" class="qty-input" id="qty-${aiId}" value="1" min="0.1" step="0.1">
+        <button class="btn-add" onclick="addMealFromAISearch('${aiId}','${item.name.replace(/'/g,"\\'")}',${item.protein_g},${item.energy_kcal||0},${item.fat_g||0},${item.carb_g||0},'${item.std_unit||'1인분'}')">+추가</button>
+      </div>
+    `;
+    container.appendChild(div);
+  } catch(e) {
+    container.innerHTML = `<div style="color:#f38ba8;font-size:.82rem;padding:6px">❌ 오류: ${e.message}</div>`;
+  }
+}
+
+function addMealFromAISearch(aiId, name, protein, kcal, fat, carb, unit) {
+  const qty = parseFloat(document.getElementById('qty-' + aiId).value) || 1;
+  addMealCommon({
+    food_name: name,
+    food_cd: null,
+    protein_g: (protein * qty).toFixed(1),
+    energy_kcal: kcal ? (kcal * qty).toFixed(0) : null,
+    fat_g: fat ? (fat * qty).toFixed(1) : null,
+    carb_g: carb ? (carb * qty).toFixed(1) : null,
+    amount: qty + (unit ? ' × ' + unit : '인분')
+  });
 }
 
 // ══════════════════════════════════════════
