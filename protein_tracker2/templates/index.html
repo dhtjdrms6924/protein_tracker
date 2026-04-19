@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>🥩 단백질 트래커</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; min-height: 100vh; }
@@ -65,9 +66,6 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
 }
 .sidebar-section { display: flex; flex-direction: column; gap: 7px; }
 .sidebar-section h3 { font-size: 0.85rem; color: #89dceb; border-bottom: 1px solid #45475a; padding-bottom: 5px; }
-/* 추가 */
-.sidebar-collapsible { display: none; }
-.sidebar-collapsible.open { display: flex; flex-direction: column; gap: 7px; }
 .btn-save {
   background: #cba6f7; color: #1e1e2e; border: none; padding: 7px;
   border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.82rem;
@@ -308,6 +306,10 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
     flex: 1; padding: 9px; font-size: 0.8rem;
   }
 
+  /* API키 + 프로필 섹션은 기본적으로 숨기고 펼치기 버튼으로 */
+  .sidebar-collapsible { display: none; }
+  .sidebar-collapsible.open { display: flex; flex-direction: column; gap: 7px; }
+
   #main { padding: 12px; }
 }
 </style>
@@ -373,14 +375,35 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
       <button class="btn-danger" onclick="showDeleteConfirm()">🗑 계정 삭제</button>
     </div>
 
-    <!-- 수정: h3에 onclick 추가, 내용에 sidebar-collapsible 추가 -->
+    <!-- 하드웨어 기기 연결 -->
     <div class="sidebar-section">
-      <h3 onclick="toggleSideSection(this)" style="cursor:pointer">🔑 Gemini API 키 <span style="float:right;font-size:0.8rem">▾</span></h3>
+      <h3 onclick="toggleSideSection(this)" style="cursor:pointer">📡 디스펜서 연결 <span style="float:right;font-size:0.8rem">▾</span></h3>
       <div class="sidebar-collapsible">
-        <label>API Key</label>
-        <input type="password" id="api-key-input" placeholder="AIza...">
-        <button class="btn-save" onclick="saveApiKey()">저장</button>
-        <span id="api-save-msg" style="font-size:.76rem;color:#a6e3a1;"></span>
+        <div id="device-list" style="display:flex;flex-direction:column;gap:5px;"></div>
+        <button class="btn-save" onclick="startQRScan()" style="margin-top:4px;">📷 QR 스캔으로 등록</button>
+        <span id="device-msg" style="font-size:.76rem;color:#a6e3a1;"></span>
+        <!-- QR 스캔 영역 -->
+        <div id="qr-scan-area" style="display:none;margin-top:8px;">
+          <video id="qr-video" style="width:100%;border-radius:8px;"></video>
+          <button onclick="stopQRScan()" style="width:100%;margin-top:6px;background:#45475a;color:#cdd6f4;border:none;padding:6px;border-radius:6px;cursor:pointer;font-size:0.8rem;">✕ 취소</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 프로틴 제품 등록 -->
+    <div class="sidebar-section">
+      <h3 onclick="toggleSideSection(this)" style="cursor:pointer">🥛 프로틴 제품 <span style="float:right;font-size:0.8rem">▾</span></h3>
+      <div class="sidebar-collapsible">
+        <div id="product-list" style="display:flex;flex-direction:column;gap:5px;"></div>
+        <button class="btn-save" onclick="document.getElementById('product-img-input').click()" style="margin-top:4px;">📸 영양성분표 등록</button>
+        <input type="file" id="product-img-input" accept="image/*" style="display:none" onchange="analyzeProductLabel(this.files[0])">
+        <div id="product-analyze-status" style="font-size:.76rem;color:#a6adc8;"></div>
+        <!-- 분석 결과 확인 -->
+        <div id="product-confirm-area" style="display:none;flex-direction:column;gap:6px;margin-top:6px;">
+          <div id="product-preview-info" style="font-size:0.8rem;color:#cdd6f4;background:#1e1e2e;padding:8px;border-radius:6px;"></div>
+          <button class="btn-save" onclick="saveProductFromAnalysis()">✅ 저장</button>
+          <button onclick="cancelProductAnalysis()" style="background:transparent;border:1px solid #45475a;color:#a6adc8;padding:6px;border-radius:6px;cursor:pointer;font-size:0.8rem;">취소</button>
+        </div>
       </div>
     </div>
 
@@ -525,6 +548,8 @@ let selectedFile = null;
 let searchTimer = null;
 
 function toggleSideSection(h3El) {
+  // 모바일에서만 동작
+  if (window.innerWidth > 640) return;
   const content = h3El.nextElementSibling;
   content.classList.toggle('open');
   const arrow = h3El.querySelector('span');
@@ -627,17 +652,6 @@ window.addEventListener('load', async () => {
   const res = await fetch('/api/check-login');
   const data = await res.json();
   if (data.logged_in) showApp(data);
-
-  // 카메라 장치가 있으면 file input에 capture 속성 추가
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const hasCamera = devices.some(d => d.kind === 'videoinput');
-    if (hasCamera) {
-      document.getElementById('file-input').setAttribute('capture', 'environment');
-    }
-  } catch (e) {
-    // 권한 없거나 지원 안 하면 그냥 무시
-  }
 });
 
 // ══════════════════════════════════════════
@@ -646,11 +660,9 @@ window.addEventListener('load', async () => {
 async function initApp(userData) {
   document.getElementById('date-input').value = today;
   document.getElementById('date-input').onchange = () => loadMeals();
-
-  const s = await fetch('/api/settings').then(r => r.json());
-  if (s.api_key) document.getElementById('api-key-input').value = s.api_key;
-
   loadMeals();
+  loadDeviceList();
+  loadProductList();
 }
 
 // ══════════════════════════════════════════
@@ -668,12 +680,181 @@ function switchTab(id) {
 // ══════════════════════════════════════════
 //  설정 저장
 // ══════════════════════════════════════════
-async function saveApiKey() {
-  const key = document.getElementById('api-key-input').value.trim();
-  await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({api_key: key})});
-  const msg = document.getElementById('api-save-msg');
-  msg.textContent = '✅ 저장됨';
-  setTimeout(() => msg.textContent = '', 2000);
+// ══════════════════════════════════════════
+//  하드웨어 기기 연결
+// ══════════════════════════════════════════
+let qrScanner = null;
+
+async function loadDeviceList() {
+  const res = await fetch('/api/device/list').then(r => r.json());
+  const container = document.getElementById('device-list');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!Array.isArray(res) || !res.length) {
+    container.innerHTML = '<div style="font-size:0.78rem;color:#6c7086;">연결된 기기 없음</div>';
+    return;
+  }
+  res.forEach(d => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;background:#1e1e2e;border-radius:6px;padding:6px 8px;font-size:0.78rem;';
+    div.innerHTML = `
+      <div>
+        <div style="color:#cdd6f4;font-weight:600;">${d.name}</div>
+        <div style="color:#6c7086;">${d.last_seen ? '최근: ' + d.last_seen.slice(0,10) : '미접속'}</div>
+      </div>
+      <button onclick="unlinkDevice(${d.id})" style="background:#f38ba8;color:#1e1e2e;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:0.72rem;">해제</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function unlinkDevice(id) {
+  if (!confirm('기기 연결을 해제할까요?')) return;
+  await fetch(`/api/device/unlink?id=${id}`, { method: 'DELETE' });
+  loadDeviceList();
+}
+
+async function startQRScan() {
+  const area = document.getElementById('qr-scan-area');
+  area.style.display = 'block';
+  const video = document.getElementById('qr-video');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = stream;
+    video.play();
+    // jsQR 라이브러리로 QR 인식
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    qrScanner = setInterval(() => {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code && code.data) {
+          stopQRScan();
+          registerDevice(code.data);
+        }
+      }
+    }, 200);
+  } catch(e) {
+    document.getElementById('device-msg').textContent = '카메라 접근 실패: ' + e.message;
+    document.getElementById('device-msg').style.color = '#f38ba8';
+    area.style.display = 'none';
+  }
+}
+
+function stopQRScan() {
+  if (qrScanner) { clearInterval(qrScanner); qrScanner = null; }
+  const video = document.getElementById('qr-video');
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
+  }
+  document.getElementById('qr-scan-area').style.display = 'none';
+}
+
+async function registerDevice(token) {
+  const msg = document.getElementById('device-msg');
+  msg.style.color = '#a6adc8';
+  msg.textContent = '등록 중...';
+  const res = await fetch('/api/device/register', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ token })
+  }).then(r => r.json());
+  if (res.status === 'ok' || res.status === 'already_registered') {
+    msg.style.color = '#a6e3a1';
+    msg.textContent = '✅ 기기 등록 완료!';
+    loadDeviceList();
+  } else {
+    msg.style.color = '#f38ba8';
+    msg.textContent = '❌ ' + (res.error || '등록 실패');
+  }
+  setTimeout(() => msg.textContent = '', 3000);
+}
+
+// ══════════════════════════════════════════
+//  프로틴 제품
+// ══════════════════════════════════════════
+let _pendingProduct = null;
+
+async function loadProductList() {
+  const res = await fetch('/api/protein-product').then(r => r.json());
+  const container = document.getElementById('product-list');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!Array.isArray(res) || !res.length) {
+    container.innerHTML = '<div style="font-size:0.78rem;color:#6c7086;">등록된 제품 없음</div>';
+    return;
+  }
+  res.forEach(p => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;background:#1e1e2e;border-radius:6px;padding:6px 8px;font-size:0.78rem;';
+    div.innerHTML = `
+      <div>
+        <div style="color:#cdd6f4;font-weight:600;">${p.name}</div>
+        <div style="color:#6c7086;">1스쿱 ${p.protein_per_scoop}g 단백질 · ${p.scoop_weight_g}g</div>
+      </div>
+      <button onclick="deleteProduct(${p.id})" style="background:#f38ba8;color:#1e1e2e;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:0.72rem;">삭제</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function analyzeProductLabel(file) {
+  if (!file) return;
+  const status = document.getElementById('product-analyze-status');
+  const confirmArea = document.getElementById('product-confirm-area');
+  confirmArea.style.display = 'none';
+  status.textContent = '⏳ AI가 영양성분표를 분석 중...';
+  const formData = new FormData();
+  formData.append('image', file);
+  try {
+    const res = await fetch('/api/protein-product/analyze', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (data.error) {
+      status.textContent = '❌ ' + data.error;
+      return;
+    }
+    status.textContent = '';
+    _pendingProduct = data;
+    document.getElementById('product-preview-info').innerHTML = `
+      <strong>${data.name}</strong><br>
+      단백질: ${data.protein_per_scoop}g / 스쿱<br>
+      스쿱 중량: ${data.scoop_weight_g}g<br>
+      칼로리: ${data.energy_kcal}kcal
+    `;
+    confirmArea.style.display = 'flex';
+  } catch(e) {
+    status.textContent = '❌ 오류: ' + e.message;
+  }
+  // input 초기화
+  document.getElementById('product-img-input').value = '';
+}
+
+async function saveProductFromAnalysis() {
+  if (!_pendingProduct) return;
+  await fetch('/api/protein-product', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(_pendingProduct)
+  });
+  _pendingProduct = null;
+  document.getElementById('product-confirm-area').style.display = 'none';
+  document.getElementById('product-analyze-status').textContent = '✅ 제품 저장 완료!';
+  setTimeout(() => document.getElementById('product-analyze-status').textContent = '', 2000);
+  loadProductList();
+}
+
+function cancelProductAnalysis() {
+  _pendingProduct = null;
+  document.getElementById('product-confirm-area').style.display = 'none';
+  document.getElementById('product-analyze-status').textContent = '';
+}
+
+async function deleteProduct(id) {
+  await fetch(`/api/protein-product?id=${id}`, { method: 'DELETE' });
+  loadProductList();
 }
 
 async function saveProfile() {
@@ -856,88 +1037,26 @@ async function searchFood(q) {
   const container = document.getElementById('search-results');
   if (!q.trim()) { container.innerHTML = ''; return; }
   searchTimer = setTimeout(async () => {
-    container.innerHTML = '<div style="color:#aaa;font-size:.82rem;padding:6px"><span class="spinner"></span> 검색 중...</div>';
     const data = await fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r => r.json());
     container.innerHTML = '';
-
-    if (data.length) {
-      // DB 결과 표시
-      data.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'search-item';
-        div.innerHTML = `
-          <div style="flex:1">
-            <div class="si-name">${item.name}</div>
-            <div class="si-detail">${item.category||''} · ${item.std_unit||''}</div>
-          </div>
-          <div class="si-protein">${item.protein_g}g</div>
-          <div class="qty-box">
-            <input type="number" class="qty-input" id="qty-${item.food_cd}" value="1" min="0.1" step="0.1">
-            <button class="btn-add" onclick="addMealFromSearch('${item.food_cd}','${item.name.replace(/'/g,"\\'")}',${item.protein_g},${item.energy_kcal||0},${item.fat_g||0},${item.carb_g||0},'${item.std_unit||''}')">+추가</button>
-          </div>
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    // DB 결과 없으면 AI 검색 버튼 표시
-    if (!data.length) {
-      const aiDiv = document.createElement('div');
-      aiDiv.style.cssText = 'color:#aaa;font-size:.82rem;padding:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;';
-      aiDiv.innerHTML = `
-        <span>DB에 없는 음식이에요.</span>
-        <button class="btn-add" style="background:#cba6f7;color:#1e1e2e;" onclick="searchWithAI('${q.replace(/'/g,"\\'")}')">🤖 AI로 검색</button>
+    if (!data.length) { container.innerHTML = '<div style="color:#aaa;font-size:.82rem;padding:6px">검색 결과가 없어요.</div>'; return; }
+    data.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'search-item';
+      div.innerHTML = `
+        <div style="flex:1">
+          <div class="si-name">${item.name}</div>
+          <div class="si-detail">${item.category||''} · ${item.std_unit||''}</div>
+        </div>
+        <div class="si-protein">${item.protein_g}g</div>
+        <div class="qty-box">
+          <input type="number" class="qty-input" id="qty-${item.food_cd}" value="1" min="0.1" step="0.1">
+          <button class="btn-add" onclick="addMealFromSearch('${item.food_cd}','${item.name.replace(/'/g,"\\'")}',${item.protein_g},${item.energy_kcal||0},${item.fat_g||0},${item.carb_g||0},'${item.std_unit||''}')">+추가</button>
+        </div>
       `;
-      container.appendChild(aiDiv);
-    }
-  }, 300);
-}
-
-async function searchWithAI(foodName) {
-  const container = document.getElementById('search-results');
-  container.innerHTML = '<div style="color:#aaa;font-size:.82rem;padding:6px"><span class="spinner"></span> AI가 영양 정보를 찾는 중...</div>';
-  try {
-    const res = await fetch('/api/search-ai', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({food_name: foodName})
+      container.appendChild(div);
     });
-    const item = await res.json();
-    if (item.error) {
-      container.innerHTML = `<div style="color:#f38ba8;font-size:.82rem;padding:6px">❌ ${item.error}</div>`;
-      return;
-    }
-    container.innerHTML = '';
-    const aiId = 'ai-' + Date.now();
-    const div = document.createElement('div');
-    div.className = 'search-item';
-    div.innerHTML = `
-      <div style="flex:1">
-        <div class="si-name">${item.name} <span class="ai-badge">AI</span></div>
-        <div class="si-detail">${item.std_unit||'1인분'} · kcal ${item.energy_kcal||'?'}</div>
-      </div>
-      <div class="si-protein">${item.protein_g}g</div>
-      <div class="qty-box">
-        <input type="number" class="qty-input" id="qty-${aiId}" value="1" min="0.1" step="0.1">
-        <button class="btn-add" onclick="addMealFromAISearch('${aiId}','${item.name.replace(/'/g,"\\'")}',${item.protein_g},${item.energy_kcal||0},${item.fat_g||0},${item.carb_g||0},'${item.std_unit||'1인분'}')">+추가</button>
-      </div>
-    `;
-    container.appendChild(div);
-  } catch(e) {
-    container.innerHTML = `<div style="color:#f38ba8;font-size:.82rem;padding:6px">❌ 오류: ${e.message}</div>`;
-  }
-}
-
-function addMealFromAISearch(aiId, name, protein, kcal, fat, carb, unit) {
-  const qty = parseFloat(document.getElementById('qty-' + aiId).value) || 1;
-  addMealCommon({
-    food_name: name,
-    food_cd: null,
-    protein_g: (protein * qty).toFixed(1),
-    energy_kcal: kcal ? (kcal * qty).toFixed(0) : null,
-    fat_g: fat ? (fat * qty).toFixed(1) : null,
-    carb_g: carb ? (carb * qty).toFixed(1) : null,
-    amount: qty + (unit ? ' × ' + unit : '인분')
-  });
+  }, 300);
 }
 
 // ══════════════════════════════════════════
