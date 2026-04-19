@@ -65,6 +65,9 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
 }
 .sidebar-section { display: flex; flex-direction: column; gap: 7px; }
 .sidebar-section h3 { font-size: 0.85rem; color: #89dceb; border-bottom: 1px solid #45475a; padding-bottom: 5px; }
+/* 추가 */
+.sidebar-collapsible { display: none; }
+.sidebar-collapsible.open { display: flex; flex-direction: column; gap: 7px; }
 .btn-save {
   background: #cba6f7; color: #1e1e2e; border: none; padding: 7px;
   border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.82rem;
@@ -305,10 +308,6 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
     flex: 1; padding: 9px; font-size: 0.8rem;
   }
 
-  /* API키 + 프로필 섹션은 기본적으로 숨기고 펼치기 버튼으로 */
-  .sidebar-collapsible { display: none; }
-  .sidebar-collapsible.open { display: flex; flex-direction: column; gap: 7px; }
-
   #main { padding: 12px; }
 }
 </style>
@@ -526,8 +525,6 @@ let selectedFile = null;
 let searchTimer = null;
 
 function toggleSideSection(h3El) {
-  // 모바일에서만 동작
-  if (window.innerWidth > 640) return;
   const content = h3El.nextElementSibling;
   content.classList.toggle('open');
   const arrow = h3El.querySelector('span');
