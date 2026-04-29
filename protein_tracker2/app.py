@@ -7,6 +7,8 @@ from google.genai import types
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import sqlite3
+import cloudinary
+import cloudinary.uploader
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "protein-tracker-secret-2024")
@@ -15,8 +17,27 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 SQLITE_DB_PATH = "food_nutrition.db"
-# API 키는 환경변수에서만 읽음 — 사용자가 변경 불가
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+# Cloudinary 설정
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.environ.get("CLOUDINARY_API_KEY"),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET")
+)
+
+def upload_to_cloudinary(file_path, folder="meals"):
+    """파일을 Cloudinary에 업로드하고 URL 반환. 실패 시 None 반환"""
+    try:
+        result = cloudinary.uploader.upload(
+            file_path,
+            folder=folder,
+            resource_type="image"
+        )
+        return result.get("secure_url")
+    except Exception as e:
+        print(f"Cloudinary 업로드 실패: {e}")
+        return None
 
 
 # ─────────────────────────────────────────
@@ -416,13 +437,20 @@ def api_analyze():
     file.save(path)
     result = analyze_image_with_gemini(path)
     if "error" in result:
+        os.remove(path)
         return jsonify(result)
     for food in result.get("foods", []):
         db_match = find_food_in_db(food.get("name", ""))
         if db_match:
             food["db_match"] = db_match
             food["protein_g"] = db_match["protein_g"]
-    result["image_path"] = fname
+    # Cloudinary 업로드
+    cloud_url = upload_to_cloudinary(path, folder="meals")
+    if cloud_url:
+        result["image_path"] = cloud_url
+        os.remove(path)  # 로컬 파일 삭제
+    else:
+        result["image_path"] = f"/static/uploads/{fname}"  # 업로드 실패 시 로컬 경로 fallback
     return jsonify(result)
 
 @app.route("/api/meals", methods=["GET", "POST", "DELETE"])
@@ -539,7 +567,12 @@ def api_analyze_protein_label():
     if "error" in result:
         os.remove(path)
         return jsonify(result), 400
-    result["image_path"] = fname
+    cloud_url = upload_to_cloudinary(path, folder="products")
+    if cloud_url:
+        result["image_path"] = cloud_url
+        os.remove(path)
+    else:
+        result["image_path"] = f"/static/uploads/{fname}"
     return jsonify(result)
 
 @app.route("/api/protein-product", methods=["GET", "POST", "DELETE"])
