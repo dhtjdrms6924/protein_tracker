@@ -467,7 +467,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
       <div class="card">
         <div class="section-title">🔍 음식 직접 검색</div>
         <div id="search-wrap">
-          <input type="text" id="search-input" placeholder="음식명 검색 (예: 닭, 달걀, 밥)..." oninput="searchFood(this.value)">
+          <input type="text" id="search-input" placeholder="음식명 검색 (예: 닭, 달걀, 밥)..." oninput="searchFood(this.value)" onchange="searchFood(this.value)">
         </div>
         <div id="search-results"></div>
       </div>
