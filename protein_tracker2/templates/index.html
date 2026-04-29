@@ -65,7 +65,9 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
   background: #313244; color: #cdd6f4; font-size: 0.83rem; margin-top: 3px;
 }
 .sidebar-section { display: flex; flex-direction: column; gap: 7px; }
-.sidebar-section h3 { font-size: 0.85rem; color: #89dceb; border-bottom: 1px solid #45475a; padding-bottom: 5px; }
+.sidebar-section h3 { font-size: 0.85rem; color: #89dceb; border-bottom: 1px solid #45475a; padding-bottom: 5px; cursor: pointer; }
+.sidebar-collapsible { display: none; }
+.sidebar-collapsible.open { display: flex; flex-direction: column; gap: 7px; }
 .btn-save {
   background: #cba6f7; color: #1e1e2e; border: none; padding: 7px;
   border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.82rem;
@@ -306,10 +308,6 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
     flex: 1; padding: 9px; font-size: 0.8rem;
   }
 
-  /* API키 + 프로필 섹션은 기본적으로 숨기고 펼치기 버튼으로 */
-  .sidebar-collapsible { display: none; }
-  .sidebar-collapsible.open { display: flex; flex-direction: column; gap: 7px; }
-
   #main { padding: 12px; }
 }
 </style>
@@ -441,10 +439,6 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
           <span id="progress-goal">목표: 미설정</span>
         </div>
         <div id="progress-bar-bg"><div id="progress-bar" style="width:0%"></div></div>
-        <div id="protein-shortage-box" style="display:none;margin-top:10px;background:#f3f0ff;border-radius:8px;padding:10px 14px;font-size:0.85rem;color:#555;">
-          <div id="shortage-text"></div>
-          <div id="scoop-text" style="margin-top:3px;font-weight:700;color:#cba6f7;"></div>
-        </div>
       </div>
 
       <div class="card">
@@ -458,10 +452,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
         </div>
         <img id="preview-img">
         <br>
-        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-          <button class="btn-analyze" id="analyze-btn" onclick="analyzeImage()" style="margin-top:0;">🔍 AI 분석하기</button>
-          <button id="cancel-btn" onclick="cancelAnalyze()" style="display:none;background:#45475a;color:#cdd6f4;border:none;padding:9px 16px;border-radius:8px;cursor:pointer;font-weight:700;font-size:0.88rem;">✕ 취소</button>
-        </div>
+        <button class="btn-analyze" id="analyze-btn" onclick="analyzeImage()">🔍 AI 분석하기</button>
         <div id="analyze-status"></div>
         <div id="result-list"></div>
       </div>
@@ -555,8 +546,6 @@ let selectedFile = null;
 let searchTimer = null;
 
 function toggleSideSection(h3El) {
-  // 모바일에서만 동작
-  if (window.innerWidth > 640) return;
   const content = h3El.nextElementSibling;
   content.classList.toggle('open');
   const arrow = h3El.querySelector('span');
@@ -654,11 +643,25 @@ function applyUserData(userData) {
   }
 }
 
-// 페이지 로드 시 세션 유지 확인
+// 페이지 로드 시 세션 유지 확인 + 카메라 감지
 window.addEventListener('load', async () => {
   const res = await fetch('/api/check-login');
   const data = await res.json();
   if (data.logged_in) showApp(data);
+
+  // 카메라 있는 기기면 file input에 capture 속성 추가
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const hasCamera = devices.some(d => d.kind === 'videoinput');
+    if (hasCamera) {
+      document.getElementById('file-input').setAttribute('capture', 'environment');
+    }
+  } catch(e) {
+    // 권한 없거나 미지원이면 무시 — 터치 기기 여부로 fallback
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+      document.getElementById('file-input').setAttribute('capture', 'environment');
+    }
+  }
 });
 
 // ══════════════════════════════════════════
@@ -793,14 +796,8 @@ async function loadProductList() {
   container.innerHTML = '';
   if (!Array.isArray(res) || !res.length) {
     container.innerHTML = '<div style="font-size:0.78rem;color:#6c7086;">등록된 제품 없음</div>';
-    window._activeProduct = null;
-    updateProgress(null);
     return;
   }
-  // 가장 최근 제품을 활성 제품으로 저장 (스쿱 계산에 사용)
-  window._activeProduct = res[0];
-  updateProgress(null);
-
   res.forEach(p => {
     const div = document.createElement('div');
     div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;background:#1e1e2e;border-radius:6px;padding:6px 8px;font-size:0.78rem;';
@@ -913,18 +910,6 @@ async function deleteAccount() {
 // ══════════════════════════════════════════
 //  이미지 분석
 // ══════════════════════════════════════════
-function cancelAnalyze() {
-  document.getElementById('preview-img').style.display = 'none';
-  document.getElementById('analyze-btn').style.display = 'none';
-  document.getElementById('cancel-btn').style.display = 'none';
-  document.getElementById('result-list').innerHTML = '';
-  document.getElementById('analyze-status').textContent = '';
-  document.getElementById('file-input').value = '';
-  selectedFile = null;
-  window._analyzeResults = [];
-  window._analyzeImagePath = '';
-}
-
 function previewFile(file) {
   if (!file) return;
   selectedFile = file;
@@ -932,7 +917,6 @@ function previewFile(file) {
   img.src = URL.createObjectURL(file);
   img.style.display = 'block';
   document.getElementById('analyze-btn').style.display = 'inline-block';
-  document.getElementById('cancel-btn').style.display = 'inline-block';
   document.getElementById('result-list').innerHTML = '';
   document.getElementById('analyze-status').textContent = '';
 }
@@ -1087,15 +1071,16 @@ async function searchFood(q) {
       });
     }
 
-    // DB 결과 없으면 AI 검색 버튼 표시, 있어도 하단에 AI 검색 옵션 제공
-    const aiDiv = document.createElement('div');
-    aiDiv.style.cssText = 'color:#aaa;font-size:.82rem;padding:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;';
-    aiDiv.innerHTML = data.length
-      ? `<span>원하는 음식이 없으면?</span>
-         <button class="btn-add" style="background:#cba6f7;color:#1e1e2e;" onclick="searchWithAI('${q.replace(/'/g,"\\'")}')">🤖 AI로 검색</button>`
-      : `<span>DB에 없는 음식이에요.</span>
-         <button class="btn-add" style="background:#cba6f7;color:#1e1e2e;" onclick="searchWithAI('${q.replace(/'/g,"\\'")}')">🤖 AI로 검색</button>`;
-    container.appendChild(aiDiv);
+    // DB 결과 없으면 AI 검색 버튼 표시
+    if (!data.length) {
+      const aiDiv = document.createElement('div');
+      aiDiv.style.cssText = 'color:#aaa;font-size:.82rem;padding:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;';
+      aiDiv.innerHTML = `
+        <span>DB에 없는 음식이에요.</span>
+        <button class="btn-add" style="background:#cba6f7;color:#1e1e2e;" onclick="searchWithAI('${q.replace(/'/g,"\\'")}')">🤖 AI로 검색</button>
+      `;
+      container.appendChild(aiDiv);
+    }
   }, 300);
 }
 
@@ -1210,39 +1195,16 @@ async function loadMeals() {
 
 function updateProgress(total) {
   if (total === null) {
+    // 목표만 다시 계산
     const cur = parseFloat(document.getElementById('progress-text').textContent.replace(/[^0-9.]/g,'')) || 0;
     total = cur;
   }
   document.getElementById('progress-text').textContent = `오늘 섭취: ${total.toFixed(1)}g`;
-  const shortageBox = document.getElementById('protein-shortage-box');
   if (goalProtein > 0) {
     const pct = Math.min(100, (total / goalProtein) * 100);
     document.getElementById('progress-bar').style.width = pct + '%';
     document.getElementById('progress-bar').style.background =
       pct >= 100 ? 'linear-gradient(90deg,#cba6f7,#89b4fa)' : 'linear-gradient(90deg,#a6e3a1,#40a02b)';
-
-    const shortage = Math.max(0, goalProtein - total);
-    if (shortage > 0) {
-      shortageBox.style.display = 'block';
-      document.getElementById('shortage-text').textContent = `부족한 단백질: ${shortage.toFixed(1)}g`;
-      // 등록된 프로틴 제품으로 스쿱 계산
-      if (window._activeProduct && window._activeProduct.protein_per_scoop > 0) {
-        const p = window._activeProduct;
-        const scoops = (shortage / p.protein_per_scoop).toFixed(1);
-        const grams = p.scoop_weight_g > 0 ? ` (약 ${(scoops * p.scoop_weight_g).toFixed(0)}g)` : '';
-        document.getElementById('scoop-text').textContent =
-          `🥛 ${p.name} ${scoops}스쿱${grams} 섭취하면 채울 수 있어요`;
-      } else {
-        document.getElementById('scoop-text').textContent = '💡 사이드바에서 프로틴 제품을 등록하면 스쿱 수를 알려드려요';
-        document.getElementById('scoop-text').style.color = '#888';
-        document.getElementById('scoop-text').style.fontWeight = '400';
-        document.getElementById('scoop-text').style.fontSize = '0.78rem';
-      }
-    } else {
-      shortageBox.style.display = 'none';
-    }
-  } else {
-    shortageBox.style.display = 'none';
   }
 }
 
@@ -1317,11 +1279,10 @@ async function openDayDetail(dayStr, goal) {
   const photoContainer = document.getElementById('detail-photos');
   photoContainer.innerHTML = '';
   photos.forEach(fname => {
-    const url = fname.startsWith('http') ? fname : `/static/uploads/${fname}`;
     const img = document.createElement('img');
     img.className = 'detail-photo';
-    img.src = url;
-    img.onclick = () => openLightbox(url);
+    img.src = `/static/uploads/${fname}`;
+    img.onclick = () => openLightbox(`/static/uploads/${fname}`);
     photoContainer.appendChild(img);
   });
 
@@ -1368,15 +1329,14 @@ async function loadAlbum() {
   }
 
   photos.forEach(p => {
-    // Cloudinary URL이면 그대로, 로컬 경로면 /static/uploads/ 붙이기
-    const url = p.image_path.startsWith('http') ? p.image_path : `/static/uploads/${p.image_path}`;
+    const url = `/static/uploads/${p.image_path}`;
     const dateLabel = p.date || '';
     const item = document.createElement('div');
     item.className = 'album-item';
     item.innerHTML = `
       <img src="${url}" alt="${dateLabel}" loading="lazy" onclick="openLightbox('${url}')">
       <div class="album-date">${dateLabel}</div>
-      <button class="album-download" onclick="downloadPhoto('${url}','${p.image_path.split('/').pop()}')">⬇</button>
+      <button class="album-download" onclick="downloadPhoto('${url}','${p.image_path}')">⬇</button>
     `;
     container.appendChild(item);
   });
