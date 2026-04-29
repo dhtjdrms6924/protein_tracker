@@ -65,9 +65,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
   background: #313244; color: #cdd6f4; font-size: 0.83rem; margin-top: 3px;
 }
 .sidebar-section { display: flex; flex-direction: column; gap: 7px; }
-.sidebar-section h3 { font-size: 0.85rem; color: #89dceb; border-bottom: 1px solid #45475a; padding-bottom: 5px; cursor: pointer; }
-.sidebar-collapsible { display: none; }
-.sidebar-collapsible.open { display: flex; flex-direction: column; gap: 7px; }
+.sidebar-section h3 { font-size: 0.85rem; color: #89dceb; border-bottom: 1px solid #45475a; padding-bottom: 5px; }
 .btn-save {
   background: #cba6f7; color: #1e1e2e; border: none; padding: 7px;
   border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.82rem;
@@ -308,6 +306,10 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
     flex: 1; padding: 9px; font-size: 0.8rem;
   }
 
+  /* API키 + 프로필 섹션은 기본적으로 숨기고 펼치기 버튼으로 */
+  .sidebar-collapsible { display: none; }
+  .sidebar-collapsible.open { display: flex; flex-direction: column; gap: 7px; }
+
   #main { padding: 12px; }
 }
 </style>
@@ -439,6 +441,10 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
           <span id="progress-goal">목표: 미설정</span>
         </div>
         <div id="progress-bar-bg"><div id="progress-bar" style="width:0%"></div></div>
+        <div id="protein-shortage-box" style="display:none;margin-top:10px;background:#f3f0ff;border-radius:8px;padding:10px 14px;font-size:0.85rem;color:#555;">
+          <div id="shortage-text"></div>
+          <div id="scoop-text" style="margin-top:3px;font-weight:700;color:#cba6f7;"></div>
+        </div>
       </div>
 
       <div class="card">
@@ -546,6 +552,8 @@ let selectedFile = null;
 let searchTimer = null;
 
 function toggleSideSection(h3El) {
+  // 모바일에서만 동작
+  if (window.innerWidth > 640) return;
   const content = h3El.nextElementSibling;
   content.classList.toggle('open');
   const arrow = h3El.querySelector('span');
@@ -643,24 +651,17 @@ function applyUserData(userData) {
   }
 }
 
-// 페이지 로드 시 세션 유지 확인 + 카메라 감지
+// 페이지 로드 시 세션 유지 확인
 window.addEventListener('load', async () => {
   const res = await fetch('/api/check-login');
   const data = await res.json();
   if (data.logged_in) showApp(data);
 
-  // 카메라 있는 기기면 file input에 capture 속성 추가
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const hasCamera = devices.some(d => d.kind === 'videoinput');
-    if (hasCamera) {
-      document.getElementById('file-input').setAttribute('capture', 'environment');
-    }
-  } catch(e) {
-    // 권한 없거나 미지원이면 무시 — 터치 기기 여부로 fallback
-    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-      document.getElementById('file-input').setAttribute('capture', 'environment');
-    }
+  // 안드로이드 WebView에서만 capture 추가 (웹/브라우저는 기존 선택창 유지)
+  const ua = navigator.userAgent;
+  const isAndroidWebView = /Android/.test(ua) && /wv|Version\/[\d.]+.*Chrome/.test(ua);
+  if (isAndroidWebView) {
+    document.getElementById('file-input').setAttribute('capture', 'environment');
   }
 });
 
@@ -796,8 +797,14 @@ async function loadProductList() {
   container.innerHTML = '';
   if (!Array.isArray(res) || !res.length) {
     container.innerHTML = '<div style="font-size:0.78rem;color:#6c7086;">등록된 제품 없음</div>';
+    window._activeProduct = null;
+    updateProgress(null);
     return;
   }
+  // 가장 최근 제품을 활성 제품으로 저장
+  window._activeProduct = res[0];
+  updateProgress(null);
+
   res.forEach(p => {
     const div = document.createElement('div');
     div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;background:#1e1e2e;border-radius:6px;padding:6px 8px;font-size:0.78rem;';
@@ -1195,16 +1202,44 @@ async function loadMeals() {
 
 function updateProgress(total) {
   if (total === null) {
-    // 목표만 다시 계산
     const cur = parseFloat(document.getElementById('progress-text').textContent.replace(/[^0-9.]/g,'')) || 0;
     total = cur;
   }
   document.getElementById('progress-text').textContent = `오늘 섭취: ${total.toFixed(1)}g`;
+  const shortageBox = document.getElementById('protein-shortage-box');
   if (goalProtein > 0) {
     const pct = Math.min(100, (total / goalProtein) * 100);
     document.getElementById('progress-bar').style.width = pct + '%';
     document.getElementById('progress-bar').style.background =
       pct >= 100 ? 'linear-gradient(90deg,#cba6f7,#89b4fa)' : 'linear-gradient(90deg,#a6e3a1,#40a02b)';
+
+    const shortage = Math.max(0, goalProtein - total);
+    if (shortage > 0.5) {
+      shortageBox.style.display = 'block';
+      document.getElementById('shortage-text').textContent = `부족한 단백질: ${shortage.toFixed(1)}g`;
+      if (window._activeProduct && window._activeProduct.protein_per_scoop > 0) {
+        const p = window._activeProduct;
+        const scoops = (shortage / p.protein_per_scoop).toFixed(1);
+        const grams = p.scoop_weight_g > 0
+          ? ` (약 ${(scoops * p.scoop_weight_g).toFixed(0)}g)`
+          : '';
+        const scEl = document.getElementById('scoop-text');
+        scEl.textContent = `🥛 ${p.name} ${scoops}스쿱${grams} 섭취하면 채울 수 있어요`;
+        scEl.style.color = '#cba6f7';
+        scEl.style.fontWeight = '700';
+        scEl.style.fontSize = '0.85rem';
+      } else {
+        const scEl = document.getElementById('scoop-text');
+        scEl.textContent = '💡 사이드바에서 프로틴 제품을 등록하면 스쿱 수를 알려드려요';
+        scEl.style.color = '#888';
+        scEl.style.fontWeight = '400';
+        scEl.style.fontSize = '0.78rem';
+      }
+    } else {
+      shortageBox.style.display = 'none';
+    }
+  } else {
+    if (shortageBox) shortageBox.style.display = 'none';
   }
 }
 
