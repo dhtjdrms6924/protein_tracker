@@ -6,3 +6,4 @@ google-genai>=1.0.0
 Flask-Login
 gunicorn
 psycopg2-binary
+cloudinary
