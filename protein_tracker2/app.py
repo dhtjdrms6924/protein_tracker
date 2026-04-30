@@ -1020,4 +1020,9 @@ def admin_custom_delete():
     return f'<script>location.href="/admin?pw={pw}"</script>'
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, threaded=True)
+    # 1. Render가 숨겨놓은 'PORT'라는 이름의 환경 변수를 가져옵니다.
+    # 2. 만약 없으면(로컬 PC라면) 기본값으로 5000을 씁니다.
+    assigned_port = int(os.environ.get("PORT", 5000))
+    
+    # 3. 그 번호로 서버를 엽니다.
+    app.run(host="0.0.0.0", port=assigned_port)
