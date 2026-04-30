@@ -1315,7 +1315,7 @@ async function openDayDetail(dayStr, goal) {
   const photoContainer = document.getElementById('detail-photos');
   photoContainer.innerHTML = '';
   photos.forEach(fname => {
-    const url = fname.startsWith('http') ? fname : `/static/uploads/${fname}`;
+    const url = getImageUrl(fname);
     const img = document.createElement('img');
     img.className = 'detail-photo';
     img.src = url;
@@ -1366,8 +1366,8 @@ async function loadAlbum() {
   }
 
   photos.forEach(p => {
-    const url = p.image_path.startsWith('http') ? p.image_path : `/static/uploads/${p.image_path}`;
-    const filename = p.image_path.startsWith('http') ? p.image_path.split('/').pop() : p.image_path;
+    const url = getImageUrl(p.image_path);
+    const filename = p.image_path.split('/').pop();
     const dateLabel = p.date || '';
     const item = document.createElement('div');
     item.className = 'album-item';
@@ -1390,6 +1390,13 @@ function downloadPhoto(url, filename) {
 // ══════════════════════════════════════════
 //  라이트박스
 // ══════════════════════════════════════════
+function getImageUrl(path) {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;       // Cloudinary URL
+  if (path.startsWith('/static/')) return path;   // 이미 전체 경로
+  return `/static/uploads/${path}`;               // 파일명만 있는 경우
+}
+
 function openLightbox(src) {
   document.getElementById('lightbox-img').src = src;
   document.getElementById('lightbox').classList.add('show');

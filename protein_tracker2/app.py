@@ -34,7 +34,9 @@ def upload_to_cloudinary(file_path, folder="meals"):
             folder=folder,
             resource_type="image"
         )
-        return result.get("secure_url")
+        url = result.get("secure_url")
+        print(f"Cloudinary 업로드 성공: {url}")
+        return url
     except Exception as e:
         print(f"Cloudinary 업로드 실패: {e}")
         return None
@@ -559,9 +561,9 @@ def api_analyze():
     cloud_url = upload_to_cloudinary(path, folder="meals")
     if cloud_url:
         result["image_path"] = cloud_url
-        os.remove(path)  # 로컬 파일 삭제
+        os.remove(path)
     else:
-        result["image_path"] = f"/static/uploads/{fname}"  # 업로드 실패 시 로컬 경로 fallback
+        result["image_path"] = fname  # 파일명만 저장 (경로 중복 방지)
     return jsonify(result)
 
 @app.route("/api/meals", methods=["GET", "POST", "DELETE"])
@@ -683,7 +685,7 @@ def api_analyze_protein_label():
         result["image_path"] = cloud_url
         os.remove(path)
     else:
-        result["image_path"] = f"/static/uploads/{fname}"
+        result["image_path"] = fname  # 파일명만 저장
     return jsonify(result)
 
 @app.route("/api/protein-product", methods=["GET", "POST", "DELETE"])
