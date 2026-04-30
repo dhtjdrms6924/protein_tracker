@@ -1315,10 +1315,11 @@ async function openDayDetail(dayStr, goal) {
   const photoContainer = document.getElementById('detail-photos');
   photoContainer.innerHTML = '';
   photos.forEach(fname => {
+    const url = fname.startsWith('http') ? fname : `/static/uploads/${fname}`;
     const img = document.createElement('img');
     img.className = 'detail-photo';
-    img.src = `/static/uploads/${fname}`;
-    img.onclick = () => openLightbox(`/static/uploads/${fname}`);
+    img.src = url;
+    img.onclick = () => openLightbox(url);
     photoContainer.appendChild(img);
   });
 
@@ -1365,14 +1366,15 @@ async function loadAlbum() {
   }
 
   photos.forEach(p => {
-    const url = `/static/uploads/${p.image_path}`;
+    const url = p.image_path.startsWith('http') ? p.image_path : `/static/uploads/${p.image_path}`;
+    const filename = p.image_path.startsWith('http') ? p.image_path.split('/').pop() : p.image_path;
     const dateLabel = p.date || '';
     const item = document.createElement('div');
     item.className = 'album-item';
     item.innerHTML = `
       <img src="${url}" alt="${dateLabel}" loading="lazy" onclick="openLightbox('${url}')">
       <div class="album-date">${dateLabel}</div>
-      <button class="album-download" onclick="downloadPhoto('${url}','${p.image_path}')">⬇</button>
+      <button class="album-download" onclick="downloadPhoto('${url}','${filename}')">⬇</button>
     `;
     container.appendChild(item);
   });
