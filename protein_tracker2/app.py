@@ -105,6 +105,33 @@ def init_db():
         last_seen TEXT
     )""")
 
+    # AI 텍스트 검색 캐시 테이블
+    cur.execute("""CREATE TABLE IF NOT EXISTS ai_food_cache (
+        id SERIAL PRIMARY KEY,
+        food_name TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        protein_g REAL DEFAULT 0,
+        energy_kcal REAL DEFAULT 0,
+        fat_g REAL DEFAULT 0,
+        carb_g REAL DEFAULT 0,
+        std_unit TEXT DEFAULT '',
+        search_count INTEGER DEFAULT 1,
+        created_at TEXT
+    )""")
+
+    # 관리자가 승격시킨 커스텀 음식 DB
+    cur.execute("""CREATE TABLE IF NOT EXISTS custom_foods (
+        id SERIAL PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL,
+        protein_g REAL DEFAULT 0,
+        energy_kcal REAL DEFAULT 0,
+        fat_g REAL DEFAULT 0,
+        carb_g REAL DEFAULT 0,
+        std_unit TEXT DEFAULT '',
+        category TEXT DEFAULT 'AI추가',
+        created_at TEXT
+    )""")
+
     conn.commit()
     cur.close()
     conn.close()
@@ -391,7 +418,25 @@ def api_search():
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify([])
-    return jsonify(search_food_in_db(q))
+    # SQLite DB 검색
+    results = search_food_in_db(q)
+    # custom_foods도 추가 검색
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT name, protein_g, energy_kcal, fat_g, carb_g, std_unit, category,
+                   NULL as food_cd, NULL as synm
+            FROM custom_foods WHERE name ILIKE %s LIMIT 5
+        """, (f"%{q}%",))
+        customs = cur.fetchall()
+        cur.close()
+        conn.close()
+        for c in customs:
+            results.insert(0, dict(c))
+    except Exception as e:
+        print(f"custom_foods 검색 실패: {e}")
+    return jsonify(results)
 
 @app.route("/api/search-ai", methods=["POST"])
 def api_search_ai():
@@ -400,6 +445,43 @@ def api_search_ai():
     food_name = request.json.get("food_name", "").strip()
     if not food_name:
         return jsonify({"error": "음식명을 입력해주세요."}), 400
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # ① custom_foods 먼저 조회
+    cur.execute("SELECT * FROM custom_foods WHERE name ILIKE %s LIMIT 1", (f"%{food_name}%",))
+    custom = cur.fetchone()
+    if custom:
+        cur.execute("UPDATE ai_food_cache SET search_count = search_count + 1 WHERE food_name = %s", (food_name,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        result = dict(custom)
+        result["ai_generated"] = True
+        result["from_cache"] = True
+        return jsonify(result)
+
+    # ② 캐시 조회
+    cur.execute("""
+        SELECT name, protein_g, energy_kcal, fat_g, carb_g, std_unit
+        FROM ai_food_cache WHERE food_name = %s
+    """, (food_name,))
+    cached = cur.fetchone()
+    if cached:
+        cur.execute("UPDATE ai_food_cache SET search_count = search_count + 1 WHERE food_name = %s", (food_name,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        result = dict(cached)
+        result["ai_generated"] = True
+        result["from_cache"] = True
+        return jsonify(result)
+
+    cur.close()
+    conn.close()
+
+    # ③ AI 호출
     client = get_gemini_client()
     if not client:
         return jsonify({"error": "서버에 API 키가 설정되지 않았습니다."}), 500
@@ -421,9 +503,38 @@ def api_search_ai():
             return jsonify({"error": "AI 응답 파싱 실패"}), 500
         result = json.loads(t[start:end])
         result["ai_generated"] = True
+
+        # ④ 캐시에 저장
+        try:
+            conn2 = get_conn()
+            cur2 = conn2.cursor()
+            cur2.execute("""
+                INSERT INTO ai_food_cache
+                    (food_name, name, protein_g, energy_kcal, fat_g, carb_g, std_unit, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (food_name) DO NOTHING
+            """, (
+                food_name,
+                result.get("name", food_name),
+                result.get("protein_g", 0),
+                result.get("energy_kcal", 0),
+                result.get("fat_g", 0),
+                result.get("carb_g", 0),
+                result.get("std_unit", ""),
+                datetime.now().isoformat()
+            ))
+            conn2.commit()
+            cur2.close()
+            conn2.close()
+        except Exception as cache_err:
+            print(f"캐시 저장 실패: {cache_err}")
+
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        err_msg = str(e)
+        if "429" in err_msg:
+            return jsonify({"error": "AI 요청 한도 초과. 잠시 후 다시 시도해주세요."}), 429
+        return jsonify({"error": err_msg}), 500
 
 @app.route("/api/analyze", methods=["POST"])
 def api_analyze():
@@ -746,6 +857,167 @@ def api_device_status():
         "scoops_needed": scoops_needed,
         "grams_needed": grams_needed
     })
+
+# ─────────────────────────────────────────
+# 관리자 라우트
+# ─────────────────────────────────────────
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin1234")
+
+@app.route("/admin")
+def admin_page():
+    """관리자 페이지 — 캐시 목록 및 custom_foods 관리"""
+    pw = request.args.get("pw", "")
+    if pw != ADMIN_PASSWORD:
+        return """
+        <html><body style="font-family:sans-serif;padding:40px;background:#1e1e2e;color:#cdd6f4;">
+        <h2>🔐 관리자 로그인</h2>
+        <form method="get">
+            <input name="pw" type="password" placeholder="비밀번호" style="padding:8px;border-radius:6px;border:1px solid #45475a;background:#313244;color:#cdd6f4;">
+            <button type="submit" style="padding:8px 16px;background:#cba6f7;color:#1e1e2e;border:none;border-radius:6px;cursor:pointer;font-weight:700;">확인</button>
+        </form>
+        </body></html>
+        """, 401
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # 캐시 목록 (검색 횟수 순)
+    cur.execute("""
+        SELECT id, food_name, name, protein_g, energy_kcal, fat_g, carb_g, std_unit, search_count, created_at
+        FROM ai_food_cache ORDER BY search_count DESC
+    """)
+    caches = cur.fetchall()
+
+    # custom_foods 목록
+    cur.execute("SELECT * FROM custom_foods ORDER BY created_at DESC")
+    customs = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    cache_rows = ""
+    for c in caches:
+        cache_rows += f"""
+        <tr>
+            <td>{c['food_name']}</td>
+            <td>{c['protein_g']}g</td>
+            <td>{c['energy_kcal']}kcal</td>
+            <td>{c['fat_g']}g</td>
+            <td>{c['carb_g']}g</td>
+            <td>{c['std_unit']}</td>
+            <td><strong>{c['search_count']}</strong></td>
+            <td>
+                <form method="post" action="/admin/promote?pw={pw}" style="display:inline">
+                    <input type="hidden" name="cache_id" value="{c['id']}">
+                    <button type="submit" style="background:#a6e3a1;color:#1e1e2e;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-weight:700;">DB 추가</button>
+                </form>
+                <form method="post" action="/admin/cache/delete?pw={pw}" style="display:inline">
+                    <input type="hidden" name="cache_id" value="{c['id']}">
+                    <button type="submit" style="background:#f38ba8;color:#1e1e2e;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-weight:700;">삭제</button>
+                </form>
+            </td>
+        </tr>"""
+
+    custom_rows = ""
+    for c in customs:
+        custom_rows += f"""
+        <tr>
+            <td>{c['name']}</td>
+            <td>{c['protein_g']}g</td>
+            <td>{c['energy_kcal']}kcal</td>
+            <td>{c['fat_g']}g</td>
+            <td>{c['carb_g']}g</td>
+            <td>{c['std_unit']}</td>
+            <td>
+                <form method="post" action="/admin/custom/delete?pw={pw}" style="display:inline">
+                    <input type="hidden" name="custom_id" value="{c['id']}">
+                    <button type="submit" style="background:#f38ba8;color:#1e1e2e;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-weight:700;">삭제</button>
+                </form>
+            </td>
+        </tr>"""
+
+    return f"""
+    <html><head><meta charset="utf-8">
+    <style>
+        body {{font-family:sans-serif;padding:30px;background:#1e1e2e;color:#cdd6f4;}}
+        h2 {{color:#cba6f7;margin-bottom:16px;}}
+        h3 {{color:#89dceb;margin:24px 0 10px;}}
+        table {{width:100%;border-collapse:collapse;margin-bottom:30px;}}
+        th {{background:#313244;padding:8px 12px;text-align:left;color:#a6adc8;font-size:0.82rem;}}
+        td {{padding:7px 12px;border-bottom:1px solid #313244;font-size:0.85rem;}}
+        tr:hover td {{background:#313244;}}
+    </style>
+    </head><body>
+    <h2>🛠️ 관리자 페이지</h2>
+
+    <h3>📦 AI 검색 캐시 목록 ({len(caches)}개)</h3>
+    <table>
+        <tr><th>검색어</th><th>단백질</th><th>칼로리</th><th>지방</th><th>탄수화물</th><th>단위</th><th>검색횟수</th><th>액션</th></tr>
+        {cache_rows if cache_rows else '<tr><td colspan="8" style="color:#6c7086">캐시 없음</td></tr>'}
+    </table>
+
+    <h3>✅ 커스텀 음식 DB ({len(customs)}개)</h3>
+    <table>
+        <tr><th>음식명</th><th>단백질</th><th>칼로리</th><th>지방</th><th>탄수화물</th><th>단위</th><th>액션</th></tr>
+        {custom_rows if custom_rows else '<tr><td colspan="7" style="color:#6c7086">등록된 항목 없음</td></tr>'}
+    </table>
+    </body></html>
+    """
+
+@app.route("/admin/promote", methods=["POST"])
+def admin_promote():
+    """캐시 → custom_foods 승격"""
+    pw = request.args.get("pw", "")
+    if pw != ADMIN_PASSWORD:
+        return jsonify({"error": "권한 없음"}), 403
+    cache_id = request.form.get("cache_id")
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM ai_food_cache WHERE id=%s", (cache_id,))
+    c = cur.fetchone()
+    if c:
+        cur.execute("""
+            INSERT INTO custom_foods (name, protein_g, energy_kcal, fat_g, carb_g, std_unit, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (name) DO UPDATE SET
+                protein_g=EXCLUDED.protein_g,
+                energy_kcal=EXCLUDED.energy_kcal,
+                fat_g=EXCLUDED.fat_g,
+                carb_g=EXCLUDED.carb_g,
+                std_unit=EXCLUDED.std_unit
+        """, (c['name'], c['protein_g'], c['energy_kcal'], c['fat_g'], c['carb_g'], c['std_unit'], datetime.now().isoformat()))
+        conn.commit()
+    cur.close()
+    conn.close()
+    return f'<script>location.href="/admin?pw={pw}"</script>'
+
+@app.route("/admin/cache/delete", methods=["POST"])
+def admin_cache_delete():
+    pw = request.args.get("pw", "")
+    if pw != ADMIN_PASSWORD:
+        return jsonify({"error": "권한 없음"}), 403
+    cache_id = request.form.get("cache_id")
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM ai_food_cache WHERE id=%s", (cache_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return f'<script>location.href="/admin?pw={pw}"</script>'
+
+@app.route("/admin/custom/delete", methods=["POST"])
+def admin_custom_delete():
+    pw = request.args.get("pw", "")
+    if pw != ADMIN_PASSWORD:
+        return jsonify({"error": "권한 없음"}), 403
+    custom_id = request.form.get("custom_id")
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM custom_foods WHERE id=%s", (custom_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return f'<script>location.href="/admin?pw={pw}"</script>'
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, threaded=True)
