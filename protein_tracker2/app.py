@@ -338,6 +338,46 @@ def api_login():
             "multiplier": user["multiplier"]
         })
     return jsonify({"status": "error", "message": "아이디 또는 비밀번호가 틀렸습니다."}), 401
+    @app.route("/api/timer/status")
+def api_timer_status():
+    """마지막 단백질 섭취 후 경과 시간과 다음 권장 시간을 계산합니다."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인 필요"}), 401
+    
+    conn = get_conn()
+    cur = conn.cursor()
+    
+    # 가장 최근 섭취한 식단(기록) 1개를 가져옴
+    cur.execute("""
+        SELECT created_at, protein_g 
+        FROM meals 
+        WHERE user_id=%s 
+        ORDER BY created_at DESC LIMIT 1
+    """, (user_id,))
+    last_meal = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not last_meal:
+        return jsonify({"status": "no_records", "message": "오늘 첫 단백질을 섭취해보세요!"})
+
+    # 시간 계산 (ISO 포맷 문자열 -> datetime 객체)
+    last_time = datetime.fromisoformat(last_meal['created_at'])
+    now = datetime.now()
+    diff = now - last_time
+    hours_passed = diff.total_seconds() / 3600
+
+    # 3.5시간(3~4시간 사이)을 기준으로 남은 시간 계산
+    next_intake_in = max(0, 3.5 - hours_passed)
+    
+    return jsonify({
+        "last_protein_g": last_meal['protein_g'],
+        "hours_passed": round(hours_passed, 1),
+        "next_intake_in_mins": round(next_intake_in * 60),
+        "should_intake": hours_passed >= 3.0  # 3시간이 지났으면 섭취 유도
+    })
+    
 
 @app.route("/api/logout")
 def api_logout():
