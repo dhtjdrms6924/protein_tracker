@@ -337,8 +337,12 @@ def api_login():
             "weight": user["weight"],
             "multiplier": user["multiplier"]
         })
-    return jsonify({"status": "error", "message": "아이디 또는 비밀번호가 틀렸습니다."}), 401
-    @app.route("/api/timer/status")
+   return jsonify({
+        "status": "success", 
+        "current_powder_g": updated["current_powder_g"]
+    })
+
+@app.route("/api/timer/status")
 def api_timer_status():
     """마지막 단백질 섭취 후 경과 시간과 다음 권장 시간을 계산합니다."""
     user_id = session.get("user_id")
