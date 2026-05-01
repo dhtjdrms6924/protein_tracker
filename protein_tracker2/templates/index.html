@@ -364,6 +364,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
       <button class="nav-btn active" id="btn-tracker" onclick="switchTab('tracker')">트래커</button>
       <button class="nav-btn" id="btn-history" onclick="switchTab('history')">기록</button>
       <button class="nav-btn" id="btn-album" onclick="switchTab('album')">앨범</button>
+      <button class="nav-btn" id="btn-admin" onclick="switchTab('admin')" style="display:none;background:#f38ba8;color:#1e1e2e;">관리자</button>
     </div>
 
     <div class="sidebar-section">
@@ -521,6 +522,20 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
       </div>
     </div>
 
+    <!-- 관리자 탭 -->
+    <div id="content-admin" class="main-content">
+      <div class="card">
+        <div class="section-title">📦 AI 검색 캐시 <span id="cache-count" style="font-size:0.8rem;color:#888;font-weight:400;"></span></div>
+        <div style="font-size:0.8rem;color:#888;margin-bottom:10px;">검색 횟수가 많은 음식을 DB에 추가하면 이후 AI 호출 없이 빠르게 검색돼요.</div>
+        <div id="cache-list"></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="section-title">✅ 커스텀 음식 DB <span id="custom-count" style="font-size:0.8rem;color:#888;font-weight:400;"></span></div>
+        <div style="font-size:0.8rem;color:#888;margin-bottom:10px;">관리자가 승격시킨 음식이에요. 일반 검색에서도 바로 나타나요.</div>
+        <div id="custom-list"></div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -648,6 +663,9 @@ function applyUserData(userData) {
     document.getElementById('goal-display').textContent = `목표: ${goalProtein.toFixed(0)}g`;
     document.getElementById('progress-goal').textContent = `목표: ${goalProtein.toFixed(0)}g`;
   }
+  // 관리자 탭 표시/숨김
+  const adminBtn = document.getElementById('btn-admin');
+  if (adminBtn) adminBtn.style.display = userData.is_admin ? 'block' : 'none';
 }
 
 // 페이지 로드 시 세션 유지 확인
@@ -685,6 +703,7 @@ function switchTab(id) {
   document.getElementById('btn-' + id).classList.add('active');
   if (id === 'history') loadHistory();
   if (id === 'album') loadAlbum();
+  if (id === 'admin') loadAdminData();
 }
 
 // ══════════════════════════════════════════
@@ -1315,7 +1334,7 @@ async function openDayDetail(dayStr, goal) {
   const photoContainer = document.getElementById('detail-photos');
   photoContainer.innerHTML = '';
   photos.forEach(fname => {
-    const url = getImageUrl(fname);
+    const url = fname.startsWith('http') ? fname : `/static/uploads/${fname}`;
     const img = document.createElement('img');
     img.className = 'detail-photo';
     img.src = url;
@@ -1366,8 +1385,8 @@ async function loadAlbum() {
   }
 
   photos.forEach(p => {
-    const url = getImageUrl(p.image_path);
-    const filename = p.image_path.split('/').pop();
+    const url = p.image_path.startsWith('http') ? p.image_path : `/static/uploads/${p.image_path}`;
+    const filename = p.image_path.startsWith('http') ? p.image_path.split('/').pop() : p.image_path;
     const dateLabel = p.date || '';
     const item = document.createElement('div');
     item.className = 'album-item';
@@ -1380,6 +1399,85 @@ async function loadAlbum() {
   });
 }
 
+// ══════════════════════════════════════════
+//  관리자
+// ══════════════════════════════════════════
+async function loadAdminData() {
+  await Promise.all([loadCacheList(), loadCustomList()]);
+}
+
+async function loadCacheList() {
+  const res = await fetch('/api/admin/cache').then(r => r.json());
+  const container = document.getElementById('cache-list');
+  const countEl = document.getElementById('cache-count');
+  if (!Array.isArray(res)) { container.innerHTML = '<div style="color:#f38ba8;font-size:.82rem;">권한 없음</div>'; return; }
+  countEl.textContent = `(${res.length}개)`;
+  if (!res.length) { container.innerHTML = '<div style="color:#aaa;font-size:.82rem;">캐시 없음</div>'; return; }
+  container.innerHTML = '';
+  res.forEach(c => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #eee;gap:8px;flex-wrap:wrap;';
+    div.innerHTML = `
+      <div style="flex:1;min-width:120px;">
+        <div style="font-weight:600;font-size:0.88rem;">${c.food_name}</div>
+        <div style="font-size:0.75rem;color:#888;">단백질 ${c.protein_g}g · ${c.energy_kcal}kcal · 검색 <strong>${c.search_count}회</strong></div>
+      </div>
+      <div style="display:flex;gap:5px;">
+        <button onclick="promoteCache(${c.id},'${c.food_name}')" style="background:#a6e3a1;color:#1e1e2e;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">DB 추가</button>
+        <button onclick="deleteCacheItem(${c.id})" style="background:#f38ba8;color:#1e1e2e;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">삭제</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function loadCustomList() {
+  const res = await fetch('/api/admin/custom').then(r => r.json());
+  const container = document.getElementById('custom-list');
+  const countEl = document.getElementById('custom-count');
+  if (!Array.isArray(res)) { container.innerHTML = '<div style="color:#f38ba8;font-size:.82rem;">권한 없음</div>'; return; }
+  countEl.textContent = `(${res.length}개)`;
+  if (!res.length) { container.innerHTML = '<div style="color:#aaa;font-size:.82rem;">등록된 항목 없음</div>'; return; }
+  container.innerHTML = '';
+  res.forEach(c => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #eee;gap:8px;';
+    div.innerHTML = `
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:0.88rem;">${c.name}</div>
+        <div style="font-size:0.75rem;color:#888;">단백질 ${c.protein_g}g · ${c.energy_kcal}kcal · ${c.std_unit||''}</div>
+      </div>
+      <button onclick="deleteCustomItem(${c.id})" style="background:#f38ba8;color:#1e1e2e;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">삭제</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function promoteCache(cacheId, name) {
+  if (!confirm(`"${name}"을(를) 커스텀 DB에 추가할까요?`)) return;
+  const res = await fetch('/api/admin/promote', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({cache_id: cacheId})
+  }).then(r => r.json());
+  if (res.status === 'ok') {
+    alert(`✅ "${res.promoted}" DB에 추가됐어요!`);
+    loadAdminData();
+  } else {
+    alert('❌ ' + (res.error || '오류'));
+  }
+}
+
+async function deleteCacheItem(id) {
+  await fetch(`/api/admin/cache/delete?id=${id}`, {method: 'DELETE'});
+  loadCacheList();
+}
+
+async function deleteCustomItem(id) {
+  if (!confirm('삭제할까요?')) return;
+  await fetch(`/api/admin/custom/delete?id=${id}`, {method: 'DELETE'});
+  loadCustomList();
+}
+
 function downloadPhoto(url, filename) {
   const a = document.createElement('a');
   a.href = url;
@@ -1390,13 +1488,6 @@ function downloadPhoto(url, filename) {
 // ══════════════════════════════════════════
 //  라이트박스
 // ══════════════════════════════════════════
-function getImageUrl(path) {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;       // Cloudinary URL
-  if (path.startsWith('/static/')) return path;   // 이미 전체 경로
-  return `/static/uploads/${path}`;               // 파일명만 있는 경우
-}
-
 function openLightbox(src) {
   document.getElementById('lightbox-img').src = src;
   document.getElementById('lightbox').classList.add('show');

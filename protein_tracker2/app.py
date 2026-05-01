@@ -34,9 +34,7 @@ def upload_to_cloudinary(file_path, folder="meals"):
             folder=folder,
             resource_type="image"
         )
-        url = result.get("secure_url")
-        print(f"Cloudinary 업로드 성공: {url}")
-        return url
+        return result.get("secure_url")
     except Exception as e:
         print(f"Cloudinary 업로드 실패: {e}")
         return None
@@ -64,8 +62,16 @@ def init_db():
         nickname TEXT DEFAULT '',
         display_name TEXT DEFAULT '',
         weight REAL DEFAULT 0,
-        multiplier REAL DEFAULT 1.5
+        multiplier REAL DEFAULT 1.5,
+        is_admin BOOLEAN DEFAULT FALSE
     )""")
+
+    # 기존 테이블에 is_admin 없으면 추가
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE")
+        conn.commit()
+    except Exception:
+        conn.rollback()
 
     cur.execute("""CREATE TABLE IF NOT EXISTS meals (
         id SERIAL PRIMARY KEY,
@@ -316,7 +322,7 @@ def api_login():
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, username, nickname, display_name, weight, multiplier FROM users WHERE username=%s AND password=%s",
+        "SELECT id, username, nickname, display_name, weight, multiplier, is_admin FROM users WHERE username=%s AND password=%s",
         (username, password)
     )
     user = cur.fetchone()
@@ -325,13 +331,15 @@ def api_login():
     if user:
         session["user_id"] = user["id"]
         session["username"] = user["username"]
+        session["is_admin"] = bool(user["is_admin"])
         return jsonify({
             "status": "success",
             "username": user["username"],
             "nickname": user["nickname"] or user["username"],
             "display_name": user["display_name"] or user["nickname"] or user["username"],
             "weight": user["weight"],
-            "multiplier": user["multiplier"]
+            "multiplier": user["multiplier"],
+            "is_admin": bool(user["is_admin"])
         })
     return jsonify({"status": "error", "message": "아이디 또는 비밀번호가 틀렸습니다."}), 401
 
@@ -347,7 +355,7 @@ def api_check_login():
         return jsonify({"logged_in": False}), 200
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT username, nickname, display_name, weight, multiplier FROM users WHERE id=%s", (user_id,))
+    cur.execute("SELECT username, nickname, display_name, weight, multiplier, is_admin FROM users WHERE id=%s", (user_id,))
     user = cur.fetchone()
     cur.close()
     conn.close()
@@ -359,7 +367,8 @@ def api_check_login():
         "nickname": user["nickname"] or user["username"],
         "display_name": user["display_name"] or user["nickname"] or user["username"],
         "weight": user["weight"],
-        "multiplier": user["multiplier"]
+        "multiplier": user["multiplier"],
+        "is_admin": bool(user["is_admin"])
     }), 200
 
 @app.route("/api/account", methods=["DELETE"])
@@ -561,9 +570,9 @@ def api_analyze():
     cloud_url = upload_to_cloudinary(path, folder="meals")
     if cloud_url:
         result["image_path"] = cloud_url
-        os.remove(path)
+        os.remove(path)  # 로컬 파일 삭제
     else:
-        result["image_path"] = fname  # 파일명만 저장 (경로 중복 방지)
+        result["image_path"] = f"/static/uploads/{fname}"  # 업로드 실패 시 로컬 경로 fallback
     return jsonify(result)
 
 @app.route("/api/meals", methods=["GET", "POST", "DELETE"])
@@ -685,7 +694,7 @@ def api_analyze_protein_label():
         result["image_path"] = cloud_url
         os.remove(path)
     else:
-        result["image_path"] = fname  # 파일명만 저장
+        result["image_path"] = f"/static/uploads/{fname}"
     return jsonify(result)
 
 @app.route("/api/protein-product", methods=["GET", "POST", "DELETE"])
@@ -1020,6 +1029,111 @@ def admin_custom_delete():
     cur.close()
     conn.close()
     return f'<script>location.href="/admin?pw={pw}"</script>'
+
+# ─────────────────────────────────────────
+# 관리자 API
+# ─────────────────────────────────────────
+def require_admin():
+    if not session.get("user_id"):
+        return False
+    return session.get("is_admin", False)
+
+@app.route("/api/admin/cache")
+def api_admin_cache():
+    if not require_admin():
+        return jsonify({"error": "관리자 권한이 필요합니다."}), 403
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, food_name, name, protein_g, energy_kcal, fat_g, carb_g, std_unit, search_count, created_at
+        FROM ai_food_cache ORDER BY search_count DESC
+    """)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route("/api/admin/custom")
+def api_admin_custom():
+    if not require_admin():
+        return jsonify({"error": "관리자 권한이 필요합니다."}), 403
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM custom_foods ORDER BY created_at DESC")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route("/api/admin/promote", methods=["POST"])
+def api_admin_promote():
+    if not require_admin():
+        return jsonify({"error": "관리자 권한이 필요합니다."}), 403
+    cache_id = request.json.get("cache_id")
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM ai_food_cache WHERE id=%s", (cache_id,))
+    c = cur.fetchone()
+    if not c:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "캐시 항목을 찾을 수 없습니다."}), 404
+    cur.execute("""
+        INSERT INTO custom_foods (name, protein_g, energy_kcal, fat_g, carb_g, std_unit, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (name) DO UPDATE SET
+            protein_g=EXCLUDED.protein_g, energy_kcal=EXCLUDED.energy_kcal,
+            fat_g=EXCLUDED.fat_g, carb_g=EXCLUDED.carb_g, std_unit=EXCLUDED.std_unit
+    """, (c['name'], c['protein_g'], c['energy_kcal'], c['fat_g'], c['carb_g'],
+          c['std_unit'], datetime.now().isoformat()))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "ok", "promoted": c['name']})
+
+@app.route("/api/admin/cache/delete", methods=["DELETE"])
+def api_admin_cache_delete():
+    if not require_admin():
+        return jsonify({"error": "관리자 권한이 필요합니다."}), 403
+    cache_id = request.args.get("id")
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM ai_food_cache WHERE id=%s", (cache_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+@app.route("/api/admin/custom/delete", methods=["DELETE"])
+def api_admin_custom_delete():
+    if not require_admin():
+        return jsonify({"error": "관리자 권한이 필요합니다."}), 403
+    custom_id = request.args.get("id")
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM custom_foods WHERE id=%s", (custom_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+@app.route("/api/admin/set-admin", methods=["POST"])
+def api_admin_set():
+    """최초 1회 — DB에 관리자가 없을 때만 설정 가능"""
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM users WHERE is_admin=TRUE LIMIT 1")
+    existing = cur.fetchone()
+    if existing:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "이미 관리자가 존재합니다."}), 403
+    username = request.json.get("username")
+    cur.execute("UPDATE users SET is_admin=TRUE WHERE username=%s", (username,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, threaded=True)
