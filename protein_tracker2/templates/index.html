@@ -491,6 +491,44 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
           🟢 목표 달성 &nbsp; 🔴 목표 미달 &nbsp; 🟣 오늘
         </div>
       </div>
+      <!-- 단백질 타이머 카드 (대시보드 상단 추천) -->
+<div id="protein-timer-card" style="display:none; padding: 15px; margin: 15px 0; border-radius: 10px; background: linear-gradient(135deg, #313244, #45475a); border-left: 5px solid #f9e2af;">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+            <span style="font-size: 0.9em; color: #a6adc8;">⏰ 단백질 타이머</span>
+            <h4 id="timer-message" style="margin: 5px 0; color: #cdd6f4;">마지막 섭취 후 3시간 경과</h4>
+        </div>
+        <button id="dispense-now-btn" style="padding: 10px 15px; background: #a6e3a1; color: #1e1e2e; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+            지금 20g 배출하기
+        </button>
+    </div>
+</div>
+
+<script>
+async function updateProteinTimer() {
+    try {
+        const res = await fetch('/api/timer/status');
+        const data = await res.json();
+        const card = document.getElementById('protein-timer-card');
+        const msg = document.getElementById('timer-message');
+
+        if (data.status === "no_records") return;
+
+        card.style.display = 'block';
+        if (data.should_intake) {
+            msg.innerHTML = `단백질 합성 골든타임! <span style="color:#f38ba8;">현재 ${data.hours_passed}시간 경과</span>`;
+            document.getElementById('dispense-now-btn').style.display = 'block';
+        } else {
+            msg.innerHTML = `다음 섭취까지 <span style="color:#89b4fa;">약 ${data.next_intake_in_mins}분</span> 남았습니다.`;
+            document.getElementById('dispense-now-btn').style.display = 'none';
+        }
+    } catch (e) { console.error("타이머 업데이트 실패", e); }
+}
+
+// 1분마다 타이머 상태 갱신
+setInterval(updateProteinTimer, 60000);
+updateProteinTimer();
+</script>
 
       <!-- 날짜 상세 패널 -->
       <div id="day-detail-panel">
