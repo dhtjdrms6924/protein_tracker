@@ -337,7 +337,13 @@ def api_login():
             "weight": user["weight"],
             "multiplier": user["multiplier"]
         })
-   return jsonify({
+  # 335번 줄 부근 (기존 코드를 지우고 이 간격대로 다시 붙여넣으세요)
+    if not updated:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "기기를 찾을 수 없거나 권한이 없습니다."}), 404
+
+    return jsonify({
         "status": "success", 
         "current_powder_g": updated["current_powder_g"]
     })
