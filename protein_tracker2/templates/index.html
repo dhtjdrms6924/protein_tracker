@@ -10,6 +10,78 @@
 body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; min-height: 100vh; }
 
 /* ───── 로그인 화면 ───── */
+  <!-- ========================================== -->
+<!-- 🤖 하드웨어 테스트 시뮬레이터 (배포 시 삭제하세요!) -->
+<!-- ========================================== -->
+<div style="border: 2px dashed #cba6f7; padding: 20px; margin: 20px 0; background: #1e1e2e; color: #cdd6f4; border-radius: 10px; font-family: sans-serif;">
+    <h3 style="color: #a6e3a1; margin-top: 0;">🤖 스마트 디스펜서 시뮬레이터</h3>
+    <p style="font-size: 0.9em; color: #a6adc8;">하드웨어 없이 배출 및 리필 API를 테스트합니다.</p>
+
+    <!-- 1. 리필 테스트 -->
+    <div style="margin-bottom: 20px; padding: 15px; background: #313244; border-radius: 8px;">
+        <h4 style="margin-top: 0; color: #89dceb;">🔋 1. 가루 리필 (앱 기능)</h4>
+        <input type="text" id="sim_device_id" placeholder="기기 ID (숫자)" style="padding: 8px; margin-right: 5px; border-radius: 4px; border: none;">
+        <input type="number" id="sim_refill_g" placeholder="리필량(g)" value="1000" style="padding: 8px; margin-right: 5px; border-radius: 4px; border: none; width: 100px;">
+        <button onclick="testRefill()" style="padding: 8px 15px; background: #cba6f7; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">리필 충전하기</button>
+    </div>
+
+    <!-- 2. 배출 및 기록 테스트 -->
+    <div style="padding: 15px; background: #313244; border-radius: 8px;">
+        <h4 style="margin-top: 0; color: #f38ba8;">⚙️ 2. 하드웨어 배출 시그널 (기기 모방)</h4>
+        <input type="text" id="sim_token" placeholder="기기 Token 값" style="padding: 8px; margin-right: 5px; border-radius: 4px; border: none; width: 200px;">
+        <input type="number" id="sim_dispense_g" placeholder="배출량(g)" value="30" style="padding: 8px; margin-right: 5px; border-radius: 4px; border: none; width: 100px;">
+        <button onclick="testDispense()" style="padding: 8px 15px; background: #a6e3a1; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">프로틴 배출 시그널 쏘기</button>
+    </div>
+</div>
+
+<script>
+    // 1. 리필 API 호출 함수
+    async function testRefill() {
+        const devId = document.getElementById('sim_device_id').value;
+        const amount = document.getElementById('sim_refill_g').value;
+        
+        if (!devId) return alert("기기 ID를 입력하세요!");
+
+        try {
+            const res = await fetch('/api/device/refill', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    device_id: parseInt(devId), 
+                    added_weight_g: parseFloat(amount) 
+                })
+            });
+            const data = await res.json();
+            alert("✅ 리필 결과: " + JSON.stringify(data, null, 2));
+        } catch (e) {
+            alert("오류 발생: " + e);
+        }
+    }
+
+    // 2. 하드웨어 배출 완료 API 호출 함수
+    async function testDispense() {
+        const token = document.getElementById('sim_token').value;
+        const amount = document.getElementById('sim_dispense_g').value;
+
+        if (!token) return alert("기기 토큰을 입력하세요!");
+
+        try {
+            const res = await fetch('/api/device/record', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Device-Token': token  // 하드웨어가 헤더에 실어보내는 토큰
+                },
+                body: JSON.stringify({ dispensed_weight_g: parseFloat(amount) })
+            });
+            const data = await res.json();
+            alert("✅ 배출 및 기록 결과: " + JSON.stringify(data, null, 2));
+        } catch (e) {
+            alert("오류 발생: " + e);
+        }
+    }
+</script>
+<!-- ========================================== -->
 #login-screen {
   display: flex; align-items: center; justify-content: center;
   min-height: 100vh; background: #1e1e2e;
