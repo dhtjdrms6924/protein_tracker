@@ -1020,4 +1020,4 @@ def admin_custom_delete():
     return f'<script>location.href="/admin?pw={pw}"</script>'
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, threaded=True)
+    app.run(host="0.0.0.0", port=10000, threaded=True)
