@@ -39,7 +39,6 @@ def upload_to_cloudinary(file_path, folder="meals"):
         print(f"Cloudinary 업로드 실패: {e}")
         return None
 
-
 # ─────────────────────────────────────────
 # DB 연결
 # ─────────────────────────────────────────
@@ -47,97 +46,107 @@ def get_conn():
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     return conn
 
-
 # ─────────────────────────────────────────
 # DB 초기화
 # ─────────────────────────────────────────
 def init_db():
-    conn = get_conn()
-    cur = conn.cursor()
+    if not DATABASE_URL:
+        print("경고: DATABASE_URL 환경변수가 설정되지 않았습니다!")
+        return
 
-    cur.execute("""CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        nickname TEXT DEFAULT '',
-        display_name TEXT DEFAULT '',
-        weight REAL DEFAULT 0,
-        multiplier REAL DEFAULT 1.5
-    )""")
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
 
-    cur.execute("""CREATE TABLE IF NOT EXISTS meals (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        date TEXT NOT NULL,
-        food_cd TEXT,
-        food_name TEXT NOT NULL,
-        emoji TEXT DEFAULT '🍽️',
-        amount TEXT,
-        weight_g REAL,
-        protein_g REAL NOT NULL,
-        energy_kcal REAL,
-        fat_g REAL,
-        carb_g REAL,
-        image_path TEXT,
-        created_at TEXT
-    )""")
+        cur.execute("""CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            nickname TEXT DEFAULT '',
+            display_name TEXT DEFAULT '',
+            weight REAL DEFAULT 0,
+            multiplier REAL DEFAULT 1.5
+        )""")
 
-    # 유저별 프로틴 제품 테이블
-    cur.execute("""CREATE TABLE IF NOT EXISTS protein_products (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        protein_per_scoop REAL NOT NULL,
-        scoop_weight_g REAL DEFAULT 0,
-        energy_kcal REAL DEFAULT 0,
-        image_path TEXT,
-        created_at TEXT,
-        is_active BOOLEAN DEFAULT TRUE
-    )""")
+        cur.execute("""CREATE TABLE IF NOT EXISTS meals (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            food_cd TEXT,
+            food_name TEXT NOT NULL,
+            emoji TEXT DEFAULT '🍽️',
+            amount TEXT,
+            weight_g REAL,
+            protein_g REAL NOT NULL,
+            energy_kcal REAL,
+            fat_g REAL,
+            carb_g REAL,
+            image_path TEXT,
+            created_at TEXT
+        )""")
 
-    # 하드웨어 기기 토큰 테이블
-    cur.execute("""CREATE TABLE IF NOT EXISTS devices (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        token TEXT UNIQUE NOT NULL,
-        name TEXT DEFAULT '내 디스펜서',
-        created_at TEXT,
-        last_seen TEXT
-    )""")
+        # 유저별 프로틴 제품 테이블
+        cur.execute("""CREATE TABLE IF NOT EXISTS protein_products (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            protein_per_scoop REAL NOT NULL,
+            scoop_weight_g REAL DEFAULT 0,
+            energy_kcal REAL DEFAULT 0,
+            image_path TEXT,
+            created_at TEXT,
+            is_active BOOLEAN DEFAULT TRUE
+        )""")
 
-    # AI 텍스트 검색 캐시 테이블
-    cur.execute("""CREATE TABLE IF NOT EXISTS ai_food_cache (
-        id SERIAL PRIMARY KEY,
-        food_name TEXT UNIQUE NOT NULL,
-        name TEXT NOT NULL,
-        protein_g REAL DEFAULT 0,
-        energy_kcal REAL DEFAULT 0,
-        fat_g REAL DEFAULT 0,
-        carb_g REAL DEFAULT 0,
-        std_unit TEXT DEFAULT '',
-        search_count INTEGER DEFAULT 1,
-        created_at TEXT
-    )""")
+        # 하드웨어 기기 토큰 테이블 (current_powder_g 추가됨)
+        cur.execute("""CREATE TABLE IF NOT EXISTS devices (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            token TEXT UNIQUE NOT NULL,
+            name TEXT DEFAULT '내 디스펜서',
+            current_powder_g REAL DEFAULT 0,
+            created_at TEXT,
+            last_seen TEXT
+        )""")
+        
+        # 기존 DB 호환을 위한 컬럼 추가 (이미 있으면 무시됨)
+        cur.execute("ALTER TABLE devices ADD COLUMN IF NOT EXISTS current_powder_g REAL DEFAULT 0")
 
-    # 관리자가 승격시킨 커스텀 음식 DB
-    cur.execute("""CREATE TABLE IF NOT EXISTS custom_foods (
-        id SERIAL PRIMARY KEY,
-        name TEXT UNIQUE NOT NULL,
-        protein_g REAL DEFAULT 0,
-        energy_kcal REAL DEFAULT 0,
-        fat_g REAL DEFAULT 0,
-        carb_g REAL DEFAULT 0,
-        std_unit TEXT DEFAULT '',
-        category TEXT DEFAULT 'AI추가',
-        created_at TEXT
-    )""")
+        # AI 텍스트 검색 캐시 테이블
+        cur.execute("""CREATE TABLE IF NOT EXISTS ai_food_cache (
+            id SERIAL PRIMARY KEY,
+            food_name TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            protein_g REAL DEFAULT 0,
+            energy_kcal REAL DEFAULT 0,
+            fat_g REAL DEFAULT 0,
+            carb_g REAL DEFAULT 0,
+            std_unit TEXT DEFAULT '',
+            search_count INTEGER DEFAULT 1,
+            created_at TEXT
+        )""")
 
-    conn.commit()
-    cur.close()
-    conn.close()
+        # 관리자가 승격시킨 커스텀 음식 DB
+        cur.execute("""CREATE TABLE IF NOT EXISTS custom_foods (
+            id SERIAL PRIMARY KEY,
+            name TEXT UNIQUE NOT NULL,
+            protein_g REAL DEFAULT 0,
+            energy_kcal REAL DEFAULT 0,
+            fat_g REAL DEFAULT 0,
+            carb_g REAL DEFAULT 0,
+            std_unit TEXT DEFAULT '',
+            category TEXT DEFAULT 'AI추가',
+            created_at TEXT
+        )""")
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("DB 초기화 완료")
+    except Exception as e:
+        print(f"DB 초기화 실패: {e}")
 
 init_db()
-
 
 # ─────────────────────────────────────────
 # 음식 DB 검색 (food_nutrition SQLite 유지)
@@ -186,7 +195,6 @@ def search_food_in_db(q, limit=15):
     except Exception:
         return []
 
-
 # ─────────────────────────────────────────
 # Gemini 헬퍼
 # ─────────────────────────────────────────
@@ -233,7 +241,6 @@ def analyze_image_with_gemini(image_path):
         return {"error": str(e)}
 
 def analyze_nutrition_label(image_path):
-    """영양성분표 이미지 분석 → 프로틴 제품 정보 추출"""
     client = get_gemini_client()
     if not client:
         return {"error": "서버에 API 키가 설정되지 않았습니다."}
@@ -269,7 +276,6 @@ def analyze_nutrition_label(image_path):
         return json.loads(t[start:end])
     except Exception as e:
         return {"error": str(e)}
-
 
 # ─────────────────────────────────────────
 # 인증 라우트
@@ -405,7 +411,6 @@ def api_update_profile():
     conn.close()
     return jsonify({"status": "ok"})
 
-
 # ─────────────────────────────────────────
 # 메인 라우트
 # ─────────────────────────────────────────
@@ -418,9 +423,7 @@ def api_search():
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify([])
-    # SQLite DB 검색
     results = search_food_in_db(q)
-    # custom_foods도 추가 검색
     try:
         conn = get_conn()
         cur = conn.cursor()
@@ -449,7 +452,6 @@ def api_search_ai():
     conn = get_conn()
     cur = conn.cursor()
 
-    # ① custom_foods 먼저 조회
     cur.execute("SELECT * FROM custom_foods WHERE name ILIKE %s LIMIT 1", (f"%{food_name}%",))
     custom = cur.fetchone()
     if custom:
@@ -462,7 +464,6 @@ def api_search_ai():
         result["from_cache"] = True
         return jsonify(result)
 
-    # ② 캐시 조회
     cur.execute("""
         SELECT name, protein_g, energy_kcal, fat_g, carb_g, std_unit
         FROM ai_food_cache WHERE food_name = %s
@@ -481,7 +482,6 @@ def api_search_ai():
     cur.close()
     conn.close()
 
-    # ③ AI 호출
     client = get_gemini_client()
     if not client:
         return jsonify({"error": "서버에 API 키가 설정되지 않았습니다."}), 500
@@ -504,7 +504,6 @@ def api_search_ai():
         result = json.loads(t[start:end])
         result["ai_generated"] = True
 
-        # ④ 캐시에 저장
         try:
             conn2 = get_conn()
             cur2 = conn2.cursor()
@@ -514,13 +513,9 @@ def api_search_ai():
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (food_name) DO NOTHING
             """, (
-                food_name,
-                result.get("name", food_name),
-                result.get("protein_g", 0),
-                result.get("energy_kcal", 0),
-                result.get("fat_g", 0),
-                result.get("carb_g", 0),
-                result.get("std_unit", ""),
+                food_name, result.get("name", food_name), result.get("protein_g", 0),
+                result.get("energy_kcal", 0), result.get("fat_g", 0),
+                result.get("carb_g", 0), result.get("std_unit", ""),
                 datetime.now().isoformat()
             ))
             conn2.commit()
@@ -555,13 +550,12 @@ def api_analyze():
         if db_match:
             food["db_match"] = db_match
             food["protein_g"] = db_match["protein_g"]
-    # Cloudinary 업로드
     cloud_url = upload_to_cloudinary(path, folder="meals")
     if cloud_url:
         result["image_path"] = cloud_url
-        os.remove(path)  # 로컬 파일 삭제
+        os.remove(path)
     else:
-        result["image_path"] = f"/static/uploads/{fname}"  # 업로드 실패 시 로컬 경로 fallback
+        result["image_path"] = f"/static/uploads/{fname}"
     return jsonify(result)
 
 @app.route("/api/meals", methods=["GET", "POST", "DELETE"])
@@ -659,13 +653,11 @@ def api_album():
     conn.close()
     return jsonify([dict(r) for r in rows])
 
-
 # ─────────────────────────────────────────
 # 프로틴 제품 라우트
 # ─────────────────────────────────────────
 @app.route("/api/protein-product/analyze", methods=["POST"])
 def api_analyze_protein_label():
-    """영양성분표 사진 → 제품 정보 추출"""
     if not session.get("user_id"):
         return jsonify({"error": "로그인이 필요합니다."}), 401
     if "image" not in request.files:
@@ -723,13 +715,11 @@ def api_protein_product():
         conn.close()
         return jsonify({"status": "ok"})
 
-
 # ─────────────────────────────────────────
 # 하드웨어 기기 라우트
 # ─────────────────────────────────────────
 @app.route("/api/device/register", methods=["POST"])
 def api_device_register():
-    """QR코드에서 읽은 토큰으로 기기 등록"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "로그인이 필요합니다."}), 401
@@ -738,7 +728,6 @@ def api_device_register():
         return jsonify({"error": "토큰이 없습니다."}), 400
     conn = get_conn()
     cur = conn.cursor()
-    # 토큰이 이미 다른 유저에게 등록됐는지 확인
     cur.execute("SELECT id, user_id FROM devices WHERE token=%s", (token,))
     existing = cur.fetchone()
     if existing:
@@ -746,7 +735,6 @@ def api_device_register():
             cur.close()
             conn.close()
             return jsonify({"error": "이미 다른 계정에 등록된 기기입니다."}), 400
-        # 이미 내 기기면 OK
         cur.close()
         conn.close()
         return jsonify({"status": "already_registered"})
@@ -764,13 +752,38 @@ def api_device_list():
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "로그인이 필요합니다."}), 401
+        
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT id, token, name, created_at, last_seen FROM devices WHERE user_id=%s", (user_id,))
-    rows = cur.fetchall()
+    
+    # 내 기기 목록 및 잔량 조회
+    cur.execute("""
+        SELECT id, token, name, created_at, last_seen, current_powder_g 
+        FROM devices WHERE user_id=%s
+    """, (user_id,))
+    devices = [dict(r) for r in cur.fetchall()]
+    
+    # 활성 프로틴 정보 가져오기 (1스쿱 무게 파악 용도)
+    cur.execute("""
+        SELECT scoop_weight_g 
+        FROM protein_products 
+        WHERE user_id=%s AND is_active=TRUE 
+        ORDER BY created_at DESC LIMIT 1
+    """, (user_id,))
+    active_product = cur.fetchone()
+    
     cur.close()
     conn.close()
-    return jsonify([dict(r) for r in rows])
+
+    # 남은 횟수(servings_left) 계산
+    scoop_weight = float(active_product["scoop_weight_g"]) if active_product and active_product["scoop_weight_g"] else 30.0
+    
+    for dev in devices:
+        current_g = float(dev.get("current_powder_g") or 0)
+        dev["servings_left"] = int(current_g // scoop_weight) if scoop_weight > 0 else 0
+        dev["scoop_reference_g"] = scoop_weight 
+
+    return jsonify(devices)
 
 @app.route("/api/device/unlink", methods=["DELETE"])
 def api_device_unlink():
@@ -788,10 +801,6 @@ def api_device_unlink():
 
 @app.route("/api/device/status")
 def api_device_status():
-    """
-    하드웨어(ESP32)가 호출하는 엔드포인트.
-    토큰으로 인증 → 오늘 부족한 단백질량 + 활성 제품 정보 반환
-    """
     token = request.headers.get("X-Device-Token") or request.args.get("token")
     if not token:
         return jsonify({"error": "토큰이 없습니다."}), 401
@@ -799,7 +808,6 @@ def api_device_status():
     conn = get_conn()
     cur = conn.cursor()
 
-    # 토큰으로 유저 찾기
     cur.execute("SELECT user_id FROM devices WHERE token=%s", (token,))
     device = cur.fetchone()
     if not device:
@@ -810,22 +818,16 @@ def api_device_status():
     user_id = device["user_id"]
     today = datetime.now().strftime("%Y-%m-%d")
 
-    # last_seen 업데이트
-    cur.execute("UPDATE devices SET last_seen=%s WHERE token=%s", (datetime.now().isoformat(), token))
-
-    # 오늘 섭취량
     cur.execute("""
         SELECT COALESCE(SUM(protein_g), 0) as total
         FROM meals WHERE user_id=%s AND date=%s
     """, (user_id, today))
     intake = float(cur.fetchone()["total"])
 
-    # 목표량
     cur.execute("SELECT weight, multiplier FROM users WHERE id=%s", (user_id,))
     user = cur.fetchone()
     goal = float(user["weight"] or 0) * float(user["multiplier"] or 0) if user else 0
 
-    # 활성 프로틴 제품 (가장 최근 등록된 것)
     cur.execute("""
         SELECT name, protein_per_scoop, scoop_weight_g
         FROM protein_products WHERE user_id=%s AND is_active=TRUE
@@ -858,6 +860,118 @@ def api_device_status():
         "grams_needed": grams_needed
     })
 
+@app.route("/api/device/record", methods=["POST"])
+def api_device_record():
+    """하드웨어가 단백질 배출 완료 후 호출하여 식단 기록 및 잔량 차감"""
+    token = request.headers.get("X-Device-Token") or request.json.get("token")
+    if not token:
+        return jsonify({"error": "토큰이 없습니다."}), 401
+
+    data = request.json
+    dispensed_weight_g = float(data.get("dispensed_weight_g", 0))
+
+    if dispensed_weight_g <= 0:
+        return jsonify({"error": "배출량이 올바르지 않습니다."}), 400
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("SELECT user_id FROM devices WHERE token=%s", (token,))
+    device = cur.fetchone()
+    if not device:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "등록되지 않은 기기입니다."}), 403
+
+    user_id = device["user_id"]
+    today = datetime.now().strftime("%Y-%m-%d")
+    now_iso = datetime.now().isoformat()
+
+    cur.execute("""
+        SELECT name, protein_per_scoop, scoop_weight_g, energy_kcal
+        FROM protein_products WHERE user_id=%s AND is_active=TRUE
+        ORDER BY created_at DESC LIMIT 1
+    """, (user_id,))
+    product = cur.fetchone()
+
+    protein_g = 0
+    energy_kcal = 0
+    food_name = "디스펜서 프로틴"
+
+    if product:
+        food_name = f"[자동배출] {product['name']}"
+        scoop_weight = float(product["scoop_weight_g"] or 1)
+        if scoop_weight > 0:
+            ratio = dispensed_weight_g / scoop_weight
+            protein_g = round(float(product["protein_per_scoop"]) * ratio, 1)
+            energy_kcal = round(float(product["energy_kcal"] or 0) * ratio, 1)
+    else:
+        protein_g = round(dispensed_weight_g * 0.7, 1)
+        energy_kcal = round(dispensed_weight_g * 4.0, 1)
+
+    # 1. 식단(meals)에 인서트
+    cur.execute("""
+        INSERT INTO meals(user_id, date, food_name, emoji, amount, weight_g, protein_g, energy_kcal, created_at)
+        VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """, (
+        user_id, today, food_name, "🤖", f"디스펜서 ({dispensed_weight_g}g)", 
+        dispensed_weight_g, protein_g, energy_kcal, now_iso
+    ))
+
+    # 2. 기기 잔량 차감 및 접속시간 업데이트
+    cur.execute("""
+        UPDATE devices 
+        SET current_powder_g = GREATEST(current_powder_g - %s, 0),
+            last_seen = %s 
+        WHERE token = %s
+    """, (dispensed_weight_g, now_iso, token))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "recorded_protein_g": protein_g,
+        "message": f"식단에 {protein_g}g의 단백질이 자동 기록되었습니다."
+    })
+
+@app.route("/api/device/refill", methods=["POST"])
+def api_device_refill():
+    """디스펜서에 프로틴 가루를 리필(충전)"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인이 필요합니다."}), 401
+        
+    device_id = request.json.get("device_id")
+    added_weight_g = float(request.json.get("added_weight_g", 0))
+    
+    if added_weight_g <= 0:
+        return jsonify({"error": "추가할 무게를 정확히 입력해주세요."}), 400
+
+    conn = get_conn()
+    cur = conn.cursor()
+    
+    cur.execute("""
+        UPDATE devices 
+        SET current_powder_g = current_powder_g + %s 
+        WHERE id=%s AND user_id=%s
+        RETURNING current_powder_g
+    """, (added_weight_g, device_id, user_id))
+    
+    updated = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    if not updated:
+        return jsonify({"error": "기기를 찾을 수 없거나 권한이 없습니다."}), 404
+
+    return jsonify({
+        "status": "success", 
+        "current_powder_g": updated["current_powder_g"]
+    })
+
 # ─────────────────────────────────────────
 # 관리자 라우트
 # ─────────────────────────────────────────
@@ -865,7 +979,6 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin1234")
 
 @app.route("/admin")
 def admin_page():
-    """관리자 페이지 — 캐시 목록 및 custom_foods 관리"""
     pw = request.args.get("pw", "")
     if pw != ADMIN_PASSWORD:
         return """
@@ -881,14 +994,12 @@ def admin_page():
     conn = get_conn()
     cur = conn.cursor()
 
-    # 캐시 목록 (검색 횟수 순)
     cur.execute("""
         SELECT id, food_name, name, protein_g, energy_kcal, fat_g, carb_g, std_unit, search_count, created_at
         FROM ai_food_cache ORDER BY search_count DESC
     """)
     caches = cur.fetchall()
 
-    # custom_foods 목록
     cur.execute("SELECT * FROM custom_foods ORDER BY created_at DESC")
     customs = cur.fetchall()
 
@@ -966,7 +1077,6 @@ def admin_page():
 
 @app.route("/admin/promote", methods=["POST"])
 def admin_promote():
-    """캐시 → custom_foods 승격"""
     pw = request.args.get("pw", "")
     if pw != ADMIN_PASSWORD:
         return jsonify({"error": "권한 없음"}), 403
@@ -1019,11 +1129,7 @@ def admin_custom_delete():
     conn.close()
     return f'<script>location.href="/admin?pw={pw}"</script>'
 
-
 if __name__ == "__main__":
-    # 포트를 환경변수에서 동적으로 받아오도록 수정
-    app.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", 10000)),
-        threaded=True
-    )
+    # 포트 동적 할당과 단일 실행으로 완벽 해결된 구문
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, threaded=True)
