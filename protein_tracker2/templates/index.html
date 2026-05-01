@@ -583,7 +583,46 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
         <div id="detail-empty" style="color:#aaa;font-size:0.83rem;display:none;">이 날은 기록이 없어요.</div>
       </div>
     </div>
+<div style="padding: 15px; background: #313244; border-radius: 8px; margin-bottom: 20px;">
+    <h4 style="margin-top: 0; color: #f9e2af;">✍️ 기기 수동 등록</h4>
+    <p style="font-size: 0.85em; color: #a6adc8;">QR 코드를 스캔할 수 없는 경우 기기 뒷면의 토큰 번호를 직접 입력하세요.</p>
+    
+    <input type="text" id="manual_device_token" placeholder="기기 토큰 (예: TOKEN-1234)" style="padding: 8px; margin-right: 5px; border-radius: 4px; border: none; width: 200px;">
+    <button onclick="registerDeviceManual()" style="padding: 8px 15px; background: #89b4fa; color: #1e1e2e; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">수동 등록하기</button>
+</div>
 
+<script>
+    // 기기 수동 등록 API 호출 함수
+    async function registerDeviceManual() {
+        const tokenInput = document.getElementById('manual_device_token').value.trim();
+        
+        if (!tokenInput) {
+            return alert("기기 토큰을 입력해주세요!");
+        }
+
+        try {
+            const res = await fetch('/api/device/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: tokenInput })
+            });
+            
+            const data = await res.json();
+            
+            if (data.status === "ok") {
+                alert("🎉 기기가 성공적으로 등록되었습니다!");
+                // 필요하다면 여기서 화면을 새로고침하거나 기기 목록을 다시 불러옵니다.
+                // location.reload(); 
+            } else if (data.status === "already_registered") {
+                alert("이미 내 계정에 등록된 기기입니다.");
+            } else {
+                alert("등록 실패: " + data.error);
+            }
+        } catch (e) {
+            alert("서버 통신 오류: " + e);
+        }
+    }
+</script>
     <!-- 앨범 탭 -->
     <div id="content-album" class="main-content">
       <div class="card">
