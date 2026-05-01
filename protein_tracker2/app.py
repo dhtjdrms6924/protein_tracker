@@ -1019,8 +1019,11 @@ def admin_custom_delete():
     conn.close()
     return f'<script>location.href="/admin?pw={pw}"</script>'
 
+
 if __name__ == "__main__":
+    # 포트를 환경변수에서 동적으로 받아오도록 수정
     app.run(
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 10000))  # 중요
+        port=int(os.environ.get("PORT", 10000)),
+        threaded=True
     )
