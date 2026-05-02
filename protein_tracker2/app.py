@@ -1100,7 +1100,12 @@ def api_admin_custom():
 def api_admin_promote():
     if not require_admin():
         return jsonify({"error": "관리자 권한이 필요합니다."}), 403
-    cache_id = request.json.get("cache_id")
+    data = request.json
+    cache_id = data.get("cache_id")
+    edited_name = data.get("edited_name")
+    edited_protein = data.get("edited_protein")
+    edited_kcal = data.get("edited_kcal")
+
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("SELECT * FROM ai_food_cache WHERE id=%s", (cache_id,))
@@ -1109,18 +1114,24 @@ def api_admin_promote():
         cur.close()
         conn.close()
         return jsonify({"error": "캐시 항목을 찾을 수 없습니다."}), 404
+
+    # 수정된 값 우선, 없으면 캐시 원본 사용
+    final_name = edited_name.strip() if edited_name else c['name']
+    final_protein = float(edited_protein) if edited_protein is not None else c['protein_g']
+    final_kcal = float(edited_kcal) if edited_kcal is not None else c['energy_kcal']
+
     cur.execute("""
         INSERT INTO custom_foods (name, protein_g, energy_kcal, fat_g, carb_g, std_unit, created_at)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (name) DO UPDATE SET
             protein_g=EXCLUDED.protein_g, energy_kcal=EXCLUDED.energy_kcal,
             fat_g=EXCLUDED.fat_g, carb_g=EXCLUDED.carb_g, std_unit=EXCLUDED.std_unit
-    """, (c['name'], c['protein_g'], c['energy_kcal'], c['fat_g'], c['carb_g'],
+    """, (final_name, final_protein, final_kcal, c['fat_g'], c['carb_g'],
           c['std_unit'], datetime.now().isoformat()))
     conn.commit()
     cur.close()
     conn.close()
-    return jsonify({"status": "ok", "promoted": c['name']})
+    return jsonify({"status": "ok", "promoted": final_name})
 
 @app.route("/api/admin/cache/delete", methods=["DELETE"])
 def api_admin_cache_delete():
