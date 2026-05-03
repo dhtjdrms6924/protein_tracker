@@ -561,7 +561,21 @@ body {
 
 /* ── 달력 ── */
 .main-content { display: none; }
-.main-content.active { display: flex; flex-direction: column; gap: 16px; }
+.main-content.active {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+@keyframes slideInFromRight {
+  from { transform: translateX(48px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes slideInFromLeft {
+  from { transform: translateX(-48px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+.main-content.anim-from-right { animation: slideInFromRight 300ms cubic-bezier(0.25,0.46,0.45,0.94) both; }
+.main-content.anim-from-left  { animation: slideInFromLeft  300ms cubic-bezier(0.25,0.46,0.45,0.94) both; }
 
 .calendar-grid {
   display: grid;
@@ -660,39 +674,53 @@ body {
 .detail-meal-item .dm-protein { font-weight: 700; color: var(--success); font-size: 0.875rem; white-space: nowrap; }
 
 /* ── 앨범 ── */
+.album-group { margin-bottom: 20px; }
+.album-group-date {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
 .album-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 8px;
-  margin-top: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
 }
-.album-item { position: relative; border-radius: var(--r-md); overflow: hidden; aspect-ratio: 1; }
-.album-item img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; transition: transform .2s; }
-.album-item img:hover { transform: scale(1.04); }
-.album-date {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0,0,0,.5);
-  color: #fff;
-  font-size: 0.6875rem;
-  padding: 4px 6px;
-  text-align: center;
+.album-item {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1;
+  background: var(--bg-alt);
+  border-radius: 0;
 }
+.album-item:first-child { border-radius: var(--r-md) 0 0 0; }
+.album-item:last-child  { border-radius: 0 0 var(--r-md) 0; }
+.album-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform .25s ease;
+  display: block;
+}
+.album-item img:hover { transform: scale(1.06); }
 .album-download {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  background: rgba(0,0,0,.5);
+  top: 5px;
+  right: 5px;
+  background: rgba(0,0,0,.55);
   color: #fff;
   border: none;
   border-radius: var(--r-sm);
-  padding: 3px 7px;
+  padding: 3px 8px;
   font-size: 0.6875rem;
+  font-family: inherit;
   cursor: pointer;
   opacity: 0;
-  transition: opacity .2s;
+  transition: opacity .18s;
 }
 .album-item:hover .album-download { opacity: 1; }
 
@@ -1206,30 +1234,58 @@ async function initApp(userData) {
 // ══════════════════════════════════════════
 //  탭 전환
 // ══════════════════════════════════════════
-const SWIPE_TABS = ['tracker', 'history', 'album'];
+const SWIPE_TAB_ORDER = ['tracker','history','album'];
 
-function switchTab(id) {
-  document.querySelectorAll('.main-content').forEach(el => el.classList.remove('active'));
-  document.getElementById('content-' + id).classList.add('active');
+function switchTab(id, fromDirection) {
+  const prev = document.querySelector('.main-content.active');
+  const next = document.getElementById('content-' + id);
+  if (prev === next) return;
+
+  // 방향 자동 감지
+  if (!fromDirection && prev) {
+    const prevId = prev.id.replace('content-', '');
+    const prevIdx = SWIPE_TAB_ORDER.indexOf(prevId);
+    const nextIdx = SWIPE_TAB_ORDER.indexOf(id);
+    fromDirection = nextIdx > prevIdx ? 'right' : 'left';
+  }
+
+  document.querySelectorAll('.main-content').forEach(el => {
+    el.classList.remove('active','anim-from-right','anim-from-left');
+  });
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+
+  next.classList.add('active');
+  if (fromDirection === 'right') next.classList.add('anim-from-right');
+  else if (fromDirection === 'left') next.classList.add('anim-from-left');
+
   document.getElementById('btn-' + id).classList.add('active');
   if (id === 'history') loadHistory();
   if (id === 'album') loadAlbum();
   if (id === 'admin') loadAdminData();
 }
 
-// ── 모바일 스와이프 네비게이션 ──
+// ── 모바일 스와이프 네비게이션 (실시간 팔로우) ──
 (function initSwipe() {
-  let startX = 0, startY = 0;
+  let startX = 0, startY = 0, dragging = false;
   const main = document.getElementById('main');
   if (!main) return;
 
   main.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    dragging = false;
+  }, { passive: true });
+
+  main.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!dragging && Math.abs(dx) > 12 && Math.abs(dy) < Math.abs(dx) * 0.8) {
+      dragging = true;
+    }
   }, { passive: true });
 
   main.addEventListener('touchend', e => {
+    if (!dragging) return;
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
     if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
@@ -1237,14 +1293,15 @@ function switchTab(id) {
     const activeBtn = document.querySelector('.nav-btn.active');
     if (!activeBtn) return;
     const curId = activeBtn.id.replace('btn-', '');
-    const curIdx = SWIPE_TABS.indexOf(curId);
+    const curIdx = SWIPE_TAB_ORDER.indexOf(curId);
     if (curIdx === -1) return;
 
-    if (dx < 0 && curIdx < SWIPE_TABS.length - 1) {
-      switchTab(SWIPE_TABS[curIdx + 1]);
+    if (dx < 0 && curIdx < SWIPE_TAB_ORDER.length - 1) {
+      switchTab(SWIPE_TAB_ORDER[curIdx + 1], 'right');
     } else if (dx > 0 && curIdx > 0) {
-      switchTab(SWIPE_TABS[curIdx - 1]);
+      switchTab(SWIPE_TAB_ORDER[curIdx - 1], 'left');
     }
+    dragging = false;
   }, { passive: true });
 })();
 
@@ -1743,6 +1800,15 @@ function addMealFromSearch(cd, name, protein, kcal, fat, carb, unit) {
 // ══════════════════════════════════════════
 //  식사 목록
 // ══════════════════════════════════════════
+
+// amount 필드에서 앞에 있는 숫자(인분)만 뽑아냄
+// "1인분" → 1,  "1.5인분" → 1.5,  "2 × 종이컵 2개" → 2,  "3 × 4조각" → 3
+function parseAmountQty(amount) {
+  if (!amount) return 1;
+  const m = String(amount).match(/^([\d.]+)/);
+  return m ? (parseFloat(m[1]) || 1) : 1;
+}
+
 async function deleteMeal(id) {
   await fetch(`/api/meals?id=${id}`, {method:'DELETE'});
   loadMeals();
@@ -1764,7 +1830,7 @@ async function loadMeals() {
     const div = document.createElement('div');
     div.className = 'meal-item';
     div.id = `meal-item-${m.id}`;
-    const curQty = parseFloat((m.amount || '1').replace(/[^0-9.]/g,'')) || 1;
+    const curQty = parseAmountQty(m.amount);
     div.innerHTML = `
       <div style="flex:1">
         <div class="mi-name">${m.food_name}</div>
@@ -1807,7 +1873,7 @@ async function updateMealQty(id, baseProteinPerUnit) {
   const meals = await fetch(`/api/meals?date=${d}`).then(r => r.json());
   const meal = meals.find(m => m.id === id);
   if (!meal) return;
-  const curQty = parseFloat((meal.amount || '1').replace(/[^0-9.]/g,'')) || 1;
+  const curQty = parseAmountQty(meal.amount);
   const proteinPerUnit = parseFloat(meal.protein_g) / curQty;
   await fetch(`/api/meals?id=${id}`, {method: 'DELETE'});
   await fetch('/api/meals', {
@@ -1995,31 +2061,60 @@ function closeDayDetail() {
 //  앨범
 // ══════════════════════════════════════════
 async function loadAlbum() {
-  const container = document.getElementById('album-grid');
-  const empty = document.getElementById('album-empty');
-  container.innerHTML = '<div style="color:#94a3b8;font-size:0.875rem">불러오는 중...</div>';
-  empty.style.display = 'none';
+  const wrap = document.getElementById('content-album').querySelector('.card');
+  const emptyEl = document.getElementById('album-empty');
+
+  // 기존 그룹 제거 후 로딩 표시
+  wrap.querySelectorAll('.album-group').forEach(el => el.remove());
+  const placeholder = document.createElement('div');
+  placeholder.style.cssText = 'color:#94a3b8;font-size:0.875rem;padding:4px 0;';
+  placeholder.textContent = '불러오는 중...';
+  wrap.appendChild(placeholder);
+  emptyEl.style.display = 'none';
 
   const photos = await fetch('/api/album').then(r => r.json());
-  container.innerHTML = '';
+  placeholder.remove();
 
   if (!photos.length) {
-    empty.style.display = 'block';
+    emptyEl.style.display = 'block';
     return;
   }
 
+  // 날짜별 그룹화
+  const groups = {};
   photos.forEach(p => {
-    const url = getImageUrl(p.image_path);
-    const filename = p.image_path.split('/').pop();
-    const dateLabel = p.date || '';
-    const item = document.createElement('div');
-    item.className = 'album-item';
-    item.innerHTML = `
-      <img src="${url}" alt="${dateLabel}" loading="lazy" onclick="openLightbox('${url}')">
-      <div class="album-date">${dateLabel}</div>
-      <button class="album-download" onclick="downloadPhoto('${url}','${filename}')">저장</button>
-    `;
-    container.appendChild(item);
+    const d = p.date || '날짜 없음';
+    if (!groups[d]) groups[d] = [];
+    groups[d].push(p);
+  });
+
+  // 날짜 내림차순 정렬
+  const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+  sortedDates.forEach(date => {
+    const group = document.createElement('div');
+    group.className = 'album-group';
+
+    const dateLabel = date.replace(/-/g, '.').slice(2);
+    group.innerHTML = `<div class="album-group-date">${dateLabel}</div>`;
+
+    const grid = document.createElement('div');
+    grid.className = 'album-grid';
+
+    groups[date].forEach(p => {
+      const url = getImageUrl(p.image_path);
+      const filename = p.image_path.split('/').pop();
+      const item = document.createElement('div');
+      item.className = 'album-item';
+      item.innerHTML = `
+        <img src="${url}" alt="${date}" loading="lazy" onclick="openLightbox('${url}')">
+        <button class="album-download" onclick="downloadPhoto('${url}','${filename}')">저장</button>
+      `;
+      grid.appendChild(item);
+    });
+
+    group.appendChild(grid);
+    wrap.appendChild(group);
   });
 }
 
