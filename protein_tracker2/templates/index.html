@@ -526,7 +526,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
     <div id="content-admin" class="main-content">
       <div class="card">
         <div class="section-title">📦 AI 검색 캐시 <span id="cache-count" style="font-size:0.8rem;color:#888;font-weight:400;"></span></div>
-        <div style="font-size:0.8rem;color:#888;margin-bottom:10px;">검색 횟수가 많은 음식을 DB에 추가하면 이후 AI 호출 없이 검색돼요. 추가 전 이름과 단백질을 수정할 수 있어요.</div>
+        <div style="font-size:0.8rem;color:#888;margin-bottom:10px;">✏️ 수정 버튼으로 내용을 고친 뒤, DB 추가 버튼으로 승격하세요.</div>
         <div id="cache-list"></div>
       </div>
       <div class="card" style="margin-top:16px;">
@@ -1097,8 +1097,10 @@ async function searchFood(q) {
   const container = document.getElementById('search-results');
   if (!q.trim()) { container.innerHTML = ''; return; }
   searchTimer = setTimeout(async () => {
+    if (window._aiSearching) return; // 타이머 실행 시점에도 체크
     container.innerHTML = '<div style="color:#aaa;font-size:.82rem;padding:6px"><span class="spinner"></span> 검색 중...</div>';
     const data = await fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r => r.json());
+    if (window._aiSearching) return; // fetch 완료 후에도 체크
     container.innerHTML = '';
 
     if (data.length) {
@@ -1135,8 +1137,8 @@ async function searchFood(q) {
 
 async function searchWithAI(foodName) {
   const container = document.getElementById('search-results');
-  // AI 검색 중 oninput 차단
-  window._aiSearching = true;
+  window._aiSearching = true; // AI 검색 시작 — searchFood 차단
+  clearTimeout(searchTimer);  // 혹시 대기 중인 타이머도 취소
   container.innerHTML = '<div style="color:#aaa;font-size:.82rem;padding:6px"><span class="spinner"></span> AI가 영양 정보를 찾는 중...</div>';
   try {
     const res = await fetch('/api/search-ai', {
@@ -1167,7 +1169,7 @@ async function searchWithAI(foodName) {
   } catch(e) {
     container.innerHTML = `<div style="color:#f38ba8;font-size:.82rem;padding:6px">❌ 오류: ${e.message}</div>`;
   } finally {
-    window._aiSearching = false;
+    window._aiSearching = false; // 완료 후 해제
   }
 }
 
@@ -1234,13 +1236,15 @@ async function loadMeals() {
     const div = document.createElement('div');
     div.className = 'meal-item';
     div.id = `meal-item-${m.id}`;
+    // amount에서 인분 숫자 추출 (예: "1.5인분" → 1.5)
+    const curQty = parseFloat((m.amount || '1').replace(/[^0-9.]/g,'')) || 1;
     div.innerHTML = `
       <div style="flex:1">
         <div class="mi-name">${m.food_name}</div>
         <div class="mi-detail" id="meal-detail-${m.id}">${m.amount||''} ${m.energy_kcal ? '· '+m.energy_kcal+'kcal' : ''}</div>
       </div>
       <div class="mi-protein" id="meal-protein-${m.id}">${parseFloat(m.protein_g).toFixed(1)}g</div>
-      <button class="btn-add" style="padding:5px 9px;font-size:0.78rem;" onclick="showMealEdit(${m.id},${m.protein_g},'${m.food_name.replace(/'/g,"\\'")}')">✏️</button>
+      <button class="btn-add" style="padding:5px 9px;font-size:0.78rem;" onclick="showMealEdit(${m.id},${m.protein_g},'${m.food_name.replace(/'/g,"\\'")}',${curQty})">✏️</button>
       <button class="btn-delete" onclick="deleteMeal(${m.id})">✕</button>
     `;
     container.appendChild(div);
@@ -1248,45 +1252,52 @@ async function loadMeals() {
   updateProgress(total);
 }
 
-function showMealEdit(id, currentProtein, name) {
+function showMealEdit(id, baseProteinPerUnit, name, curQty) {
   // 이미 편집 중이면 닫기
   const existing = document.getElementById(`meal-edit-${id}`);
   if (existing) { existing.remove(); return; }
   const item = document.getElementById(`meal-item-${id}`);
   const editRow = document.createElement('div');
   editRow.id = `meal-edit-${id}`;
-  editRow.style.cssText = 'display:flex;gap:6px;align-items:center;padding:6px 8px;background:#f0fff4;border:1px solid #b2f2bb;border-radius:8px;margin-top:4px;';
+  editRow.style.cssText = 'display:flex;gap:6px;align-items:center;padding:8px;background:#f0fff4;border:1px solid #b2f2bb;border-radius:8px;margin-top:4px;flex-wrap:wrap;';
   editRow.innerHTML = `
-    <span style="font-size:0.82rem;color:#555;flex:1">${name} 수량:</span>
-    <input type="number" id="edit-qty-${id}" value="1" min="0.1" step="0.1"
-      style="width:55px;padding:4px;border:1px solid #ddd;border-radius:6px;font-size:0.83rem;text-align:center;">
-    <span style="font-size:0.78rem;color:#888;">× ${parseFloat(currentProtein).toFixed(1)}g</span>
-    <button onclick="addMoreMeal(${id},${currentProtein})"
-      style="background:#40a02b;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">추가</button>
+    <span style="font-size:0.82rem;color:#555;flex:1;min-width:80px;">${name}</span>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <label style="font-size:0.75rem;color:#888;">인분:</label>
+      <input type="number" id="edit-qty-${id}" value="${curQty}" min="0.1" step="0.1"
+        style="width:60px;padding:4px;border:1px solid #ddd;border-radius:6px;font-size:0.83rem;text-align:center;">
+    </div>
+    <button onclick="updateMealQty(${id},${baseProteinPerUnit})"
+      style="background:#40a02b;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">저장</button>
     <button onclick="document.getElementById('meal-edit-${id}').remove()"
-      style="background:#eee;border:none;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:0.78rem;">✕</button>
+      style="background:#eee;border:none;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:0.78rem;">✕</button>
   `;
   item.after(editRow);
 }
 
-async function addMoreMeal(id, baseProtein) {
-  const qty = parseFloat(document.getElementById(`edit-qty-${id}`).value) || 1;
+async function updateMealQty(id, baseProteinPerUnit) {
+  const newQty = parseFloat(document.getElementById(`edit-qty-${id}`).value) || 1;
   const d = document.getElementById('date-input').value;
-  // 기존 meal 정보 가져오기
+  // 현재 meal 정보 가져오기
   const meals = await fetch(`/api/meals?date=${d}`).then(r => r.json());
   const meal = meals.find(m => m.id === id);
   if (!meal) return;
+  // 기존 1인분 기준 단백질 계산
+  const curQty = parseFloat((meal.amount || '1').replace(/[^0-9.]/g,'')) || 1;
+  const proteinPerUnit = parseFloat(meal.protein_g) / curQty;
+  // DELETE 후 새로 INSERT (수정)
+  await fetch(`/api/meals?id=${id}`, {method: 'DELETE'});
   await fetch('/api/meals', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
       date: d,
       food_name: meal.food_name,
       food_cd: meal.food_cd || null,
-      protein_g: (baseProtein * qty).toFixed(1),
-      energy_kcal: meal.energy_kcal ? (meal.energy_kcal * qty).toFixed(0) : null,
-      fat_g: meal.fat_g ? (meal.fat_g * qty).toFixed(1) : null,
-      carb_g: meal.carb_g ? (meal.carb_g * qty).toFixed(1) : null,
-      amount: qty + '인분 추가',
+      protein_g: (proteinPerUnit * newQty).toFixed(1),
+      energy_kcal: meal.energy_kcal ? ((meal.energy_kcal / curQty) * newQty).toFixed(0) : null,
+      fat_g: meal.fat_g ? ((meal.fat_g / curQty) * newQty).toFixed(1) : null,
+      carb_g: meal.carb_g ? ((meal.carb_g / curQty) * newQty).toFixed(1) : null,
+      amount: newQty + '인분',
       image_path: meal.image_path || null
     })
   });
@@ -1476,6 +1487,7 @@ async function loadCacheList() {
   const res = await fetch('/api/admin/cache').then(r => r.json());
   const container = document.getElementById('cache-list');
   const countEl = document.getElementById('cache-count');
+  if (!container) return;
   if (!Array.isArray(res)) {
     container.innerHTML = '<div style="color:#f38ba8;font-size:.82rem;">권한 없음</div>'; return;
   }
@@ -1489,32 +1501,36 @@ async function loadCacheList() {
     div.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
         <div style="flex:1;min-width:120px;">
-          <div style="font-weight:600;font-size:0.88rem;">${c.food_name}</div>
-          <div style="font-size:0.75rem;color:#888;">단백질 ${c.protein_g}g · ${c.energy_kcal}kcal · 검색 <strong>${c.search_count}회</strong></div>
+          <div style="font-weight:600;font-size:0.88rem;" id="cache-name-display-${c.id}">${c.food_name}</div>
+          <div style="font-size:0.75rem;color:#888;">
+            단백질 <span id="cache-protein-display-${c.id}">${c.protein_g}</span>g ·
+            <span id="cache-kcal-display-${c.id}">${c.energy_kcal}</span>kcal ·
+            검색 <strong>${c.search_count}회</strong>
+          </div>
         </div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;">
           <button onclick="toggleCacheEdit(${c.id})" style="background:#89b4fa;color:#1e1e2e;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">✏️ 수정</button>
-          <button onclick="promoteCache(${c.id},null,null,'${c.food_name}')" style="background:#a6e3a1;color:#1e1e2e;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">DB 추가</button>
-          <button onclick="deleteCacheItem(${c.id})" style="background:#f38ba8;color:#1e1e2e;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">삭제</button>
+          <button onclick="promoteCache(${c.id})" style="background:#a6e3a1;color:#1e1e2e;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">✅ DB 추가</button>
+          <button onclick="deleteCacheItem(${c.id})" style="background:#f38ba8;color:#1e1e2e;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">🗑 삭제</button>
         </div>
       </div>
       <!-- 수정 폼 (기본 숨김) -->
-      <div id="cache-edit-${c.id}" style="display:none;margin-top:8px;background:#f8f8ff;border-radius:8px;padding:10px;display:none;">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+      <div id="cache-edit-${c.id}" style="display:none;margin-top:8px;background:#f8f8ff;border-radius:8px;padding:10px;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;">
           <div style="flex:1;min-width:100px;">
-            <label style="font-size:0.75rem;color:#888;">음식명</label>
-            <input id="edit-name-${c.id}" value="${c.name}" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:5px;font-size:0.83rem;">
+            <label style="font-size:0.75rem;color:#888;">검색어(음식명)</label>
+            <input id="edit-name-${c.id}" value="${c.name}" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:5px;font-size:0.83rem;margin-top:2px;">
           </div>
-          <div style="width:70px;">
+          <div style="width:75px;">
             <label style="font-size:0.75rem;color:#888;">단백질(g)</label>
-            <input id="edit-protein-${c.id}" type="number" value="${c.protein_g}" step="0.1" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:5px;font-size:0.83rem;">
+            <input id="edit-protein-${c.id}" type="number" value="${c.protein_g}" step="0.1" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:5px;font-size:0.83rem;margin-top:2px;">
           </div>
-          <div style="width:70px;">
+          <div style="width:75px;">
             <label style="font-size:0.75rem;color:#888;">칼로리</label>
-            <input id="edit-kcal-${c.id}" type="number" value="${c.energy_kcal}" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:5px;font-size:0.83rem;">
+            <input id="edit-kcal-${c.id}" type="number" value="${c.energy_kcal||0}" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:5px;font-size:0.83rem;margin-top:2px;">
           </div>
-          <button onclick="promoteCache(${c.id}, document.getElementById('edit-name-${c.id}').value, document.getElementById('edit-protein-${c.id}').value, '${c.food_name}', document.getElementById('edit-kcal-${c.id}').value)"
-            style="background:#a6e3a1;color:#1e1e2e;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;align-self:flex-end;">수정 후 DB 추가</button>
+          <button onclick="saveCacheEdit(${c.id})" style="background:#cba6f7;color:#1e1e2e;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">💾 수정 저장</button>
+          <button onclick="toggleCacheEdit(${c.id})" style="background:#eee;border:none;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;">✕</button>
         </div>
       </div>
     `;
@@ -1524,13 +1540,67 @@ async function loadCacheList() {
 
 function toggleCacheEdit(id) {
   const el = document.getElementById(`cache-edit-${id}`);
+  if (!el) return;
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveCacheEdit(id) {
+  const name = document.getElementById(`edit-name-${id}`).value.trim();
+  const protein = parseFloat(document.getElementById(`edit-protein-${id}`).value) || 0;
+  const kcal = parseFloat(document.getElementById(`edit-kcal-${id}`).value) || 0;
+  // 캐시 내용 업데이트 API 호출
+  const res = await fetch('/api/admin/cache/update', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({cache_id: id, name, protein_g: protein, energy_kcal: kcal})
+  }).then(r => r.json());
+  if (res.status === 'ok') {
+    // 화면에서 즉시 반영
+    const nameEl = document.getElementById(`cache-name-display-${id}`);
+    const proteinEl = document.getElementById(`cache-protein-display-${id}`);
+    const kcalEl = document.getElementById(`cache-kcal-display-${id}`);
+    if (nameEl) nameEl.textContent = name;
+    if (proteinEl) proteinEl.textContent = protein;
+    if (kcalEl) kcalEl.textContent = kcal;
+    toggleCacheEdit(id);
+  } else {
+    alert('❌ ' + (res.error || '수정 실패'));
+  }
+}
+
+async function promoteCache(cacheId) {
+  // 현재 화면에 표시된 값으로 DB 추가
+  const name = document.getElementById(`cache-name-display-${cacheId}`)?.textContent;
+  const protein = document.getElementById(`cache-protein-display-${cacheId}`)?.textContent;
+  const kcal = document.getElementById(`cache-kcal-display-${cacheId}`)?.textContent;
+  if (!confirm(`"${name}"을(를) 커스텀 DB에 추가할까요?`)) return;
+  const res = await fetch('/api/admin/promote', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      cache_id: cacheId,
+      edited_name: name,
+      edited_protein: parseFloat(protein),
+      edited_kcal: parseFloat(kcal)
+    })
+  }).then(r => r.json());
+  if (res.status === 'ok') {
+    alert(`✅ "${res.promoted}" DB에 추가됐어요!`);
+    loadAdminData();
+  } else {
+    alert('❌ ' + (res.error || '오류'));
+  }
+}
+
+async function deleteCacheItem(id) {
+  if (!confirm('캐시에서 삭제할까요?')) return;
+  await fetch(`/api/admin/cache/delete?id=${id}`, {method: 'DELETE'});
+  loadCacheList();
 }
 
 async function loadCustomList() {
   const res = await fetch('/api/admin/custom').then(r => r.json());
   const container = document.getElementById('custom-list');
   const countEl = document.getElementById('custom-count');
+  if (!container) return;
   if (!Array.isArray(res)) {
     container.innerHTML = '<div style="color:#f38ba8;font-size:.82rem;">권한 없음</div>'; return;
   }
@@ -1549,32 +1619,6 @@ async function loadCustomList() {
     `;
     container.appendChild(div);
   });
-}
-
-async function promoteCache(cacheId, editedName, editedProtein, originalName, editedKcal) {
-  const name = editedName || originalName;
-  if (!confirm(`"${name}"을(를) 커스텀 DB에 추가할까요?`)) return;
-  const res = await fetch('/api/admin/promote', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      cache_id: cacheId,
-      edited_name: editedName || null,
-      edited_protein: editedProtein ? parseFloat(editedProtein) : null,
-      edited_kcal: editedKcal ? parseFloat(editedKcal) : null
-    })
-  }).then(r => r.json());
-  if (res.status === 'ok') {
-    alert(`✅ "${res.promoted}" DB에 추가됐어요!`);
-    loadAdminData();
-  } else {
-    alert('❌ ' + (res.error || '오류'));
-  }
-}
-
-async function deleteCacheItem(id) {
-  if (!confirm('캐시에서 삭제할까요?')) return;
-  await fetch(`/api/admin/cache/delete?id=${id}`, {method: 'DELETE'});
-  loadCacheList();
 }
 
 async function deleteCustomItem(id) {
