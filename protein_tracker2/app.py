@@ -140,6 +140,14 @@ def init_db():
         created_at TEXT
     )""")
 
+    # 위젯 전용 토큰 (세션 없이 인증)
+    cur.execute("""CREATE TABLE IF NOT EXISTS widget_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        token TEXT UNIQUE NOT NULL,
+        created_at TEXT
+    )""")
+
     conn.commit()
     cur.close()
     conn.close()
@@ -1185,6 +1193,144 @@ def api_admin_set():
     cur.close()
     conn.close()
     return jsonify({"status": "ok"})
+
+# ─────────────────────────────────────────
+# 위젯 전용 API (토큰 기반 인증)
+# ─────────────────────────────────────────
+def get_widget_user(token):
+    """위젯 토큰으로 user_id 반환. 없으면 None"""
+    if not token:
+        return None
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT user_id FROM widget_tokens WHERE token=%s", (token,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    return row["user_id"] if row else None
+
+@app.route("/api/widget/token", methods=["POST"])
+def api_widget_get_token():
+    """로그인된 세션에서 위젯 토큰 발급 (앱 로그인 시 호출)"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인이 필요합니다."}), 401
+    conn = get_conn()
+    cur = conn.cursor()
+    # 기존 토큰 있으면 반환
+    cur.execute("SELECT token FROM widget_tokens WHERE user_id=%s", (user_id,))
+    existing = cur.fetchone()
+    if existing:
+        cur.close()
+        conn.close()
+        return jsonify({"token": existing["token"]})
+    # 새 토큰 생성
+    token = secrets.token_hex(32)
+    cur.execute(
+        "INSERT INTO widget_tokens (user_id, token, created_at) VALUES (%s, %s, %s)",
+        (user_id, token, datetime.now().isoformat())
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"token": token})
+
+@app.route("/api/widget/status")
+def api_widget_status():
+    """위젯 메인 데이터 — 오늘 섭취량, 목표, 최근 식사 목록"""
+    token = request.headers.get("X-Widget-Token") or request.args.get("token")
+    user_id = get_widget_user(token)
+    if not user_id:
+        return jsonify({"error": "인증 실패"}), 401
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("SELECT nickname, weight, multiplier FROM users WHERE id=%s", (user_id,))
+    user = cur.fetchone()
+    goal = float(user["weight"] or 0) * float(user["multiplier"] or 0) if user else 0
+
+    cur.execute("""
+        SELECT food_name, protein_g, amount, created_at
+        FROM meals WHERE user_id=%s AND date=%s
+        ORDER BY created_at DESC LIMIT 10
+    """, (user_id, today))
+    meals = [dict(m) for m in cur.fetchall()]
+    total = sum(float(m["protein_g"]) for m in meals)
+
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        "today": today,
+        "nickname": user["nickname"] if user else "",
+        "goal_g": goal,
+        "intake_g": total,
+        "shortage_g": max(0, goal - total),
+        "percent": min(100, round(total / goal * 100)) if goal > 0 else 0,
+        "meals": meals
+    })
+
+@app.route("/api/widget/quick-add", methods=["POST"])
+def api_widget_quick_add():
+    """위젯에서 사진 업로드 → AI 분석 → 바로 기록"""
+    token = request.headers.get("X-Widget-Token") or request.form.get("token")
+    user_id = get_widget_user(token)
+    if not user_id:
+        return jsonify({"error": "인증 실패"}), 401
+
+    if "image" not in request.files:
+        return jsonify({"error": "이미지가 없습니다."}), 400
+
+    file = request.files["image"]
+    fname = f"{uuid.uuid4().hex}.jpg"
+    path = os.path.join(UPLOAD_FOLDER, fname)
+    file.save(path)
+
+    result = analyze_image_with_gemini(path)
+    if "error" in result:
+        os.remove(path)
+        return jsonify(result), 400
+
+    # DB 매칭
+    for food in result.get("foods", []):
+        db_match = find_food_in_db(food.get("name", ""))
+        if db_match:
+            food["db_match"] = db_match
+            food["protein_g"] = db_match["protein_g"]
+
+    # Cloudinary 업로드
+    cloud_url = upload_to_cloudinary(path, folder="meals")
+    image_path = cloud_url if cloud_url else fname
+    if cloud_url:
+        os.remove(path)
+
+    # 모든 음식 자동 기록
+    today = datetime.now().strftime("%Y-%m-%d")
+    conn = get_conn()
+    cur = conn.cursor()
+    saved = []
+    for food in result.get("foods", []):
+        db = food.get("db_match")
+        cur.execute("""
+            INSERT INTO meals(user_id,date,food_name,protein_g,energy_kcal,fat_g,carb_g,amount,image_path,created_at)
+            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            user_id, today, food["name"],
+            food.get("protein_g", 0),
+            db["energy_kcal"] if db else None,
+            db["fat_g"] if db else None,
+            db["carb_g"] if db else None,
+            food.get("estimated_amount", "1인분"),
+            image_path, datetime.now().isoformat()
+        ))
+        saved.append({"name": food["name"], "protein_g": food.get("protein_g", 0)})
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({"status": "ok", "saved": saved, "image_path": image_path})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, threaded=True)
