@@ -3,331 +3,833 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>🥩 단백질 트래커</title>
+<title>단백질 트래커</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; min-height: 100vh; }
+:root {
+  --bg: #f8fafc;
+  --bg-alt: #f1f5f9;
+  --sidebar-bg: #0f172a;
+  --sidebar-surface: #1e293b;
+  --sidebar-border: #334155;
+  --card-bg: #ffffff;
+  --border: #e2e8f0;
+  --border-focus: #6d28d9;
+  --text-1: #0f172a;
+  --text-2: #475569;
+  --text-3: #94a3b8;
+  --text-inv: #f8fafc;
+  --accent: #6d28d9;
+  --accent-light: #ede9fe;
+  --accent-hover: #5b21b6;
+  --accent-sidebar: #a78bfa;
+  --success: #16a34a;
+  --success-bg: #f0fdf4;
+  --success-border: #bbf7d0;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --warning: #d97706;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-full: 9999px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.05);
+}
 
-/* ───── 로그인 화면 ───── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  min-height: 100vh;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── 로그인 화면 ─── */
 #login-screen {
-  display: flex; align-items: center; justify-content: center;
-  min-height: 100vh; background: #1e1e2e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--sidebar-bg);
 }
+
 .login-box {
-  background: #313244; border-radius: 16px; padding: 36px 32px;
-  width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px;
-  max-height: 90vh; overflow-y: auto;
+  background: var(--sidebar-surface);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--r-xl);
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 90vh;
+  overflow-y: auto;
 }
-.login-box h1 { color: #cba6f7; font-size: 1.5rem; text-align: center; }
-.login-box p { color: #a6adc8; font-size: 0.85rem; text-align: center; }
+
+.login-box h1 {
+  color: var(--accent-sidebar);
+  font-size: 1.375rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: -0.02em;
+}
+
+.login-box p {
+  color: var(--text-3);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
 .login-box input,
 .login-box input[type=number] {
-  padding: 11px 14px; border-radius: 8px; border: 1px solid #45475a;
-  background: #1e1e2e; color: #cdd6f4; font-size: 0.95rem;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--sidebar-border);
+  background: var(--sidebar-bg);
+  color: var(--text-inv);
+  font-size: 0.9375rem;
+  font-family: inherit;
   width: 100%;
+  transition: border-color .15s;
 }
-.login-box input:focus { outline: none; border-color: #cba6f7; }
-.login-box input:focus { outline: none; border-color: #cba6f7; }
-.login-box label { font-size: 0.78rem; color: #a6adc8; margin-bottom: -6px; }
+
+.login-box input::placeholder { color: var(--text-3); }
+.login-box input:focus { outline: none; border-color: var(--accent-sidebar); }
+
+.login-box label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-3);
+  margin-bottom: -6px;
+}
+
 .signup-row { display: flex; gap: 8px; }
 .signup-row input { flex: 1; }
-.btn-primary {
-  background: #cba6f7; color: #1e1e2e; border: none;
-  padding: 11px; border-radius: 8px; font-weight: 700; font-size: 0.95rem; cursor: pointer;
-}
-.btn-primary:hover { background: #b4befe; }
-.btn-secondary {
-  background: transparent; color: #a6adc8; border: 1px solid #45475a;
-  padding: 11px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer;
-}
-.btn-secondary:hover { border-color: #cba6f7; color: #cba6f7; }
-.login-msg { font-size: 0.82rem; text-align: center; min-height: 18px; }
-.login-msg.error { color: #f38ba8; }
-.login-msg.success { color: #a6e3a1; }
-.login-toggle { font-size: 0.82rem; color: #a6adc8; text-align: center; cursor: pointer; }
-.login-toggle span { color: #cba6f7; text-decoration: underline; }
-.form-divider { border: none; border-top: 1px solid #45475a; margin: 4px 0; }
 
-/* ───── 앱 화면 ───── */
+.btn-primary {
+  background: var(--accent-sidebar);
+  color: var(--sidebar-bg);
+  border: none;
+  padding: 11px;
+  border-radius: var(--r-md);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.btn-primary:hover { opacity: .88; }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-3);
+  border: 1px solid var(--sidebar-border);
+  padding: 11px;
+  border-radius: var(--r-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.btn-secondary:hover { border-color: var(--accent-sidebar); color: var(--accent-sidebar); }
+
+.login-msg { font-size: 0.8125rem; text-align: center; min-height: 18px; }
+.login-msg.error { color: #f87171; }
+.login-msg.success { color: #4ade80; }
+
+.login-toggle {
+  font-size: 0.8125rem;
+  color: var(--text-3);
+  text-align: center;
+  cursor: pointer;
+}
+.login-toggle span { color: var(--accent-sidebar); text-decoration: underline; }
+
+.form-divider { border: none; border-top: 1px solid var(--sidebar-border); margin: 4px 0; }
+
+/* ─── 앱 화면 ─── */
 #app-screen { display: none; flex-direction: row; min-height: 100vh; }
 
 /* ── 사이드바 ── */
 #sidebar {
-  width: 240px; min-width: 240px; background: #1e1e2e; color: #cdd6f4;
-  padding: 20px 14px; display: flex; flex-direction: column; gap: 14px;
+  width: 240px;
+  min-width: 240px;
+  background: var(--sidebar-bg);
+  color: var(--text-inv);
+  padding: 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   overflow-y: auto;
+  border-right: 1px solid var(--sidebar-border);
 }
-#sidebar h2 { font-size: 1.1rem; color: #cba6f7; }
-#sidebar label { font-size: 0.78rem; color: #a6adc8; }
-#sidebar input[type=text], #sidebar input[type=password], #sidebar input[type=number] {
-  width: 100%; padding: 7px 9px; border-radius: 6px; border: 1px solid #45475a;
-  background: #313244; color: #cdd6f4; font-size: 0.83rem; margin-top: 3px;
+
+#sidebar h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent-sidebar);
+  letter-spacing: -0.01em;
 }
-.sidebar-section { display: flex; flex-direction: column; gap: 7px; }
-.sidebar-section h3 { font-size: 0.85rem; color: #89dceb; border-bottom: 1px solid #45475a; padding-bottom: 5px; cursor: pointer; }
+
+#sidebar label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+#sidebar input[type=text],
+#sidebar input[type=password],
+#sidebar input[type=number] {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--sidebar-border);
+  background: var(--sidebar-surface);
+  color: var(--text-inv);
+  font-size: 0.875rem;
+  font-family: inherit;
+  margin-top: 3px;
+  transition: border-color .15s;
+}
+#sidebar input:focus { outline: none; border-color: var(--accent-sidebar); }
+
+.sidebar-section { display: flex; flex-direction: column; gap: 8px; }
+
+.sidebar-section h3 {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #7dd3fc;
+  border-bottom: 1px solid var(--sidebar-border);
+  padding-bottom: 6px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .sidebar-collapsible { display: none; }
-.sidebar-collapsible.open { display: flex; flex-direction: column; gap: 7px; }
+.sidebar-collapsible.open { display: flex; flex-direction: column; gap: 8px; }
+
 .btn-save {
-  background: #cba6f7; color: #1e1e2e; border: none; padding: 7px;
-  border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.82rem;
+  background: var(--accent-sidebar);
+  color: var(--sidebar-bg);
+  border: none;
+  padding: 7px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  transition: opacity .15s;
 }
-.btn-save:hover { background: #b4befe; }
-#goal-display { font-size: 0.82rem; color: #a6e3a1; }
-.user-info { font-size: 0.88rem; color: #a6e3a1; font-weight: 600; }
-.user-sub { font-size: 0.75rem; color: #6c7086; }
+.btn-save:hover { opacity: .88; }
+
+#goal-display { font-size: 0.8125rem; color: #4ade80; font-weight: 500; }
+
+.user-info { font-size: 0.875rem; color: #4ade80; font-weight: 600; }
+.user-sub { font-size: 0.8125rem; color: #475569; }
+
 .btn-logout {
-  background: #45475a; color: #cdd6f4; border: none; padding: 7px;
-  border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+  background: var(--sidebar-surface);
+  color: var(--text-3);
+  border: 1px solid var(--sidebar-border);
+  padding: 7px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  transition: background .15s;
 }
-.btn-logout:hover { background: #585b70; }
+.btn-logout:hover { background: #334155; color: var(--text-inv); }
+
 .btn-danger {
-  background: transparent; color: #f38ba8; border: 1px solid #f38ba8; padding: 7px;
-  border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 600;
+  background: transparent;
+  color: #f87171;
+  border: 1px solid #f87171;
+  padding: 7px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: background .15s, color .15s;
 }
-.btn-danger:hover { background: #f38ba8; color: #1e1e2e; }
-.sidebar-nav { display: flex; gap: 5px; flex-wrap: wrap; }
+.btn-danger:hover { background: #f87171; color: var(--sidebar-bg); }
+
+.sidebar-nav { display: flex; gap: 4px; flex-wrap: wrap; }
+
 .nav-btn {
-  flex: 1; padding: 9px 4px; background: #313244; border: none;
-  color: #cdd6f4; cursor: pointer; border-radius: 7px; font-weight: 600; font-size: 0.78rem;
+  flex: 1;
+  padding: 8px 4px;
+  background: var(--sidebar-surface);
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  border-radius: var(--r-md);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  transition: background .15s, color .15s;
 }
-.nav-btn.active { background: #cba6f7; color: #1e1e2e; }
+.nav-btn:hover { background: #2d3f5a; color: var(--text-inv); }
+.nav-btn.active { background: var(--accent-sidebar); color: var(--sidebar-bg); }
 
 /* ── 메인 ── */
-#main { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 16px; max-width: 860px; }
+#main {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 860px;
+}
 
 .date-bar { display: flex; align-items: center; gap: 10px; }
-.date-bar input[type=date] { padding: 7px 11px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.95rem; }
+.date-bar input[type=date] {
+  padding: 7px 11px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  background: var(--card-bg);
+  color: var(--text-1);
+}
 
-#progress-wrap { background: #fff; border-radius: 12px; padding: 14px 18px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
-#progress-label { display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 7px; }
-#progress-bar-bg { background: #eee; border-radius: 99px; height: 13px; overflow: hidden; }
-#progress-bar { height: 100%; background: linear-gradient(90deg,#a6e3a1,#40a02b); border-radius: 99px; transition: width .4s; }
+/* ── 진행 바 ── */
+#progress-wrap {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-sm);
+}
+#progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+#progress-bar-bg {
+  background: var(--bg-alt);
+  border-radius: var(--r-full);
+  height: 10px;
+  overflow: hidden;
+}
+#progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #16a34a);
+  border-radius: var(--r-full);
+  transition: width .4s ease;
+}
 
-.card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
-.section-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 10px; }
+/* ── 카드 ── */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
 
-/* ── 사진 업로드 ── */
+.section-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-1);
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+
+/* ── 드롭존 ── */
 #drop-zone {
-  border: 2px dashed #cba6f7; border-radius: 10px; padding: 20px;
-  text-align: center; cursor: pointer; color: #888; transition: background .2s; font-size: 0.88rem;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: 0.875rem;
+  transition: background .2s, border-color .2s;
 }
-#drop-zone:hover, #drop-zone.drag { background: #f3f0ff; }
+#drop-zone:hover,
+#drop-zone.drag {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
 #drop-zone input { display: none; }
-#preview-img { max-width: 100%; max-height: 200px; border-radius: 8px; display: none; margin-top: 10px; }
-.btn-analyze {
-  margin-top: 10px; background: #cba6f7; color: #1e1e2e;
-  border: none; padding: 9px 22px; border-radius: 8px;
-  cursor: pointer; font-weight: 700; display: none; font-size: 0.88rem;
-}
-.btn-analyze:hover { background: #b4befe; }
-#analyze-status { margin-top: 7px; font-size: 0.82rem; color: #888; }
-#result-list { display: flex; flex-direction: column; gap: 9px; margin-top: 10px; }
 
+#preview-img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: var(--r-md);
+  display: none;
+  margin-top: 12px;
+}
+
+.btn-analyze {
+  margin-top: 10px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 9px 20px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 0.875rem;
+  display: none;
+  transition: background .15s;
+}
+.btn-analyze:hover { background: var(--accent-hover); }
+
+#analyze-status { margin-top: 8px; font-size: 0.8125rem; color: var(--text-3); }
+#result-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+
+/* ── 분석 결과 아이템 ── */
 .result-item {
-  background: #f8f8ff; border: 1px solid #e0d9ff; border-radius: 10px;
-  padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   transition: opacity .2s;
 }
 .result-item .food-info { flex: 1; }
-.result-item .food-name { font-weight: 700; font-size: 0.9rem; }
-.result-item .food-detail { font-size: 0.76rem; color: #888; margin-top: 2px; }
-.db-badge { font-size: 0.68rem; background: #a6e3a1; color: #1e4a1e; padding: 2px 6px; border-radius: 99px; margin-left: 5px; }
-.ai-badge { font-size: 0.68rem; background: #fab387; color: #5a2e00; padding: 2px 6px; border-radius: 99px; margin-left: 5px; }
+.result-item .food-name { font-weight: 600; font-size: 0.9rem; color: var(--text-1); }
+.result-item .food-detail { font-size: 0.8125rem; color: var(--text-3); margin-top: 2px; }
 
-.qty-box { display: flex; align-items: center; gap: 5px; }
-.qty-input { width: 48px; padding: 5px; border: 1px solid #ddd; border-radius: 6px; text-align: center; font-size: 0.83rem; }
+.db-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background: var(--success-bg);
+  color: var(--success);
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  margin-left: 6px;
+  border: 1px solid var(--success-border);
+}
+.ai-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background: #fff7ed;
+  color: #c2410c;
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  margin-left: 6px;
+  border: 1px solid #fed7aa;
+}
+
+.qty-box { display: flex; align-items: center; gap: 6px; }
+.qty-input {
+  width: 52px;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  text-align: center;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: var(--card-bg);
+  color: var(--text-1);
+}
+.qty-input:focus { outline: none; border-color: var(--accent); }
+
 .btn-add {
-  background: #40a02b; color: #fff; border: none; padding: 6px 12px;
-  border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; white-space: nowrap;
+  background: var(--success);
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: opacity .15s;
 }
-.btn-add:hover { background: #2d7a1f; }
+.btn-add:hover { opacity: .85; }
+
 .btn-exclude {
-  background: #f38ba8; color: #fff; border: none; padding: 6px 10px;
-  border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; white-space: nowrap;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background .15s;
 }
-.btn-exclude:hover { background: #e05c7a; }
+.btn-exclude:hover { background: var(--danger); color: #fff; }
+
 .btn-add-all {
-  margin-top: 12px; width: 100%; background: #40a02b; color: #fff; border: none;
-  padding: 10px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 700;
+  margin-top: 12px;
+  width: 100%;
+  background: var(--success);
+  color: #fff;
+  border: none;
+  padding: 10px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  font-family: inherit;
+  transition: opacity .15s;
 }
-.btn-add-all:hover { background: #2d7a1f; }
+.btn-add-all:hover { opacity: .88; }
 
 /* ── 수동 검색 ── */
-#search-wrap input { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.88rem; }
-#search-results { margin-top: 9px; display: flex; flex-direction: column; gap: 6px; }
-.search-item {
-  background: #f5f5f5; border-radius: 8px; padding: 9px 12px;
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+#search-wrap input {
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--text-1);
+  background: var(--card-bg);
+  transition: border-color .15s;
 }
-.search-item .si-name { font-weight: 600; font-size: 0.88rem; }
-.search-item .si-detail { font-size: 0.75rem; color: #888; }
-.search-item .si-protein { font-weight: 700; color: #40a02b; font-size: 0.88rem; white-space: nowrap; }
+#search-wrap input:focus { outline: none; border-color: var(--accent); }
+
+#search-results { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+
+.search-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.search-item .si-name { font-weight: 600; font-size: 0.875rem; color: var(--text-1); }
+.search-item .si-detail { font-size: 0.8125rem; color: var(--text-3); }
+.search-item .si-protein { font-weight: 700; color: var(--success); font-size: 0.875rem; white-space: nowrap; }
 
 /* ── 식사 목록 ── */
-#meal-list { display: flex; flex-direction: column; gap: 7px; }
+#meal-list { display: flex; flex-direction: column; gap: 6px; }
+
 .meal-item {
-  background: #f0fff4; border: 1px solid #b2f2bb; border-radius: 9px;
-  padding: 9px 13px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
-.meal-item .mi-name { font-weight: 600; font-size: 0.88rem; }
-.meal-item .mi-detail { font-size: 0.75rem; color: #555; margin-top: 1px; }
-.meal-item .mi-protein { font-weight: 700; color: #40a02b; font-size: 0.88rem; white-space: nowrap; }
+.meal-item .mi-name { font-weight: 600; font-size: 0.875rem; color: var(--text-1); }
+.meal-item .mi-detail { font-size: 0.8125rem; color: var(--text-2); margin-top: 2px; }
+.meal-item .mi-protein { font-weight: 700; color: var(--success); font-size: 0.875rem; white-space: nowrap; }
+
 .btn-delete {
-  background: #f38ba8; color: #fff; border: none; padding: 5px 10px;
-  border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 700; white-space: nowrap;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background .15s;
 }
-.btn-delete:hover { background: #e05c7a; }
-#no-meals { color: #aaa; font-size: 0.83rem; }
+.btn-delete:hover { background: var(--danger); color: #fff; }
+
+#no-meals { color: var(--text-3); font-size: 0.875rem; }
 
 /* ── 달력 ── */
 .main-content { display: none; }
 .main-content.active { display: flex; flex-direction: column; gap: 16px; }
-.calendar-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; margin-top: 12px; }
-.cal-day {
-  background: #fff; aspect-ratio: 1; border-radius: 10px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  cursor: pointer; transition: transform .15s; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  margin-top: 12px;
 }
-.cal-day:hover { transform: translateY(-2px); background: #f3f0ff; }
-.cal-day.empty { background: transparent; box-shadow: none; cursor: default; }
+
+.cal-day {
+  background: var(--card-bg);
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform .12s, background .12s;
+}
+.cal-day:hover { transform: translateY(-1px); background: var(--bg-alt); }
+.cal-day.empty { background: transparent; border-color: transparent; box-shadow: none; cursor: default; }
 .cal-day.empty:hover { transform: none; }
-.cal-day .day-num { font-weight: 700; font-size: 1rem; }
-.cal-day .day-prot { font-size: 0.72rem; color: #888; }
-.cal-day.success { border: 2px solid #a6e3a1; }
-.cal-day.fail { border: 2px solid #f38ba8; }
-.cal-day.today { background: #f3f0ff; border: 2px solid #cba6f7; }
+.cal-day .day-num { font-weight: 700; font-size: 0.9375rem; color: var(--text-1); }
+.cal-day .day-prot { font-size: 0.6875rem; color: var(--text-3); margin-top: 1px; }
+.cal-day.success { border-color: var(--success-border); background: var(--success-bg); }
+.cal-day.success .day-num { color: var(--success); }
+.cal-day.fail { border-color: var(--danger-border); background: var(--danger-bg); }
+.cal-day.fail .day-num { color: var(--danger); }
+.cal-day.today { background: var(--accent-light); border-color: var(--accent); }
+.cal-day.today .day-num { color: var(--accent); }
 
 /* ── 날짜 상세 패널 ── */
 #day-detail-panel {
-  display: none; background: #fff; border-radius: 12px;
-  padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,.1); margin-top: 4px;
+  display: none;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-md);
+  margin-top: 4px;
 }
 #day-detail-panel.show { display: block; }
-.detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.detail-header h3 { font-size: 1rem; font-weight: 700; color: #1e1e2e; }
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.detail-header h3 {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-1);
+  letter-spacing: -0.01em;
+}
 .btn-close-detail {
-  background: #eee; border: none; border-radius: 6px; padding: 5px 10px;
-  cursor: pointer; font-size: 0.8rem; color: #555;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  color: var(--text-2);
+  transition: background .15s;
 }
-.detail-protein-bar { margin-bottom: 14px; }
-.detail-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.btn-close-detail:hover { background: var(--border); }
+
+.detail-protein-bar { margin-bottom: 16px; }
+
+.detail-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .detail-photo {
-  width: 90px; height: 90px; border-radius: 8px; object-fit: cover; cursor: pointer;
-  border: 2px solid #e0d9ff; transition: transform .15s;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--r-md);
+  object-fit: cover;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  transition: transform .15s;
 }
-.detail-photo:hover { transform: scale(1.05); }
+.detail-photo:hover { transform: scale(1.04); }
+
 .detail-meal-list { display: flex; flex-direction: column; gap: 6px; }
 .detail-meal-item {
-  background: #f0fff4; border: 1px solid #b2f2bb; border-radius: 8px;
-  padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  border-radius: var(--r-md);
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-.detail-meal-item .dm-name { font-weight: 600; font-size: 0.85rem; }
-.detail-meal-item .dm-detail { font-size: 0.73rem; color: #666; }
-.detail-meal-item .dm-protein { font-weight: 700; color: #40a02b; font-size: 0.85rem; white-space: nowrap; }
+.detail-meal-item .dm-name { font-weight: 600; font-size: 0.875rem; color: var(--text-1); }
+.detail-meal-item .dm-detail { font-size: 0.8125rem; color: var(--text-3); }
+.detail-meal-item .dm-protein { font-weight: 700; color: var(--success); font-size: 0.875rem; white-space: nowrap; }
 
 /* ── 앨범 ── */
-.album-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px,1fr)); gap: 10px; margin-top: 12px; }
-.album-item { position: relative; border-radius: 10px; overflow: hidden; aspect-ratio: 1; }
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.album-item { position: relative; border-radius: var(--r-md); overflow: hidden; aspect-ratio: 1; }
 .album-item img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; transition: transform .2s; }
 .album-item img:hover { transform: scale(1.04); }
 .album-date {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  background: rgba(0,0,0,.5); color: #fff; font-size: 0.68rem;
-  padding: 3px 5px; text-align: center;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,.5);
+  color: #fff;
+  font-size: 0.6875rem;
+  padding: 4px 6px;
+  text-align: center;
 }
 .album-download {
-  position: absolute; top: 4px; right: 4px;
-  background: rgba(0,0,0,.55); color: #fff; border: none; border-radius: 5px;
-  padding: 3px 6px; font-size: 0.7rem; cursor: pointer; opacity: 0; transition: opacity .2s;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0,0,0,.5);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 3px 7px;
+  font-size: 0.6875rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .2s;
 }
 .album-item:hover .album-download { opacity: 1; }
 
 /* ── 라이트박스 ── */
 #lightbox {
-  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85);
-  z-index: 1000; align-items: center; justify-content: center;
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.88);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
 }
 #lightbox.show { display: flex; }
-#lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 10px; }
+#lightbox img { max-width: 90vw; max-height: 90vh; border-radius: var(--r-lg); }
 #lightbox-close {
-  position: absolute; top: 18px; right: 22px; font-size: 2rem;
-  color: #fff; cursor: pointer; line-height: 1;
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  font-size: 1.5rem;
+  color: #fff;
+  cursor: pointer;
+  line-height: 1;
+  font-weight: 300;
+  opacity: .7;
+  transition: opacity .15s;
 }
+#lightbox-close:hover { opacity: 1; }
 
-/* ── 모달 (계정 삭제 확인) ── */
+/* ── 확인 모달 ── */
 #confirm-modal {
-  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
-  z-index: 999; align-items: center; justify-content: center;
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
 }
 #confirm-modal.show { display: flex; }
 .modal-box {
-  background: #313244; border-radius: 14px; padding: 28px 24px;
-  max-width: 340px; width: 90%; display: flex; flex-direction: column; gap: 14px;
+  background: var(--sidebar-surface);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--r-xl);
+  padding: 28px 24px;
+  max-width: 340px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
-.modal-box h3 { color: #f38ba8; font-size: 1rem; }
-.modal-box p { color: #a6adc8; font-size: 0.85rem; line-height: 1.5; }
+.modal-box h3 { color: #f87171; font-size: 0.9375rem; font-weight: 700; }
+.modal-box p { color: var(--text-3); font-size: 0.875rem; line-height: 1.6; }
 .modal-actions { display: flex; gap: 10px; }
-.modal-actions button { flex: 1; padding: 10px; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; font-size: 0.88rem; }
-.modal-cancel { background: #45475a; color: #cdd6f4; }
-.modal-confirm { background: #f38ba8; color: #1e1e2e; }
+.modal-actions button {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--r-md);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  font-size: 0.875rem;
+}
+.modal-cancel { background: var(--sidebar-border); color: var(--text-inv); }
+.modal-confirm { background: #f87171; color: var(--sidebar-bg); }
 
-.spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid #ccc; border-top-color: #cba6f7; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; }
+/* ── 스피너 ── */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  vertical-align: middle;
+}
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 프로틴 부족 박스 ── */
+#protein-shortage-box {
+  margin-top: 10px;
+  background: var(--accent-light);
+  border: 1px solid #ddd6fe;
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
 
 /* ── 모바일 반응형 ── */
 @media (max-width: 640px) {
   #app-screen { flex-direction: column; }
 
   #sidebar {
-    width: 100%; min-width: unset;
+    width: 100%;
+    min-width: unset;
     flex-direction: column;
-    padding: 12px 14px;
+    padding: 14px;
     gap: 10px;
   }
 
-  /* 상단: 타이틀 + 탭 네비 + 유저정보 를 한 줄씩 */
-  #sidebar h2 { font-size: 1rem; }
+  #sidebar h2 { font-size: 0.9375rem; }
 
-  .sidebar-nav {
-    display: flex; gap: 6px;
-  }
-  .nav-btn {
-    flex: 1; padding: 10px 4px; font-size: 0.82rem;
-  }
+  .sidebar-nav { display: flex; gap: 5px; }
+  .nav-btn { flex: 1; padding: 10px 4px; font-size: 0.8125rem; }
 
-  /* 유저 정보 + 로그아웃/삭제 버튼을 가로로 */
   .sidebar-section:nth-child(3) {
-    flex-direction: row; align-items: center;
-    flex-wrap: wrap; gap: 8px;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   .sidebar-section:nth-child(3) .user-info { flex: 1 1 100%; }
   .sidebar-section:nth-child(3) .user-sub { flex: 1 1 100%; margin-top: -6px; }
   .sidebar-section:nth-child(3) .btn-logout,
-  .sidebar-section:nth-child(3) .btn-danger {
-    flex: 1; padding: 9px; font-size: 0.8rem;
-  }
+  .sidebar-section:nth-child(3) .btn-danger { flex: 1; padding: 9px; font-size: 0.8125rem; }
 
-  #main { padding: 12px; }
+  #main { padding: 14px; }
 }
 </style>
 </head>
 <body>
 
-<!-- ═══════════════ 로그인 화면 ═══════════════ -->
+<!-- ═══════════ 로그인 화면 ═══════════ -->
 <div id="login-screen">
   <div class="login-box">
-    <h1>🥩 단백질 트래커</h1>
+    <h1>단백질 트래커</h1>
     <p id="login-subtitle">계정에 로그인하세요</p>
 
-    <!-- 로그인 폼 -->
     <div id="login-fields">
       <input type="text" id="auth-username" placeholder="아이디" autocomplete="username">
       <input type="password" id="auth-password" placeholder="비밀번호" autocomplete="current-password"
              onkeydown="if(event.key==='Enter') doLogin()">
     </div>
 
-    <!-- 회원가입 추가 필드 -->
     <div id="signup-fields" style="display:none; flex-direction:column; gap:10px;">
       <hr class="form-divider">
       <label>닉네임 (앱에서 표시될 이름)</label>
@@ -340,7 +842,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
         <input type="number" id="signup-weight" placeholder="70" min="0" step="0.1">
         <input type="number" id="signup-multiplier" placeholder="배수 (예: 1.5)" min="0" step="0.1" value="1.5">
       </div>
-      <p style="font-size:0.74rem;color:#6c7086;">체중 × 배수 = 하루 단백질 목표 (g)</p>
+      <p style="font-size:0.75rem;color:#475569;">체중 × 배수 = 하루 단백질 목표 (g)</p>
     </div>
 
     <button class="btn-primary" id="auth-main-btn" onclick="doLogin()">로그인</button>
@@ -353,61 +855,60 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
   </div>
 </div>
 
-<!-- ═══════════════ 앱 화면 ═══════════════ -->
+<!-- ═══════════ 앱 화면 ═══════════ -->
 <div id="app-screen">
 
   <!-- 사이드바 -->
   <aside id="sidebar">
-    <h2>🥩 단백질 트래커</h2>
+    <h2>단백질 트래커</h2>
 
     <div class="sidebar-nav">
       <button class="nav-btn active" id="btn-tracker" onclick="switchTab('tracker')">트래커</button>
       <button class="nav-btn" id="btn-history" onclick="switchTab('history')">기록</button>
       <button class="nav-btn" id="btn-album" onclick="switchTab('album')">앨범</button>
-      <button class="nav-btn" id="btn-admin" onclick="switchTab('admin')" style="display:none;background:#f38ba8;color:#1e1e2e;">관리자</button>
+      <button class="nav-btn" id="btn-admin" onclick="switchTab('admin')" style="display:none;background:#f87171;color:#0f172a;">관리자</button>
     </div>
 
     <div class="sidebar-section">
-      <div class="user-info">👤 <span id="nickname-display"></span></div>
+      <div class="user-info"><span id="nickname-display"></span></div>
       <div class="user-sub" id="username-display-sub"></div>
       <button class="btn-logout" onclick="doLogout()">로그아웃</button>
-      <button class="btn-danger" onclick="showDeleteConfirm()">🗑 계정 삭제</button>
+      <button class="btn-danger" onclick="showDeleteConfirm()">계정 삭제</button>
     </div>
 
-    <!-- 하드웨어 기기 연결 -->
+    <!-- 디스펜서 연결 -->
     <div class="sidebar-section">
-      <h3 onclick="toggleSideSection(this)" style="cursor:pointer">📡 디스펜서 연결 <span style="float:right;font-size:0.8rem">▾</span></h3>
+      <h3 onclick="toggleSideSection(this)">디스펜서 연결 <span style="font-size:0.75rem;color:#475569;">▾</span></h3>
       <div class="sidebar-collapsible">
         <div id="device-list" style="display:flex;flex-direction:column;gap:5px;"></div>
-        <button class="btn-save" onclick="startQRScan()" style="margin-top:4px;">📷 QR 스캔으로 등록</button>
-        <span id="device-msg" style="font-size:.76rem;color:#a6e3a1;"></span>
-        <!-- QR 스캔 영역 -->
+        <button class="btn-save" onclick="startQRScan()" style="margin-top:4px;">QR 스캔으로 등록</button>
+        <span id="device-msg" style="font-size:0.75rem;color:#4ade80;"></span>
         <div id="qr-scan-area" style="display:none;margin-top:8px;">
           <video id="qr-video" style="width:100%;border-radius:8px;"></video>
-          <button onclick="stopQRScan()" style="width:100%;margin-top:6px;background:#45475a;color:#cdd6f4;border:none;padding:6px;border-radius:6px;cursor:pointer;font-size:0.8rem;">✕ 취소</button>
+          <button onclick="stopQRScan()" style="width:100%;margin-top:6px;background:#334155;color:#94a3b8;border:none;padding:7px;border-radius:8px;cursor:pointer;font-size:0.8125rem;font-family:inherit;">취소</button>
         </div>
       </div>
     </div>
 
-    <!-- 프로틴 제품 등록 -->
+    <!-- 프로틴 제품 -->
     <div class="sidebar-section">
-      <h3 onclick="toggleSideSection(this)" style="cursor:pointer">🥛 프로틴 제품 <span style="float:right;font-size:0.8rem">▾</span></h3>
+      <h3 onclick="toggleSideSection(this)">프로틴 제품 <span style="font-size:0.75rem;color:#475569;">▾</span></h3>
       <div class="sidebar-collapsible">
         <div id="product-list" style="display:flex;flex-direction:column;gap:5px;"></div>
-        <button class="btn-save" onclick="document.getElementById('product-img-input').click()" style="margin-top:4px;">📸 영양성분표 등록</button>
+        <button class="btn-save" onclick="document.getElementById('product-img-input').click()" style="margin-top:4px;">영양성분표 등록</button>
         <input type="file" id="product-img-input" accept="image/*" style="display:none" onchange="analyzeProductLabel(this.files[0])">
-        <div id="product-analyze-status" style="font-size:.76rem;color:#a6adc8;"></div>
-        <!-- 분석 결과 확인 -->
+        <div id="product-analyze-status" style="font-size:0.75rem;color:#94a3b8;"></div>
         <div id="product-confirm-area" style="display:none;flex-direction:column;gap:6px;margin-top:6px;">
-          <div id="product-preview-info" style="font-size:0.8rem;color:#cdd6f4;background:#1e1e2e;padding:8px;border-radius:6px;"></div>
-          <button class="btn-save" onclick="saveProductFromAnalysis()">✅ 저장</button>
-          <button onclick="cancelProductAnalysis()" style="background:transparent;border:1px solid #45475a;color:#a6adc8;padding:6px;border-radius:6px;cursor:pointer;font-size:0.8rem;">취소</button>
+          <div id="product-preview-info" style="font-size:0.8125rem;color:#e2e8f0;background:#0f172a;padding:10px;border-radius:8px;line-height:1.6;"></div>
+          <button class="btn-save" onclick="saveProductFromAnalysis()">저장</button>
+          <button onclick="cancelProductAnalysis()" style="background:transparent;border:1px solid #334155;color:#94a3b8;padding:6px;border-radius:8px;cursor:pointer;font-size:0.8125rem;font-family:inherit;">취소</button>
         </div>
       </div>
     </div>
 
+    <!-- 프로필 & 목표 -->
     <div class="sidebar-section">
-      <h3 onclick="toggleSideSection(this)" style="cursor:pointer">🎯 프로필 & 목표 <span style="float:right;font-size:0.8rem">▾</span></h3>
+      <h3 onclick="toggleSideSection(this)">프로필 & 목표 <span style="font-size:0.75rem;color:#475569;">▾</span></h3>
       <div class="sidebar-collapsible">
         <label>닉네임</label>
         <input type="text" id="profile-nickname">
@@ -430,7 +931,6 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
     <div id="content-tracker" class="main-content active">
 
       <div class="date-bar">
-        <label>📅</label>
         <input type="date" id="date-input">
       </div>
 
@@ -440,33 +940,33 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
           <span id="progress-goal">목표: 미설정</span>
         </div>
         <div id="progress-bar-bg"><div id="progress-bar" style="width:0%"></div></div>
-        <div id="protein-shortage-box" style="display:none;margin-top:10px;background:#f3f0ff;border-radius:8px;padding:10px 14px;font-size:0.85rem;color:#555;">
+        <div id="protein-shortage-box" style="display:none;">
           <div id="shortage-text"></div>
           <div id="scoop-text" style="margin-top:3px;"></div>
         </div>
       </div>
 
       <div class="card">
-        <div class="section-title">📸 사진으로 분석</div>
+        <div class="section-title">사진으로 분석</div>
         <div id="drop-zone" onclick="document.getElementById('file-input').click()"
              ondragover="event.preventDefault();this.classList.add('drag')"
              ondragleave="this.classList.remove('drag')"
              ondrop="handleDrop(event)">
-          📂 클릭하거나 이미지를 드래그하세요
+          클릭하거나 이미지를 드래그하세요
           <input type="file" id="file-input" accept="image/*" onchange="previewFile(this.files[0])">
         </div>
         <img id="preview-img">
         <br>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-          <button class="btn-analyze" id="analyze-btn" onclick="analyzeImage()" style="margin-top:0;">🔍 AI 분석하기</button>
-          <button id="cancel-btn" onclick="cancelAnalyze()" style="display:none;background:#45475a;color:#cdd6f4;border:none;padding:9px 16px;border-radius:8px;cursor:pointer;font-weight:700;font-size:0.88rem;">✕ 취소</button>
+          <button class="btn-analyze" id="analyze-btn" onclick="analyzeImage()" style="margin-top:0;">AI 분석하기</button>
+          <button id="cancel-btn" onclick="cancelAnalyze()" style="display:none;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:9px 16px;border-radius:8px;cursor:pointer;font-weight:600;font-size:0.875rem;font-family:inherit;">취소</button>
         </div>
         <div id="analyze-status"></div>
         <div id="result-list"></div>
       </div>
 
       <div class="card">
-        <div class="section-title">🔍 음식 직접 검색</div>
+        <div class="section-title">음식 직접 검색</div>
         <div id="search-wrap">
           <input type="text" id="search-input" placeholder="음식명 검색 (예: 닭, 달걀, 밥)..." oninput="searchFood(this.value)" onchange="searchFood(this.value)">
         </div>
@@ -474,64 +974,61 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
       </div>
 
       <div class="card">
-        <div class="section-title">🍽️ 오늘 먹은 음식</div>
+        <div class="section-title">오늘 먹은 음식</div>
         <div id="meal-list"><div id="no-meals">아직 기록된 음식이 없어요.</div></div>
       </div>
+
     </div>
 
     <!-- 기록 탭 -->
     <div id="content-history" class="main-content">
       <div class="card">
-        <div class="section-title">📅 월간 섭취 기록</div>
+        <div class="section-title">월간 섭취 기록</div>
         <div id="calendar-grid" class="calendar-grid"></div>
-        <div style="margin-top:14px;font-size:0.8rem;color:#666;text-align:center;">
-          🟢 목표 달성 &nbsp; 🔴 목표 미달 &nbsp; 🟣 오늘
+        <div style="margin-top:12px;font-size:0.8125rem;color:#94a3b8;text-align:center;">
+          목표 달성 &nbsp;·&nbsp; 목표 미달 &nbsp;·&nbsp; 오늘
         </div>
       </div>
 
-      <!-- 날짜 상세 패널 -->
       <div id="day-detail-panel">
         <div class="detail-header">
           <h3 id="detail-date-title">날짜 선택</h3>
-          <button class="btn-close-detail" onclick="closeDayDetail()">✕ 닫기</button>
+          <button class="btn-close-detail" onclick="closeDayDetail()">닫기</button>
         </div>
-        <!-- 단백질 미니 바 -->
         <div class="detail-protein-bar">
-          <div id="detail-progress-label" style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:5px;">
+          <div id="detail-progress-label" style="display:flex;justify-content:space-between;font-size:0.8125rem;color:#475569;margin-bottom:6px;">
             <span id="detail-protein-text"></span>
             <span id="detail-protein-goal"></span>
           </div>
-          <div style="background:#eee;border-radius:99px;height:10px;overflow:hidden;">
-            <div id="detail-progress-bar" style="height:100%;border-radius:99px;transition:width .4s;background:linear-gradient(90deg,#a6e3a1,#40a02b);width:0%"></div>
+          <div style="background:#f1f5f9;border-radius:9999px;height:8px;overflow:hidden;">
+            <div id="detail-progress-bar" style="height:100%;border-radius:9999px;transition:width .4s;background:linear-gradient(90deg,#4ade80,#16a34a);width:0%"></div>
           </div>
         </div>
-        <!-- 사진 -->
         <div id="detail-photos" class="detail-photos"></div>
-        <!-- 식사 목록 -->
         <div id="detail-meals" class="detail-meal-list"></div>
-        <div id="detail-empty" style="color:#aaa;font-size:0.83rem;display:none;">이 날은 기록이 없어요.</div>
+        <div id="detail-empty" style="color:#94a3b8;font-size:0.875rem;display:none;">이 날은 기록이 없어요.</div>
       </div>
     </div>
 
     <!-- 앨범 탭 -->
     <div id="content-album" class="main-content">
       <div class="card">
-        <div class="section-title">🖼️ 내 음식 사진 앨범</div>
+        <div class="section-title">음식 사진 앨범</div>
         <div id="album-grid" class="album-grid"></div>
-        <div id="album-empty" style="display:none;color:#aaa;font-size:0.83rem;margin-top:10px;">아직 업로드한 사진이 없어요.</div>
+        <div id="album-empty" style="display:none;color:#94a3b8;font-size:0.875rem;margin-top:10px;">아직 업로드한 사진이 없어요.</div>
       </div>
     </div>
 
     <!-- 관리자 탭 -->
     <div id="content-admin" class="main-content">
       <div class="card">
-        <div class="section-title">📦 AI 검색 캐시 <span id="cache-count" style="font-size:0.8rem;color:#888;font-weight:400;"></span></div>
-        <div style="font-size:0.8rem;color:#888;margin-bottom:10px;">✏️ 수정 버튼으로 내용을 고친 뒤, DB 추가 버튼으로 승격하세요.</div>
+        <div class="section-title">AI 검색 캐시 <span id="cache-count" style="font-size:0.8125rem;color:#94a3b8;font-weight:400;"></span></div>
+        <div style="font-size:0.8125rem;color:#94a3b8;margin-bottom:10px;">수정 버튼으로 내용을 고친 뒤, DB 추가 버튼으로 승격하세요.</div>
         <div id="cache-list"></div>
       </div>
       <div class="card" style="margin-top:16px;">
-        <div class="section-title">✅ 커스텀 음식 DB <span id="custom-count" style="font-size:0.8rem;color:#888;font-weight:400;"></span></div>
-        <div style="font-size:0.8rem;color:#888;margin-bottom:10px;">관리자가 승격시킨 음식이에요. 일반 검색에서도 바로 나타나요.</div>
+        <div class="section-title">커스텀 음식 DB <span id="custom-count" style="font-size:0.8125rem;color:#94a3b8;font-weight:400;"></span></div>
+        <div style="font-size:0.8125rem;color:#94a3b8;margin-bottom:10px;">관리자가 승격시킨 음식이에요. 일반 검색에서도 바로 나타나요.</div>
         <div id="custom-list"></div>
       </div>
     </div>
@@ -541,15 +1038,15 @@ body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; mi
 
 <!-- 라이트박스 -->
 <div id="lightbox" onclick="closeLightbox()">
-  <span id="lightbox-close">✕</span>
+  <span id="lightbox-close">&times;</span>
   <img id="lightbox-img" src="" alt="">
 </div>
 
 <!-- 계정 삭제 확인 모달 -->
 <div id="confirm-modal">
   <div class="modal-box">
-    <h3>⚠️ 계정을 삭제하시겠습니까?</h3>
-    <p>모든 식사 기록과 업로드한 사진이 <strong style="color:#f38ba8">영구적으로 삭제</strong>됩니다. 이 작업은 되돌릴 수 없습니다.</p>
+    <h3>계정을 삭제하시겠습니까?</h3>
+    <p>모든 식사 기록과 업로드한 사진이 <strong style="color:#f87171">영구적으로 삭제</strong>됩니다. 이 작업은 되돌릴 수 없습니다.</p>
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeDeleteConfirm()">취소</button>
       <button class="modal-confirm" onclick="deleteAccount()">삭제</button>
@@ -663,18 +1160,15 @@ function applyUserData(userData) {
     document.getElementById('goal-display').textContent = `목표: ${goalProtein.toFixed(0)}g`;
     document.getElementById('progress-goal').textContent = `목표: ${goalProtein.toFixed(0)}g`;
   }
-  // 관리자 탭 표시/숨김
   const adminBtn = document.getElementById('btn-admin');
   if (adminBtn) adminBtn.style.display = userData.is_admin ? 'block' : 'none';
 }
 
-// 페이지 로드 시 세션 유지 확인
 window.addEventListener('load', async () => {
   const res = await fetch('/api/check-login');
   const data = await res.json();
   if (data.logged_in) showApp(data);
 
-  // 안드로이드 WebView에서만 capture 추가 (웹브라우저는 선택창 유지)
   const ua = navigator.userAgent;
   const isAndroidWebView = /Android/.test(ua) && /wv|Version\/[\d.]+.*Chrome/.test(ua);
   if (isAndroidWebView) {
@@ -707,9 +1201,6 @@ function switchTab(id) {
 }
 
 // ══════════════════════════════════════════
-//  설정 저장
-// ══════════════════════════════════════════
-// ══════════════════════════════════════════
 //  하드웨어 기기 연결
 // ══════════════════════════════════════════
 let qrScanner = null;
@@ -720,18 +1211,18 @@ async function loadDeviceList() {
   if (!container) return;
   container.innerHTML = '';
   if (!Array.isArray(res) || !res.length) {
-    container.innerHTML = '<div style="font-size:0.78rem;color:#6c7086;">연결된 기기 없음</div>';
+    container.innerHTML = '<div style="font-size:0.8125rem;color:#475569;">연결된 기기 없음</div>';
     return;
   }
   res.forEach(d => {
     const div = document.createElement('div');
-    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;background:#1e1e2e;border-radius:6px;padding:6px 8px;font-size:0.78rem;';
+    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;background:#0f172a;border-radius:6px;padding:7px 10px;font-size:0.8125rem;border:1px solid #334155;';
     div.innerHTML = `
       <div>
-        <div style="color:#cdd6f4;font-weight:600;">${d.name}</div>
-        <div style="color:#6c7086;">${d.last_seen ? '최근: ' + d.last_seen.slice(0,10) : '미접속'}</div>
+        <div style="color:#e2e8f0;font-weight:600;">${d.name}</div>
+        <div style="color:#475569;font-size:0.75rem;">${d.last_seen ? '최근: ' + d.last_seen.slice(0,10) : '미접속'}</div>
       </div>
-      <button onclick="unlinkDevice(${d.id})" style="background:#f38ba8;color:#1e1e2e;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:0.72rem;">해제</button>
+      <button onclick="unlinkDevice(${d.id})" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:0.75rem;font-family:inherit;">해제</button>
     `;
     container.appendChild(div);
   });
@@ -751,7 +1242,6 @@ async function startQRScan() {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     video.srcObject = stream;
     video.play();
-    // jsQR 라이브러리로 QR 인식
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     qrScanner = setInterval(() => {
@@ -769,7 +1259,7 @@ async function startQRScan() {
     }, 200);
   } catch(e) {
     document.getElementById('device-msg').textContent = '카메라 접근 실패: ' + e.message;
-    document.getElementById('device-msg').style.color = '#f38ba8';
+    document.getElementById('device-msg').style.color = '#f87171';
     area.style.display = 'none';
   }
 }
@@ -786,19 +1276,19 @@ function stopQRScan() {
 
 async function registerDevice(token) {
   const msg = document.getElementById('device-msg');
-  msg.style.color = '#a6adc8';
+  msg.style.color = '#94a3b8';
   msg.textContent = '등록 중...';
   const res = await fetch('/api/device/register', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ token })
   }).then(r => r.json());
   if (res.status === 'ok' || res.status === 'already_registered') {
-    msg.style.color = '#a6e3a1';
-    msg.textContent = '✅ 기기 등록 완료!';
+    msg.style.color = '#4ade80';
+    msg.textContent = '기기 등록 완료!';
     loadDeviceList();
   } else {
-    msg.style.color = '#f38ba8';
-    msg.textContent = '❌ ' + (res.error || '등록 실패');
+    msg.style.color = '#f87171';
+    msg.textContent = res.error || '등록 실패';
   }
   setTimeout(() => msg.textContent = '', 3000);
 }
@@ -814,22 +1304,22 @@ async function loadProductList() {
   if (!container) return;
   container.innerHTML = '';
   if (!Array.isArray(res) || !res.length) {
-    container.innerHTML = '<div style="font-size:0.78rem;color:#6c7086;">등록된 제품 없음</div>';
+    container.innerHTML = '<div style="font-size:0.8125rem;color:#475569;">등록된 제품 없음</div>';
     window._activeProduct = null;
     updateProgress(null);
     return;
   }
-  window._activeProduct = res[0]; // 가장 최근 제품을 활성으로
+  window._activeProduct = res[0];
   updateProgress(null);
   res.forEach(p => {
     const div = document.createElement('div');
-    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;background:#1e1e2e;border-radius:6px;padding:6px 8px;font-size:0.78rem;';
+    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;background:#0f172a;border-radius:6px;padding:7px 10px;font-size:0.8125rem;border:1px solid #334155;';
     div.innerHTML = `
       <div>
-        <div style="color:#cdd6f4;font-weight:600;">${p.name}</div>
-        <div style="color:#6c7086;">1스쿱 ${p.protein_per_scoop}g 단백질 · ${p.scoop_weight_g}g</div>
+        <div style="color:#e2e8f0;font-weight:600;">${p.name}</div>
+        <div style="color:#475569;font-size:0.75rem;">1스쿱 ${p.protein_per_scoop}g 단백질 · ${p.scoop_weight_g}g</div>
       </div>
-      <button onclick="deleteProduct(${p.id})" style="background:#f38ba8;color:#1e1e2e;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:0.72rem;">삭제</button>
+      <button onclick="deleteProduct(${p.id})" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:0.75rem;font-family:inherit;">삭제</button>
     `;
     container.appendChild(div);
   });
@@ -840,14 +1330,14 @@ async function analyzeProductLabel(file) {
   const status = document.getElementById('product-analyze-status');
   const confirmArea = document.getElementById('product-confirm-area');
   confirmArea.style.display = 'none';
-  status.textContent = '⏳ AI가 영양성분표를 분석 중...';
+  status.textContent = 'AI가 영양성분표를 분석 중...';
   const formData = new FormData();
   formData.append('image', file);
   try {
     const res = await fetch('/api/protein-product/analyze', { method: 'POST', body: formData });
     const data = await res.json();
     if (data.error) {
-      status.textContent = '❌ ' + data.error;
+      status.textContent = data.error;
       return;
     }
     status.textContent = '';
@@ -860,9 +1350,8 @@ async function analyzeProductLabel(file) {
     `;
     confirmArea.style.display = 'flex';
   } catch(e) {
-    status.textContent = '❌ 오류: ' + e.message;
+    status.textContent = '오류: ' + e.message;
   }
-  // input 초기화
   document.getElementById('product-img-input').value = '';
 }
 
@@ -874,7 +1363,7 @@ async function saveProductFromAnalysis() {
   });
   _pendingProduct = null;
   document.getElementById('product-confirm-area').style.display = 'none';
-  document.getElementById('product-analyze-status').textContent = '✅ 제품 저장 완료!';
+  document.getElementById('product-analyze-status').textContent = '제품 저장 완료!';
   setTimeout(() => document.getElementById('product-analyze-status').textContent = '', 2000);
   loadProductList();
 }
@@ -908,8 +1397,8 @@ async function saveProfile() {
   document.getElementById('username-display-sub').textContent =
     document.getElementById('username-display-sub').textContent.split(' · ')[0] +
     (display_name && display_name !== nickname ? ' · ' + display_name : '');
-  updateProgress(null); // 재계산
-  alert('✅ 프로필이 저장됐어요!');
+  updateProgress(null);
+  alert('프로필이 저장됐어요!');
 }
 
 // ══════════════════════════════════════════
@@ -970,8 +1459,6 @@ async function analyzeImage() {
   const status = document.getElementById('analyze-status');
   btn.disabled = true;
   status.innerHTML = '<span class="spinner"></span> AI가 분석 중입니다...';
-  
-  // 기존 검색 결과창만 비우고, 아래쪽 저장된 식단 목록(meals)은 건드리지 않습니다.
   document.getElementById('result-list').innerHTML = '';
 
   const formData = new FormData();
@@ -980,28 +1467,21 @@ async function analyzeImage() {
     const res = await fetch('/api/analyze', {method:'POST', body: formData});
     const data = await res.json();
     status.textContent = '';
-    
-    if (data.error) { 
-      status.textContent = '❌ ' + data.error; 
-      btn.disabled = false; 
-      return; 
+    if (data.error) {
+      status.textContent = data.error;
+      btn.disabled = false;
+      return;
     }
-
-    // AI 결과를 화면에 그립니다.
-    // 주의: renderResults 내부에서 loadMeals()를 호출하고 있는지 확인이 필요합니다.
     renderResults(data.foods || [], data.image_path);
-    
-    // 만약 이 아래에 loadMeals(); 가 있다면 반드시 지워야 합니다.
-    
   } catch(e) {
-    status.textContent = '❌ 서버 오류: ' + e.message;
+    status.textContent = '서버 오류: ' + e.message;
   }
   btn.disabled = false;
 }
 
 function renderResults(foods, imagePath) {
   const container = document.getElementById('result-list');
-  if (!foods.length) { container.innerHTML = '<div style="color:#aaa;font-size:.83rem">음식을 인식하지 못했어요.</div>'; return; }
+  if (!foods.length) { container.innerHTML = '<div style="color:#94a3b8;font-size:0.875rem">음식을 인식하지 못했어요.</div>'; return; }
   container.innerHTML = '';
 
   window._analyzeResults = foods.map((food, idx) => ({ ...food, excluded: false, idx }));
@@ -1024,7 +1504,7 @@ function renderResults(foods, imagePath) {
       </div>
       <div class="qty-box">
         <input type="number" class="qty-input" id="ai-qty-${idx}" value="1" min="0.1" step="0.1">
-        <button class="btn-exclude" onclick="excludeItem(${idx})">✕ 제외</button>
+        <button class="btn-exclude" onclick="excludeItem(${idx})">제외</button>
       </div>
     `;
     container.appendChild(div);
@@ -1032,7 +1512,7 @@ function renderResults(foods, imagePath) {
 
   const addAllBtn = document.createElement('button');
   addAllBtn.className = 'btn-add-all';
-  addAllBtn.textContent = '✅ 모두 추가하기';
+  addAllBtn.textContent = '모두 추가하기';
   addAllBtn.onclick = addAllMeals;
   container.appendChild(addAllBtn);
 }
@@ -1042,7 +1522,7 @@ function excludeItem(idx) {
   const el = document.getElementById(`result-item-${idx}`);
   if (el) el.style.opacity = '0.35';
   const btn = el.querySelector('.btn-exclude');
-  if (btn) { btn.textContent = '↩ 복구'; btn.onclick = () => restoreItem(idx); }
+  if (btn) { btn.textContent = '복구'; btn.onclick = () => restoreItem(idx); }
 }
 
 function restoreItem(idx) {
@@ -1050,7 +1530,7 @@ function restoreItem(idx) {
   const el = document.getElementById(`result-item-${idx}`);
   if (el) el.style.opacity = '1';
   const btn = el.querySelector('.btn-exclude');
-  if (btn) { btn.textContent = '✕ 제외'; btn.onclick = () => excludeItem(idx); }
+  if (btn) { btn.textContent = '제외'; btn.onclick = () => excludeItem(idx); }
 }
 
 async function addAllMeals() {
@@ -1092,19 +1572,18 @@ async function addAllMeals() {
 //  음식 검색
 // ══════════════════════════════════════════
 async function searchFood(q) {
-  if (window._aiSearching) return; // AI 검색 중이면 무시
+  if (window._aiSearching) return;
   clearTimeout(searchTimer);
   const container = document.getElementById('search-results');
   if (!q.trim()) { container.innerHTML = ''; return; }
   searchTimer = setTimeout(async () => {
-    if (window._aiSearching) return; // 타이머 실행 시점에도 체크
-    container.innerHTML = '<div style="color:#aaa;font-size:.82rem;padding:6px"><span class="spinner"></span> 검색 중...</div>';
+    if (window._aiSearching) return;
+    container.innerHTML = '<div style="color:#94a3b8;font-size:0.875rem;padding:6px"><span class="spinner"></span> 검색 중...</div>';
     const data = await fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r => r.json());
-    if (window._aiSearching) return; // fetch 완료 후에도 체크
+    if (window._aiSearching) return;
     container.innerHTML = '';
 
     if (data.length) {
-      // DB 결과 표시
       data.forEach(item => {
         const div = document.createElement('div');
         div.className = 'search-item';
@@ -1116,30 +1595,29 @@ async function searchFood(q) {
           <div class="si-protein">${item.protein_g}g</div>
           <div class="qty-box">
             <input type="number" class="qty-input" id="qty-${item.food_cd}" value="1" min="0.1" step="0.1">
-            <button class="btn-add" onclick="addMealFromSearch('${item.food_cd}','${item.name.replace(/'/g,"\\'")}',${item.protein_g},${item.energy_kcal||0},${item.fat_g||0},${item.carb_g||0},'${item.std_unit||''}')">+추가</button>
+            <button class="btn-add" onclick="addMealFromSearch('${item.food_cd}','${item.name.replace(/'/g,"\\'")}',${item.protein_g},${item.energy_kcal||0},${item.fat_g||0},${item.carb_g||0},'${item.std_unit||''}')">추가</button>
           </div>
         `;
         container.appendChild(div);
       });
     }
 
-    // DB 결과 있어도 없어도 항상 AI 검색 버튼 표시
     const aiDiv = document.createElement('div');
-    aiDiv.style.cssText = 'color:#aaa;font-size:.82rem;padding:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;';
+    aiDiv.style.cssText = 'color:#94a3b8;font-size:0.8125rem;padding:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;';
     aiDiv.innerHTML = data.length
       ? `<span>원하는 음식이 없으면?</span>
-         <button class="btn-add" style="background:#cba6f7;color:#1e1e2e;" onclick="searchWithAI('${q.replace(/'/g,"\\'")}')">🤖 AI로 검색</button>`
+         <button class="btn-add" style="background:#6d28d9;color:#fff;" onclick="searchWithAI('${q.replace(/'/g,"\\'")}')">AI로 검색</button>`
       : `<span>DB에 없는 음식이에요.</span>
-         <button class="btn-add" style="background:#cba6f7;color:#1e1e2e;" onclick="searchWithAI('${q.replace(/'/g,"\\'")}')">🤖 AI로 검색</button>`;
+         <button class="btn-add" style="background:#6d28d9;color:#fff;" onclick="searchWithAI('${q.replace(/'/g,"\\'")}')">AI로 검색</button>`;
     container.appendChild(aiDiv);
   }, 300);
 }
 
 async function searchWithAI(foodName) {
   const container = document.getElementById('search-results');
-  window._aiSearching = true; // AI 검색 시작 — searchFood 차단
-  clearTimeout(searchTimer);  // 혹시 대기 중인 타이머도 취소
-  container.innerHTML = '<div style="color:#aaa;font-size:.82rem;padding:6px"><span class="spinner"></span> AI가 영양 정보를 찾는 중...</div>';
+  window._aiSearching = true;
+  clearTimeout(searchTimer);
+  container.innerHTML = '<div style="color:#94a3b8;font-size:0.875rem;padding:6px"><span class="spinner"></span> AI가 영양 정보를 찾는 중...</div>';
   try {
     const res = await fetch('/api/search-ai', {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -1147,7 +1625,7 @@ async function searchWithAI(foodName) {
     });
     const item = await res.json();
     if (item.error) {
-      container.innerHTML = `<div style="color:#f38ba8;font-size:.82rem;padding:6px">❌ ${item.error}</div>`;
+      container.innerHTML = `<div style="color:#f87171;font-size:0.875rem;padding:6px">${item.error}</div>`;
       return;
     }
     container.innerHTML = '';
@@ -1162,14 +1640,14 @@ async function searchWithAI(foodName) {
       <div class="si-protein">${item.protein_g}g</div>
       <div class="qty-box">
         <input type="number" class="qty-input" id="qty-${aiId}" value="1" min="0.1" step="0.1">
-        <button class="btn-add" onclick="addMealFromAISearch('${aiId}','${item.name.replace(/'/g,"\\'")}',${item.protein_g},${item.energy_kcal||0},${item.fat_g||0},${item.carb_g||0},'${item.std_unit||'1인분'}')">+추가</button>
+        <button class="btn-add" onclick="addMealFromAISearch('${aiId}','${item.name.replace(/'/g,"\\'")}',${item.protein_g},${item.energy_kcal||0},${item.fat_g||0},${item.carb_g||0},'${item.std_unit||'1인분'}')">추가</button>
       </div>
     `;
     container.appendChild(div);
   } catch(e) {
-    container.innerHTML = `<div style="color:#f38ba8;font-size:.82rem;padding:6px">❌ 오류: ${e.message}</div>`;
+    container.innerHTML = `<div style="color:#f87171;font-size:0.875rem;padding:6px">오류: ${e.message}</div>`;
   } finally {
-    window._aiSearching = false; // 완료 후 해제
+    window._aiSearching = false;
   }
 }
 
@@ -1236,7 +1714,6 @@ async function loadMeals() {
     const div = document.createElement('div');
     div.className = 'meal-item';
     div.id = `meal-item-${m.id}`;
-    // amount에서 인분 숫자 추출 (예: "1.5인분" → 1.5)
     const curQty = parseFloat((m.amount || '1').replace(/[^0-9.]/g,'')) || 1;
     div.innerHTML = `
       <div style="flex:1">
@@ -1244,8 +1721,8 @@ async function loadMeals() {
         <div class="mi-detail" id="meal-detail-${m.id}">${m.amount||''} ${m.energy_kcal ? '· '+m.energy_kcal+'kcal' : ''}</div>
       </div>
       <div class="mi-protein" id="meal-protein-${m.id}">${parseFloat(m.protein_g).toFixed(1)}g</div>
-      <button class="btn-add" style="padding:5px 9px;font-size:0.78rem;" onclick="showMealEdit(${m.id},${m.protein_g},'${m.food_name.replace(/'/g,"\\'")}',${curQty})">✏️</button>
-      <button class="btn-delete" onclick="deleteMeal(${m.id})">✕</button>
+      <button class="btn-add" style="padding:5px 9px;font-size:0.8125rem;" onclick="showMealEdit(${m.id},${m.protein_g},'${m.food_name.replace(/'/g,"\\'")}',${curQty})">수정</button>
+      <button class="btn-delete" onclick="deleteMeal(${m.id})">삭제</button>
     `;
     container.appendChild(div);
   });
@@ -1253,24 +1730,23 @@ async function loadMeals() {
 }
 
 function showMealEdit(id, baseProteinPerUnit, name, curQty) {
-  // 이미 편집 중이면 닫기
   const existing = document.getElementById(`meal-edit-${id}`);
   if (existing) { existing.remove(); return; }
   const item = document.getElementById(`meal-item-${id}`);
   const editRow = document.createElement('div');
   editRow.id = `meal-edit-${id}`;
-  editRow.style.cssText = 'display:flex;gap:6px;align-items:center;padding:8px;background:#f0fff4;border:1px solid #b2f2bb;border-radius:8px;margin-top:4px;flex-wrap:wrap;';
+  editRow.style.cssText = 'display:flex;gap:6px;align-items:center;padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-top:4px;flex-wrap:wrap;';
   editRow.innerHTML = `
-    <span style="font-size:0.82rem;color:#555;flex:1;min-width:80px;">${name}</span>
+    <span style="font-size:0.875rem;color:#475569;flex:1;min-width:80px;">${name}</span>
     <div style="display:flex;align-items:center;gap:4px;">
-      <label style="font-size:0.75rem;color:#888;">인분:</label>
+      <label style="font-size:0.8125rem;color:#94a3b8;">인분</label>
       <input type="number" id="edit-qty-${id}" value="${curQty}" min="0.1" step="0.1"
-        style="width:60px;padding:4px;border:1px solid #ddd;border-radius:6px;font-size:0.83rem;text-align:center;">
+        style="width:64px;padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.875rem;text-align:center;font-family:inherit;background:#fff;color:#0f172a;">
     </div>
     <button onclick="updateMealQty(${id},${baseProteinPerUnit})"
-      style="background:#40a02b;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">저장</button>
+      style="background:#16a34a;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.8125rem;font-weight:600;font-family:inherit;">저장</button>
     <button onclick="document.getElementById('meal-edit-${id}').remove()"
-      style="background:#eee;border:none;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:0.78rem;">✕</button>
+      style="background:#f1f5f9;border:1px solid #e2e8f0;color:#64748b;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:0.8125rem;font-family:inherit;">취소</button>
   `;
   item.after(editRow);
 }
@@ -1278,14 +1754,11 @@ function showMealEdit(id, baseProteinPerUnit, name, curQty) {
 async function updateMealQty(id, baseProteinPerUnit) {
   const newQty = parseFloat(document.getElementById(`edit-qty-${id}`).value) || 1;
   const d = document.getElementById('date-input').value;
-  // 현재 meal 정보 가져오기
   const meals = await fetch(`/api/meals?date=${d}`).then(r => r.json());
   const meal = meals.find(m => m.id === id);
   if (!meal) return;
-  // 기존 1인분 기준 단백질 계산
   const curQty = parseFloat((meal.amount || '1').replace(/[^0-9.]/g,'')) || 1;
   const proteinPerUnit = parseFloat(meal.protein_g) / curQty;
-  // DELETE 후 새로 INSERT (수정)
   await fetch(`/api/meals?id=${id}`, {method: 'DELETE'});
   await fetch('/api/meals', {
     method: 'POST', headers: {'Content-Type':'application/json'},
@@ -1316,7 +1789,7 @@ function updateProgress(total) {
     const pct = Math.min(100, (total / goalProtein) * 100);
     document.getElementById('progress-bar').style.width = pct + '%';
     document.getElementById('progress-bar').style.background =
-      pct >= 100 ? 'linear-gradient(90deg,#cba6f7,#89b4fa)' : 'linear-gradient(90deg,#a6e3a1,#40a02b)';
+      pct >= 100 ? 'linear-gradient(90deg,#a78bfa,#6d28d9)' : 'linear-gradient(90deg,#4ade80,#16a34a)';
     const shortage = Math.max(0, goalProtein - total);
     if (shortage > 0.5) {
       shortageBox.style.display = 'block';
@@ -1326,11 +1799,11 @@ function updateProgress(total) {
         const p = window._activeProduct;
         const scoops = (shortage / p.protein_per_scoop).toFixed(1);
         const grams = p.scoop_weight_g > 0 ? ` (약 ${(scoops * p.scoop_weight_g).toFixed(0)}g)` : '';
-        scEl.textContent = `🥛 ${p.name} ${scoops}스쿱${grams} 섭취하면 채울 수 있어요`;
-        scEl.style.cssText = 'margin-top:3px;font-weight:700;color:#cba6f7;font-size:0.85rem;';
+        scEl.textContent = `${p.name} ${scoops}스쿱${grams} 섭취하면 채울 수 있어요`;
+        scEl.style.cssText = 'margin-top:3px;font-weight:600;color:#6d28d9;font-size:0.875rem;';
       } else {
-        scEl.textContent = '💡 사이드바에서 프로틴 제품을 등록하면 스쿱 수를 알려드려요';
-        scEl.style.cssText = 'margin-top:3px;font-weight:400;color:#888;font-size:0.78rem;';
+        scEl.textContent = '사이드바에서 프로틴 제품을 등록하면 스쿱 수를 알려드려요';
+        scEl.style.cssText = 'margin-top:3px;font-weight:400;color:#94a3b8;font-size:0.8125rem;';
       }
     } else {
       shortageBox.style.display = 'none';
@@ -1352,7 +1825,7 @@ async function loadHistory() {
 
   ['일','월','화','수','목','금','토'].forEach(d => {
     const h = document.createElement('div');
-    h.style.cssText = 'text-align:center;font-weight:700;color:#cba6f7;padding:8px 0;font-size:0.82rem';
+    h.style.cssText = 'text-align:center;font-weight:600;color:#94a3b8;padding:8px 0;font-size:0.8125rem;';
     h.textContent = d;
     container.appendChild(h);
   });
@@ -1387,27 +1860,24 @@ async function openDayDetail(dayStr, goal) {
   const panel = document.getElementById('day-detail-panel');
   panel.classList.add('show');
 
-  const formatted = dayStr.replace(/-/g, '.').slice(2); // 예: 25.04.19
-  document.getElementById('detail-date-title').textContent = `📅 ${formatted} 상세 기록`;
+  const formatted = dayStr.replace(/-/g, '.').slice(2);
+  document.getElementById('detail-date-title').textContent = `${formatted} 상세 기록`;
 
-  // 로딩 표시
-  document.getElementById('detail-meals').innerHTML = '<div style="color:#aaa;font-size:.83rem">불러오는 중...</div>';
+  document.getElementById('detail-meals').innerHTML = '<div style="color:#94a3b8;font-size:0.875rem">불러오는 중...</div>';
   document.getElementById('detail-photos').innerHTML = '';
   document.getElementById('detail-empty').style.display = 'none';
 
   const res = await fetch(`/api/day-detail?date=${dayStr}`).then(r => r.json());
   const { meals, photos, total_protein } = res;
 
-  // 단백질 바
   const effectiveGoal = goal || goalProtein;
   const pct = effectiveGoal > 0 ? Math.min(100, (total_protein / effectiveGoal) * 100) : 0;
   document.getElementById('detail-protein-text').textContent = `섭취: ${parseFloat(total_protein).toFixed(1)}g`;
   document.getElementById('detail-protein-goal').textContent = effectiveGoal > 0 ? `목표: ${effectiveGoal.toFixed(0)}g` : '';
   const bar = document.getElementById('detail-progress-bar');
   bar.style.width = pct + '%';
-  bar.style.background = pct >= 100 ? 'linear-gradient(90deg,#cba6f7,#89b4fa)' : 'linear-gradient(90deg,#a6e3a1,#40a02b)';
+  bar.style.background = pct >= 100 ? 'linear-gradient(90deg,#a78bfa,#6d28d9)' : 'linear-gradient(90deg,#4ade80,#16a34a)';
 
-  // 사진
   const photoContainer = document.getElementById('detail-photos');
   photoContainer.innerHTML = '';
   photos.forEach(fname => {
@@ -1419,7 +1889,6 @@ async function openDayDetail(dayStr, goal) {
     photoContainer.appendChild(img);
   });
 
-  // 식사 목록
   const mealContainer = document.getElementById('detail-meals');
   mealContainer.innerHTML = '';
   if (!meals.length) {
@@ -1450,7 +1919,7 @@ function closeDayDetail() {
 async function loadAlbum() {
   const container = document.getElementById('album-grid');
   const empty = document.getElementById('album-empty');
-  container.innerHTML = '<div style="color:#aaa;font-size:.83rem">불러오는 중...</div>';
+  container.innerHTML = '<div style="color:#94a3b8;font-size:0.875rem">불러오는 중...</div>';
   empty.style.display = 'none';
 
   const photos = await fetch('/api/album').then(r => r.json());
@@ -1470,7 +1939,7 @@ async function loadAlbum() {
     item.innerHTML = `
       <img src="${url}" alt="${dateLabel}" loading="lazy" onclick="openLightbox('${url}')">
       <div class="album-date">${dateLabel}</div>
-      <button class="album-download" onclick="downloadPhoto('${url}','${filename}')">⬇</button>
+      <button class="album-download" onclick="downloadPhoto('${url}','${filename}')">저장</button>
     `;
     container.appendChild(item);
   });
@@ -1489,48 +1958,37 @@ async function loadCacheList() {
   const countEl = document.getElementById('cache-count');
   if (!container) return;
   if (!Array.isArray(res)) {
-    container.innerHTML = '<div style="color:#f38ba8;font-size:.82rem;">권한 없음</div>'; return;
+    container.innerHTML = '<div style="color:#f87171;font-size:0.875rem;">권한 없음</div>'; return;
   }
   countEl.textContent = `(${res.length}개)`;
-  if (!res.length) { container.innerHTML = '<div style="color:#aaa;font-size:.82rem;">캐시 없음</div>'; return; }
+  if (!res.length) { container.innerHTML = '<div style="color:#94a3b8;font-size:0.875rem;">캐시 없음</div>'; return; }
   container.innerHTML = '';
   res.forEach(c => {
     const div = document.createElement('div');
     div.id = `cache-row-${c.id}`;
-    div.style.cssText = 'padding:10px 0;border-bottom:1px solid #eee;';
+    div.style.cssText = 'padding:10px 0;border-bottom:1px solid #f1f5f9;';
     div.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
         <div style="flex:1;min-width:120px;">
-          <div style="font-weight:600;font-size:0.88rem;" id="cache-name-display-${c.id}">${c.food_name}</div>
-          <div style="font-size:0.75rem;color:#888;">
+          <div style="font-weight:600;font-size:0.875rem;" id="cache-name-display-${c.id}">${c.food_name}</div>
+          <div style="font-size:0.8125rem;color:#94a3b8;">
             단백질 <span id="cache-protein-display-${c.id}">${c.protein_g}</span>g ·
             <span id="cache-kcal-display-${c.id}">${c.energy_kcal}</span>kcal ·
-            검색 <strong>${c.search_count}회</strong>
+            검색 ${c.search_count}회
           </div>
         </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;">
-          <button onclick="toggleCacheEdit(${c.id})" style="background:#89b4fa;color:#1e1e2e;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">✏️ 수정</button>
-          <button onclick="promoteCache(${c.id})" style="background:#a6e3a1;color:#1e1e2e;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">✅ DB 추가</button>
-          <button onclick="deleteCacheItem(${c.id})" style="background:#f38ba8;color:#1e1e2e;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">🗑 삭제</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button onclick="toggleCacheEdit(${c.id})" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.8125rem;font-family:inherit;">수정</button>
+          <button onclick="promoteToCustom(${c.id})" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.8125rem;font-family:inherit;">DB 추가</button>
+          <button onclick="deleteCache(${c.id})" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.8125rem;font-family:inherit;">삭제</button>
         </div>
       </div>
-      <!-- 수정 폼 (기본 숨김) -->
-      <div id="cache-edit-${c.id}" style="display:none;margin-top:8px;background:#f8f8ff;border-radius:8px;padding:10px;">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;">
-          <div style="flex:1;min-width:100px;">
-            <label style="font-size:0.75rem;color:#888;">검색어(음식명)</label>
-            <input id="edit-name-${c.id}" value="${c.name}" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:5px;font-size:0.83rem;margin-top:2px;">
-          </div>
-          <div style="width:75px;">
-            <label style="font-size:0.75rem;color:#888;">단백질(g)</label>
-            <input id="edit-protein-${c.id}" type="number" value="${c.protein_g}" step="0.1" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:5px;font-size:0.83rem;margin-top:2px;">
-          </div>
-          <div style="width:75px;">
-            <label style="font-size:0.75rem;color:#888;">칼로리</label>
-            <input id="edit-kcal-${c.id}" type="number" value="${c.energy_kcal||0}" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:5px;font-size:0.83rem;margin-top:2px;">
-          </div>
-          <button onclick="saveCacheEdit(${c.id})" style="background:#cba6f7;color:#1e1e2e;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">💾 수정 저장</button>
-          <button onclick="toggleCacheEdit(${c.id})" style="background:#eee;border:none;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;">✕</button>
+      <div id="cache-edit-${c.id}" style="display:none;margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input id="cache-edit-name-${c.id}" value="${c.food_name}" placeholder="음식명" style="flex:1;min-width:100px;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.875rem;font-family:inherit;">
+          <input id="cache-edit-protein-${c.id}" value="${c.protein_g}" placeholder="단백질g" style="width:80px;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.875rem;font-family:inherit;">
+          <input id="cache-edit-kcal-${c.id}" value="${c.energy_kcal}" placeholder="kcal" style="width:80px;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.875rem;font-family:inherit;">
+          <button onclick="saveCacheEdit(${c.id})" style="background:#6d28d9;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:0.8125rem;font-weight:600;font-family:inherit;">저장</button>
         </div>
       </div>
     `;
@@ -1540,60 +1998,34 @@ async function loadCacheList() {
 
 function toggleCacheEdit(id) {
   const el = document.getElementById(`cache-edit-${id}`);
-  if (!el) return;
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
 async function saveCacheEdit(id) {
-  const name = document.getElementById(`edit-name-${id}`).value.trim();
-  const protein = parseFloat(document.getElementById(`edit-protein-${id}`).value) || 0;
-  const kcal = parseFloat(document.getElementById(`edit-kcal-${id}`).value) || 0;
-  // 캐시 내용 업데이트 API 호출
-  const res = await fetch('/api/admin/cache/update', {
+  const name = document.getElementById(`cache-edit-name-${id}`).value.trim();
+  const protein = parseFloat(document.getElementById(`cache-edit-protein-${id}`).value) || 0;
+  const kcal = parseFloat(document.getElementById(`cache-edit-kcal-${id}`).value) || 0;
+  await fetch('/api/admin/cache/edit', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({cache_id: id, name, protein_g: protein, energy_kcal: kcal})
-  }).then(r => r.json());
-  if (res.status === 'ok') {
-    // 화면에서 즉시 반영
-    const nameEl = document.getElementById(`cache-name-display-${id}`);
-    const proteinEl = document.getElementById(`cache-protein-display-${id}`);
-    const kcalEl = document.getElementById(`cache-kcal-display-${id}`);
-    if (nameEl) nameEl.textContent = name;
-    if (proteinEl) proteinEl.textContent = protein;
-    if (kcalEl) kcalEl.textContent = kcal;
-    toggleCacheEdit(id);
-  } else {
-    alert('❌ ' + (res.error || '수정 실패'));
-  }
+    body: JSON.stringify({id, food_name: name, protein_g: protein, energy_kcal: kcal})
+  });
+  document.getElementById(`cache-name-display-${id}`).textContent = name;
+  document.getElementById(`cache-protein-display-${id}`).textContent = protein;
+  document.getElementById(`cache-kcal-display-${id}`).textContent = kcal;
+  document.getElementById(`cache-edit-${id}`).style.display = 'none';
 }
 
-async function promoteCache(cacheId) {
-  // 현재 화면에 표시된 값으로 DB 추가
-  const name = document.getElementById(`cache-name-display-${cacheId}`)?.textContent;
-  const protein = document.getElementById(`cache-protein-display-${cacheId}`)?.textContent;
-  const kcal = document.getElementById(`cache-kcal-display-${cacheId}`)?.textContent;
-  if (!confirm(`"${name}"을(를) 커스텀 DB에 추가할까요?`)) return;
-  const res = await fetch('/api/admin/promote', {
+async function promoteToCustom(id) {
+  await fetch('/api/admin/promote', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      cache_id: cacheId,
-      edited_name: name,
-      edited_protein: parseFloat(protein),
-      edited_kcal: parseFloat(kcal)
-    })
-  }).then(r => r.json());
-  if (res.status === 'ok') {
-    alert(`✅ "${res.promoted}" DB에 추가됐어요!`);
-    loadAdminData();
-  } else {
-    alert('❌ ' + (res.error || '오류'));
-  }
+    body: JSON.stringify({cache_id: id})
+  });
+  loadAdminData();
 }
 
-async function deleteCacheItem(id) {
-  if (!confirm('캐시에서 삭제할까요?')) return;
-  await fetch(`/api/admin/cache/delete?id=${id}`, {method: 'DELETE'});
-  loadCacheList();
+async function deleteCache(id) {
+  await fetch(`/api/admin/cache?id=${id}`, {method:'DELETE'});
+  document.getElementById(`cache-row-${id}`)?.remove();
 }
 
 async function loadCustomList() {
@@ -1602,54 +2034,58 @@ async function loadCustomList() {
   const countEl = document.getElementById('custom-count');
   if (!container) return;
   if (!Array.isArray(res)) {
-    container.innerHTML = '<div style="color:#f38ba8;font-size:.82rem;">권한 없음</div>'; return;
+    container.innerHTML = '<div style="color:#f87171;font-size:0.875rem;">권한 없음</div>'; return;
   }
   countEl.textContent = `(${res.length}개)`;
-  if (!res.length) { container.innerHTML = '<div style="color:#aaa;font-size:.82rem;">등록된 항목 없음</div>'; return; }
+  if (!res.length) { container.innerHTML = '<div style="color:#94a3b8;font-size:0.875rem;">등록된 음식 없음</div>'; return; }
   container.innerHTML = '';
   res.forEach(c => {
     const div = document.createElement('div');
-    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #eee;gap:8px;';
+    div.id = `custom-row-${c.id}`;
+    div.style.cssText = 'padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:8px;';
     div.innerHTML = `
-      <div style="flex:1;">
-        <div style="font-weight:600;font-size:0.88rem;">${c.name}</div>
-        <div style="font-size:0.75rem;color:#888;">단백질 ${c.protein_g}g · ${c.energy_kcal}kcal · ${c.std_unit||''}</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:0.875rem;">${c.name}</div>
+        <div style="font-size:0.8125rem;color:#94a3b8;">단백질 ${c.protein_g}g · ${c.energy_kcal}kcal</div>
       </div>
-      <button onclick="deleteCustomItem(${c.id})" style="background:#f38ba8;color:#1e1e2e;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:700;">삭제</button>
+      <button onclick="deleteCustomFood(${c.id})" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.8125rem;font-family:inherit;">삭제</button>
     `;
     container.appendChild(div);
   });
 }
 
-async function deleteCustomItem(id) {
-  if (!confirm('삭제할까요?')) return;
-  await fetch(`/api/admin/custom/delete?id=${id}`, {method: 'DELETE'});
-  loadCustomList();
-}
-
-function downloadPhoto(url, filename) {
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
+async function deleteCustomFood(id) {
+  await fetch(`/api/admin/custom?id=${id}`, {method:'DELETE'});
+  document.getElementById(`custom-row-${id}`)?.remove();
 }
 
 // ══════════════════════════════════════════
 //  라이트박스
 // ══════════════════════════════════════════
-function getImageUrl(path) {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;       // Cloudinary URL
-  if (path.startsWith('/static/')) return path;   // 이미 전체 경로
-  return `/static/uploads/${path}`;               // 파일명만 있는 경우
-}
-
-function openLightbox(src) {
-  document.getElementById('lightbox-img').src = src;
+function openLightbox(url) {
+  document.getElementById('lightbox-img').src = url;
   document.getElementById('lightbox').classList.add('show');
 }
 function closeLightbox() {
   document.getElementById('lightbox').classList.remove('show');
+}
+
+// ══════════════════════════════════════════
+//  이미지 URL 헬퍼
+// ══════════════════════════════════════════
+function getImageUrl(path) {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  return '/' + path.replace(/^\//,'');
+}
+
+function downloadPhoto(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'photo.jpg';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 </script>
 </body>
