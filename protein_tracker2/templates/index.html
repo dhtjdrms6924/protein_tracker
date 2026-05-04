@@ -1229,7 +1229,7 @@ async function initApp(userData) {
   loadMeals();
   loadDeviceList();
   loadProductList();
-  
+
   try {
     const res = await fetch('/api/widget/token', { method: 'POST' });
     const data = await res.json();
@@ -1239,7 +1239,6 @@ async function initApp(userData) {
   } catch(e) {
     console.log('위젯 토큰 발급 실패:', e);
   }
-}
 }
 
 // ══════════════════════════════════════════
