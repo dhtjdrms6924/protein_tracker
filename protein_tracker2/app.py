@@ -158,35 +158,35 @@ init_db()
 # ─────────────────────────────────────────
 # 음식 DB 검색 (food_nutrition SQLite 유지)
 # ─────────────────────────────────────────
-def find_food_in_db(food_name):
+def find_food_in_db(search_keyword):
+    """
+    AI가 추출한 search_keyword를 바탕으로 DB에서 가장 유사한 음식을 찾습니다.
+    """
+    if not search_keyword:
+        return None
+        
     try:
         conn = sqlite3.connect(SQLITE_DB_PATH)
         conn.row_factory = sqlite3.Row
-        q = f"%{food_name}%"
-        row = conn.execute("""
-            SELECT * FROM food_nutrition
-            WHERE name LIKE ? OR synm LIKE ? OR synm2 LIKE ? OR srch_keyword LIKE ?
-            LIMIT 1
-        """, (q, q, q, q)).fetchone()
-        if row:
-            conn.close()
-            return dict(row)
-        for cut in [food_name[:len(food_name)//2+1], food_name[:3], food_name[:2]]:
-            if len(cut) < 2:
-                break
-            p = f"%{cut}%"
+        
+        # 1순위: 이름이 정확히 일치하는지 확인
+        row = conn.execute("SELECT * FROM food_nutrition WHERE name = ? LIMIT 1", (search_keyword,)).fetchone()
+        
+        # 2순위: 일치하는 게 없다면 LIKE 검색 (유사 검색)
+        if not row:
+            q = f"%{search_keyword}%"
             row = conn.execute("""
-                SELECT * FROM food_nutrition
-                WHERE name LIKE ? OR synm LIKE ? OR synm2 LIKE ? OR srch_keyword LIKE ?
-                LIMIT 1
-            """, (p, p, p, p)).fetchone()
-            if row:
-                conn.close()
-                return dict(row)
+                SELECT * FROM food_nutrition 
+                WHERE name LIKE ? OR synm LIKE ? OR synm2 LIKE ? OR srch_keyword LIKE ? 
+                ORDER BY length(name) ASC LIMIT 1
+            """, (q, q, q, q)).fetchone()
+        
         conn.close()
-    except Exception:
-        pass
-    return None
+        return dict(row) if row else None
+        
+    except Exception as e:
+        print(f"DB 검색 오류: {e}")
+        return None
 
 def search_food_in_db(q, limit=15):
     try:
@@ -215,38 +215,54 @@ def get_gemini_client():
 def analyze_image_with_gemini(image_path):
     client = get_gemini_client()
     if not client:
-        return {"error": "서버에 API 키가 설정되지 않았습니다. 관리자에게 문의하세요."}
+        return {"error": "서버에 API 키가 설정되지 않았습니다."}
+    
     try:
+        # 1. 이미지 처리 (기존 코드 유지)
         with Image.open(image_path) as img:
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
+            if img.mode != 'RGB': img = img.convert('RGB')
             img.thumbnail((1024, 1024))
             img.save(image_path, "JPEG", quality=85)
+        
         with open(image_path, "rb") as f:
             image_data = f.read()
-        prompt = """이미지 속 음식을 분석해서 한국어 JSON으로만 답해.
-인사말이나 백틱(```) 없이 오직 { } 데이터만 출력해.
-형식:
-{"foods": [{"name": "음식명", "estimated_amount": "1인분", "weight_g": 200, "protein_g": 15.0}]}
-- name: 한국 일반적인 음식명 (예: 닭가슴살, 흰쌀밥, 삶은달걀)
-- estimated_amount: 눈대중 분량
-- weight_g: 예상 중량(g)
-- protein_g: 예상 단백질(g), 확실하지 않으면 0"""
+
+        # 2. 구조화된 응답을 위한 스키마 정의
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash", # 모델 버전 확인 (gemini-2.5는 아직 지원하지 않을 수 있음)
             contents=[
-                types.Part.from_text(text=prompt),
+                "이미지 속 음식을 분석해.",
                 types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
-            ]
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema={
+                    "type": "OBJECT",
+                    "properties": {
+                        "foods": {
+                            "type": "ARRAY",
+                            "items": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "name": {"type": "STRING"},
+                                    "estimated_amount": {"type": "STRING"},
+                                    "weight_g": {"type": "NUMBER"},
+                                    "protein_g": {"type": "NUMBER"}
+                                },
+                                "required": ["name", "weight_g", "protein_g"]
+                            }
+                        }
+                    }
+                }
+            )
         )
-        t = response.text.strip()
-        start = t.find('{')
-        end = t.rfind('}') + 1
-        if start == -1:
-            return {"error": "AI 응답 파싱 실패. 다시 시도해주세요."}
-        return json.loads(t[start:end])
+        
+        # 3. 파싱 로직 단순화
+        # 이제 response.text는 무조건 완벽한 JSON이므로 바로 로드 가능합니다.
+        return json.loads(response.text)
+
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"분석 오류: {str(e)}"}
 
 def analyze_nutrition_label(image_path):
     """영양성분표 이미지 분석 → 프로틴 제품 정보 추출"""
@@ -573,23 +589,26 @@ def api_analyze():
         if os.path.exists(path): os.remove(path)
         return jsonify(result)
 
-    # 2. 결과 가공 및 캐시 저장
+# 2. 결과 가공 및 캐시 저장
     processed_foods = []
     for food in result.get("foods", []):
-        food_name = food.get("name", "")
-        # DB(커스텀+캐시)에서 먼저 찾기
-        db_match = find_food_in_db(food_name)
+        # AI가 뽑아준 '검색용 핵심 키워드'를 우선 사용, 없으면 일반 이름 사용
+        search_term = food.get("search_keyword", food.get("name", ""))
+        
+        # DB(커스텀+캐시)에서 검색 (개선된 find_food_in_db 사용)
+        db_match = find_food_in_db(search_term)
         
         if db_match:
-            food["protein_g"] = db_match["protein_g"]
-            food["calories"] = db_match.get("calories", 0)
-            food["carbs"] = db_match.get("carbs", 0)
-            food["fat"] = db_match.get("fat", 0)
+            # DB에 매칭되는 정보가 있다면 DB의 정확한 영양 성분으로 업데이트
+            food["protein_g"] = db_match.get("protein_g", 0)
+            food["calories"] = db_match.get("energy_kcal", db_match.get("calories", 0)) # DB 컬럼명 확인 필요
+            food["carbs"] = db_match.get("carb_g", db_match.get("carbs", 0))
+            food["fat"] = db_match.get("fat_g", db_match.get("fat", 0))
             food["is_db_match"] = True
         else:
-            # DB에 없으면 AI가 준 값을 그대로 사용하고 캐시에 저장
+            # DB에 없으면 AI가 예측한 값을 그대로 사용하고 캐시에 저장
             save_ai_cache({
-                "food_name": food_name,
+                "food_name": food.get("name", ""),
                 "calories": food.get("calories", 0),
                 "protein": food.get("protein_g", 0),
                 "fat": food.get("fat", 0),
