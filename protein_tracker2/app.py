@@ -573,65 +573,84 @@ def api_search_ai():
 
 @app.route("/api/analyze", methods=["POST"])
 def api_analyze():
+    # 0. 세션 및 이미지 체크
     if not session.get("user_id"):
         return jsonify({"error": "로그인이 필요합니다."}), 401
+    
     if "image" not in request.files:
-        return jsonify({"error": "이미지가 없습니다."})
+        return jsonify({"error": "이미지가 없습니다."}), 400
 
-    file = request.files["image"]
-    fname = f"{uuid.uuid4().hex}.jpg"
-    path = os.path.join(UPLOAD_FOLDER, fname)
-    file.save(path)
+    path = None # 에러 발생 시 파일 삭제를 위한 경로 변수 초기화
+    
+    try:
+        user_id = session.get("user_id")
+        file = request.files["image"]
+        fname = f"{uuid.uuid4().hex}.jpg"
+        path = os.path.join(UPLOAD_FOLDER, fname)
+        file.save(path)
 
-    # 1. AI 분석 수행
-    result = analyze_image_with_gemini(path)
-    if "error" in result:
-        if os.path.exists(path): os.remove(path)
+        # 1. AI 분석 수행
+        result = analyze_image_with_gemini(path)
+        
+        # analyze_image_with_gemini 내부에서 429(할당량 초과) 등이 발생하면 에러 JSON을 반환함
+        if not result or "error" in result:
+            if path and os.path.exists(path): os.remove(path)
+            return jsonify(result if result else {"error": "AI 분석 결과가 없습니다."}), 500
+
+        # 2. 결과 가공 및 캐시 저장
+        processed_foods = []
+        for food in result.get("foods", []):
+            # AI가 뽑아준 '검색용 핵심 키워드' 사용
+            search_term = food.get("search_keyword", food.get("name", ""))
+            
+            # DB(커스텀+캐시)에서 검색
+            db_match = find_food_in_db(search_term)
+            
+            if db_match:
+                # DB 데이터 우선 (None 방지 처리를 위해 .get(키, 기본값) 사용)
+                food["protein_g"] = db_match.get("protein_g", 0)
+                food["calories"] = db_match.get("energy_kcal", 0)
+                food["carbs"] = db_match.get("carb_g", 0)
+                food["fat"] = db_match.get("fat_g", 0)
+                food["is_db_match"] = True
+            else:
+                # DB에 없으면 AI 값을 사용하고 캐시 저장
+                save_ai_cache({
+                    "food_name": food.get("name", ""),
+                    "calories": food.get("calories", 0),
+                    "protein": food.get("protein_g", 0),
+                    "fat": food.get("fat", 0),
+                    "carbs": food.get("carbs", 0)
+                })
+                food["is_db_match"] = False
+            
+            processed_foods.append(food)
+        
+        result["foods"] = processed_foods
+
+        # 3. Cloudinary 업로드
+        cloud_url = upload_to_cloudinary(path, folder="meals")
+        
+        if cloud_url:
+            result["image_path"] = cloud_url
+            # 로컬 파일 삭제 (성공 시)
+            if path and os.path.exists(path): os.remove(path)
+        else:
+            # 업로드 실패 시 HTML 에러가 나지 않도록 JSON 응답
+            if path and os.path.exists(path): os.remove(path)
+            return jsonify({"error": "이미지 서버 업로드 실패. 설정(Cloudinary)을 확인하세요."}), 500
+
+        # 최종 성공 응답 (무조건 JSON)
         return jsonify(result)
 
-# 2. 결과 가공 및 캐시 저장
-    processed_foods = []
-    for food in result.get("foods", []):
-        # AI가 뽑아준 '검색용 핵심 키워드'를 우선 사용, 없으면 일반 이름 사용
-        search_term = food.get("search_keyword", food.get("name", ""))
-        
-        # DB(커스텀+캐시)에서 검색 (개선된 find_food_in_db 사용)
-        db_match = find_food_in_db(search_term)
-        
-        if db_match:
-            # DB에 매칭되는 정보가 있다면 DB의 정확한 영양 성분으로 업데이트
-            food["protein_g"] = db_match.get("protein_g", 0)
-            food["calories"] = db_match.get("energy_kcal", db_match.get("calories", 0)) # DB 컬럼명 확인 필요
-            food["carbs"] = db_match.get("carb_g", db_match.get("carbs", 0))
-            food["fat"] = db_match.get("fat_g", db_match.get("fat", 0))
-            food["is_db_match"] = True
-        else:
-            # DB에 없으면 AI가 예측한 값을 그대로 사용하고 캐시에 저장
-            save_ai_cache({
-                "food_name": food.get("name", ""),
-                "calories": food.get("calories", 0),
-                "protein": food.get("protein_g", 0),
-                "fat": food.get("fat", 0),
-                "carbs": food.get("carbs", 0)
-            })
-            food["is_db_match"] = False
-        
-        processed_foods.append(food)
-    
-    # 가공된 리스트로 교체
-    result["foods"] = processed_foods
-
-    # 3. Cloudinary 업로드 (이전 해결책 적용)
-    cloud_url = upload_to_cloudinary(path, folder="meals")
-    if cloud_url:
-        result["image_path"] = cloud_url
-        if os.path.exists(path): os.remove(path)
-    else:
-        # Render 재시작 문제를 방지하기 위해 업로드 실패 시 에러 처리 권장
-        if os.path.exists(path): os.remove(path)
-        return jsonify({"error": "이미지 서버 업로드 실패. 설정(cloud_name 등)을 확인하세요."}), 500
-
-    return jsonify(result)
+    except Exception as e:
+        # 중요: 서버 내부에서 예상치 못한 에러 발생 시 HTML 대신 JSON 반환
+        if path and os.path.exists(path): os.remove(path)
+        print(f"CRITICAL SERVER ERROR: {str(e)}") # Render 로그에서 확인 가능
+        return jsonify({
+            "error": "서버 내부 처리 오류가 발생했습니다.",
+            "details": str(e)
+        }), 500
 
 @app.route("/api/meals", methods=["GET", "POST", "DELETE"])
 def api_meals():
