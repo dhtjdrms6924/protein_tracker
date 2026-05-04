@@ -235,7 +235,7 @@ def analyze_image_with_gemini(image_path):
         """
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash-lite-preview-02-05", # 최신 모델명 권장
+            model="gemini-flash-lite-latest", 
             contents=[
                 instruction,
                 types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
