@@ -221,7 +221,7 @@ def analyze_image_with_gemini(image_path):
         # 1. 이미지 처리 (기존 코드 유지)
         with Image.open(image_path) as img:
             if img.mode != 'RGB': img = img.convert('RGB')
-            img.thumbnail((1024, 1024))
+            img.thumbnail((512, 512))
             img.save(image_path, "JPEG", quality=85)
         
         with open(image_path, "rb") as f:
@@ -296,7 +296,7 @@ def analyze_nutrition_label(image_path):
         with Image.open(image_path) as img:
             if img.mode != 'RGB':
                 img = img.convert('RGB')
-            img.thumbnail((1024, 1024))
+            img.thumbnail((512, 512))
             img.save(image_path, "JPEG", quality=85)
         with open(image_path, "rb") as f:
             image_data = f.read()
@@ -548,6 +548,7 @@ def api_search_ai():
 인사말이나 백틱(```) 없이 오직 {{ }} 데이터만 출력해.
 형식:
 {{"name": "음식명", "protein_g": 20.0, "energy_kcal": 250, "fat_g": 5.0, "carb_g": 30.0, "std_unit": "1인분(200g)"}}
+- 반드시 모든 음식명(name)은 한국어로 작성
 - 모든 수치는 1인분(일반적인 1회 제공량) 기준
 - 확실하지 않은 값은 0으로"""
         response = client.models.generate_content(
