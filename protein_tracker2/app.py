@@ -268,12 +268,6 @@ def analyze_image_with_gemini(image_path):
         print(f"Gemini 분석 에러: {e}")
         return {"error": str(e)}
 
-# 로그아웃 시 세션을 완전히 삭제하여 관리자 권한 잔상 방지
-@app.route("/api/logout")
-def api_logout():
-    session.clear() 
-    return jsonify({"success": True})
-
 def save_ai_cache(data):
     """AI가 분석한 영양 성분 결과를 DB 캐시 테이블에 저장합니다."""
     try:
