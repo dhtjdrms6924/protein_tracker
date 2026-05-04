@@ -1176,32 +1176,11 @@ async function doSignup() {
 }
 
 async function doLogout() {
-  try {
-    // 1. 서버 세션 파기
-    await fetch('/api/logout');
-    
-    // 2. 브라우저에 남아있을 수 있는 관리자 권한 UI 강제 제거
-    const adminLink = document.getElementById('admin-link');
-    if (adminLink) adminLink.remove(); // 단순히 숨기는 게 아니라 아예 삭제
-    
-    // 3. 로컬 저장소 데이터가 있다면 삭제 (보안 강화)
-    localStorage.removeItem('is_admin');
-    
-    // 4. 입력 필드 초기화
-    document.getElementById('auth-username').value = '';
-    document.getElementById('auth-password').value = '';
-    
-    alert("로그아웃 되었습니다.");
-
-    // 5. 단순히 화면 전환만 하지 말고, replace를 사용하여 히스토리 초기화
-    // 이렇게 하면 '뒤로가기'를 눌러도 이전 관리자 화면이 나오지 않습니다.
-    window.location.replace('/login'); 
-    
-  } catch (e) {
-    console.error("Logout failed:", e);
-    // 에러 시 최소한 로그인 화면으로라도 이동
-    window.location.href = '/login';
-  }
+  await fetch('/api/logout');
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('auth-username').value = '';
+  document.getElementById('auth-password').value = '';
 }
 
 function showApp(userData) {
@@ -1703,8 +1682,6 @@ async function addAllMeals() {
     });
   }
 
-  // 2. 저장 완료 후 UI 및 상태 초기화 (여기에 모든 정리 로직을 모았습니다)
-  alert('모든 음식이 기록되었습니다!');
   
   // 분석 결과 창(취소 버튼 포함) 숨기기
   const aiSection = document.getElementById('ai-result-section');
