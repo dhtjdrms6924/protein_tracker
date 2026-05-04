@@ -544,7 +544,7 @@ def api_search_ai():
     if not client:
         return jsonify({"error": "서버에 API 키가 설정되지 않았습니다."}), 500
     try:
-        prompt = f"""'{food_name}'의 영양 정보를 JSON으로만 답해.
+        prompt = f"""'{food_name}'의 영양 정보를 JSON으로만 답해. 이때 반드시 모든 음식명(name)은 한국어로 작성해.
 인사말이나 백틱(```) 없이 오직 {{ }} 데이터만 출력해.
 형식:
 {{"name": "음식명", "protein_g": 20.0, "energy_kcal": 250, "fat_g": 5.0, "carb_g": 30.0, "std_unit": "1인분(200g)"}}
@@ -616,61 +616,73 @@ def api_analyze():
         # 1. AI 분석 수행
         result = analyze_image_with_gemini(path)
         
-        # analyze_image_with_gemini 내부에서 429(할당량 초과) 등이 발생하면 에러 JSON을 반환함
         if not result or "error" in result:
             if path and os.path.exists(path): os.remove(path)
             return jsonify(result if result else {"error": "AI 분석 결과가 없습니다."}), 500
 
-        # 2. 결과 가공 및 캐시 저장
+        # 2. 결과 가공 및 캐시 저장 (텍스트 검색 캐시 테이블 공유)
         processed_foods = []
         for food in result.get("foods", []):
-            # AI가 뽑아준 '검색용 핵심 키워드' 사용
-            search_term = food.get("search_keyword", food.get("name", ""))
+            # AI가 뽑아준 이름을 기준으로 DB 및 캐시 확인
+            food_name = food.get("name", "").strip()
             
             # DB(커스텀+캐시)에서 검색
-            db_match = find_food_in_db(search_term)
+            db_match = find_food_in_db(food_name)
             
             if db_match:
-                # DB 데이터 우선 (None 방지 처리를 위해 .get(키, 기본값) 사용)
+                # DB 데이터 우선 적용
                 food["protein_g"] = db_match.get("protein_g", 0)
                 food["calories"] = db_match.get("energy_kcal", 0)
                 food["carbs"] = db_match.get("carb_g", 0)
                 food["fat"] = db_match.get("fat_g", 0)
                 food["is_db_match"] = True
             else:
-                # DB에 없으면 AI 값을 사용하고 캐시 저장
-                save_ai_cache({
-                    "food_name": food.get("name", ""),
-                    "calories": food.get("calories", 0),
-                    "protein": food.get("protein_g", 0),
-                    "fat": food.get("fat", 0),
-                    "carbs": food.get("carbs", 0)
-                })
+                # DB에 없는 새로운 음식이라면 ai_food_cache에 저장 (텍스트 검색 캐시와 동일한 테이블)
+                try:
+                    conn_c = get_conn()
+                    cur_c = conn_c.cursor()
+                    cur_c.execute("""
+                        INSERT INTO ai_food_cache 
+                            (food_name, name, protein_g, energy_kcal, fat_g, carb_g, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (food_name) DO NOTHING
+                    """, (
+                        food_name,  # 검색 키워드로 사용될 이름
+                        food_name,  # 표시용 이름
+                        food.get("protein_g", 0),
+                        food.get("calories", 0),
+                        food.get("fat", 0),
+                        food.get("carbs", 0),
+                        datetime.now().isoformat()
+                    ))
+                    conn_c.commit()
+                    cur_c.close()
+                    conn_c.close()
+                except Exception as cache_err:
+                    print(f"AI 결과 캐시 저장 중 오류: {cache_err}")
+                
                 food["is_db_match"] = False
             
             processed_foods.append(food)
         
         result["foods"] = processed_foods
 
-        # 3. Cloudinary 업로드
+        # 3. Cloudinary 업로드 (이미지 URL은 분석 결과와 별개로 처리)
         cloud_url = upload_to_cloudinary(path, folder="meals")
         
         if cloud_url:
             result["image_path"] = cloud_url
-            # 로컬 파일 삭제 (성공 시)
             if path and os.path.exists(path): os.remove(path)
         else:
-            # 업로드 실패 시 HTML 에러가 나지 않도록 JSON 응답
             if path and os.path.exists(path): os.remove(path)
-            return jsonify({"error": "이미지 서버 업로드 실패. 설정(Cloudinary)을 확인하세요."}), 500
+            return jsonify({"error": "이미지 서버 업로드 실패. Cloudinary 설정을 확인하세요."}), 500
 
-        # 최종 성공 응답 (무조건 JSON)
+        # 최종 성공 응답
         return jsonify(result)
 
     except Exception as e:
-        # 중요: 서버 내부에서 예상치 못한 에러 발생 시 HTML 대신 JSON 반환
         if path and os.path.exists(path): os.remove(path)
-        print(f"CRITICAL SERVER ERROR: {str(e)}") # Render 로그에서 확인 가능
+        print(f"CRITICAL SERVER ERROR: {str(e)}")
         return jsonify({
             "error": "서버 내부 처리 오류가 발생했습니다.",
             "details": str(e)
