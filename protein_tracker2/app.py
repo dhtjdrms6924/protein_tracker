@@ -218,7 +218,7 @@ def analyze_image_with_gemini(image_path):
         return {"error": "서버에 API 키가 설정되지 않았습니다."}
     
     try:
-        # 1. 이미지 처리 (기존 코드 유지)
+        # 이미지 처리 (512px 최적화 유지)
         with Image.open(image_path) as img:
             if img.mode != 'RGB': img = img.convert('RGB')
             img.thumbnail((512, 512))
@@ -227,11 +227,17 @@ def analyze_image_with_gemini(image_path):
         with open(image_path, "rb") as f:
             image_data = f.read()
 
-        # 2. 구조화된 응답을 위한 스키마 정의
+        # 한국어 답변을 강력하게 지시하는 프롬프트 추가
+        instruction = """
+        당신은 한국인 전문 영양사입니다. 
+        반드시 모든 음식의 이름('name')은 한국어로만 답변하세요.
+        에너지('energy_kcal'), 단백질('protein_g') 등 영양 성분은 1인분 기준으로 추정하세요.
+        """
+
         response = client.models.generate_content(
-            model="gemini-flash-lite-latest", # 모델 버전 확인 (gemini-2.5는 아직 지원하지 않을 수 있음)
+            model="gemini-2.0-flash-lite-preview-02-05", # 최신 모델명 권장
             contents=[
-                "이미지 속 음식을 분석해.",
+                instruction,
                 types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
             ],
             config=types.GenerateContentConfig(
@@ -244,25 +250,29 @@ def analyze_image_with_gemini(image_path):
                             "items": {
                                 "type": "OBJECT",
                                 "properties": {
-                                    "name": {"type": "STRING"},
-                                    "estimated_amount": {"type": "STRING"},
-                                    "weight_g": {"type": "NUMBER"},
-                                    "protein_g": {"type": "NUMBER"}
+                                    "name": {"type": "STRING", "description": "음식의 한국어 이름"},
+                                    "energy_kcal": {"type": "NUMBER"},
+                                    "protein_g": {"type": "NUMBER"},
+                                    "fat_g": {"type": "NUMBER"},
+                                    "carb_g": {"type": "NUMBER"}
                                 },
-                                "required": ["name", "weight_g", "protein_g"]
+                                "required": ["name", "energy_kcal", "protein_g"]
                             }
                         }
                     }
                 }
             )
         )
-        
-        # 3. 파싱 로직 단순화
-        # 이제 response.text는 무조건 완벽한 JSON이므로 바로 로드 가능합니다.
         return json.loads(response.text)
-
     except Exception as e:
-        return {"error": f"분석 오류: {str(e)}"}
+        print(f"Gemini 분석 에러: {e}")
+        return {"error": str(e)}
+
+# 로그아웃 시 세션을 완전히 삭제하여 관리자 권한 잔상 방지
+@app.route("/api/logout")
+def api_logout():
+    session.clear() 
+    return jsonify({"success": True})
 
 def save_ai_cache(data):
     """AI가 분석한 영양 성분 결과를 DB 캐시 테이블에 저장합니다."""
