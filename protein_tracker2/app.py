@@ -264,6 +264,29 @@ def analyze_image_with_gemini(image_path):
     except Exception as e:
         return {"error": f"분석 오류: {str(e)}"}
 
+def save_ai_cache(data):
+    """AI가 분석한 영양 성분 결과를 DB 캐시 테이블에 저장합니다."""
+    try:
+        conn = get_conn() # 기존에 작성하신 DB 연결 함수
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO ai_cache (food_name, calories, protein, fat, carbs)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (food_name) DO UPDATE SET
+                calories = EXCLUDED.calories,
+                protein = EXCLUDED.protein,
+                fat = EXCLUDED.fat,
+                carbs = EXCLUDED.carbs
+        """, (
+            data['food_name'], data['calories'], 
+            data['protein'], data['fat'], data['carbs']
+        ))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"Cache Save Error: {e}")
+
 def analyze_nutrition_label(image_path):
     """영양성분표 이미지 분석 → 프로틴 제품 정보 추출"""
     client = get_gemini_client()
