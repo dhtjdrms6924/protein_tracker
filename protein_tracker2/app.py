@@ -287,7 +287,7 @@ def analyze_nutrition_label(image_path):
 - energy_kcal: 1스쿱당 칼로리(kcal), 없으면 0
 영양성분표가 아니면: {"error": "영양성분표를 찾을 수 없어요."}"""
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
             contents=[
                 types.Part.from_text(text=prompt),
                 types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
@@ -528,7 +528,7 @@ def api_search_ai():
 - 모든 수치는 1인분(일반적인 1회 제공량) 기준
 - 확실하지 않은 값은 0으로"""
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
             contents=[types.Part.from_text(text=prompt)]
         )
         t = response.text.strip()
