@@ -506,6 +506,9 @@ body {
   color: var(--text-1);
   background: var(--card-bg);
   transition: border-color .15s;
+  position: relative;
+  z-index: 1;
+  cursor: text;
 }
 #search-wrap input:focus { outline: none; border-color: var(--accent); }
 
@@ -996,7 +999,7 @@ body {
       <div class="card">
         <div class="section-title">음식 직접 검색</div>
         <div id="search-wrap">
-          <input type="text" id="search-input" placeholder="음식명 검색 (예: 닭, 달걀, 밥)..." oninput="searchFood(this.value)" onchange="searchFood(this.value)">
+          <input type="text" id="search-input" placeholder="음식명 검색 (예: 닭, 달걀, 밥)..." oninput="searchFood(this.value)">
         </div>
         <div id="search-results"></div>
       </div>
@@ -1091,7 +1094,10 @@ body {
 //  상태
 // ══════════════════════════════════════════
 let isSignupMode = false;
-const today = new Date().toISOString().slice(0,10);
+const today = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+})();
 let goalProtein = 0;
 let selectedFile = null;
 let searchTimer = null;
@@ -1177,6 +1183,11 @@ async function doSignup() {
 
 async function doLogout() {
   await fetch('/api/logout');
+  // 관리자 버튼 숨기기 (다음 계정이 일반 계정이어도 안 보이도록)
+  const adminBtn = document.getElementById('btn-admin');
+  if (adminBtn) adminBtn.style.display = 'none';
+  // 트래커 탭으로 초기화
+  switchTab('tracker');
   document.getElementById('app-screen').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('auth-username').value = '';
@@ -1695,6 +1706,9 @@ async function addAllMeals() {
   const analyzeBtn = document.getElementById('analyze-btn');
   if (analyzeBtn) analyzeBtn.style.display = 'none';
 
+  const cancelBtn = document.getElementById('cancel-btn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+
   // 전역 변수 초기화
   selectedFile = null;
   window._analyzeResults = [];
@@ -2210,9 +2224,9 @@ async function saveCacheEdit(id) {
   const name = document.getElementById(`cache-edit-name-${id}`).value.trim();
   const protein = parseFloat(document.getElementById(`cache-edit-protein-${id}`).value) || 0;
   const kcal = parseFloat(document.getElementById(`cache-edit-kcal-${id}`).value) || 0;
-  await fetch('/api/admin/cache/edit', {
+  await fetch('/api/admin/cache/update', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({id, food_name: name, protein_g: protein, energy_kcal: kcal})
+    body: JSON.stringify({cache_id: id, name: name, protein_g: protein, energy_kcal: kcal})
   });
   document.getElementById(`cache-name-display-${id}`).textContent = name;
   document.getElementById(`cache-protein-display-${id}`).textContent = protein;
@@ -2229,7 +2243,7 @@ async function promoteToCustom(id) {
 }
 
 async function deleteCache(id) {
-  await fetch(`/api/admin/cache?id=${id}`, {method:'DELETE'});
+  await fetch(`/api/admin/cache/delete?id=${id}`, {method:'DELETE'});
   document.getElementById(`cache-row-${id}`)?.remove();
 }
 
@@ -2260,7 +2274,7 @@ async function loadCustomList() {
 }
 
 async function deleteCustomFood(id) {
-  await fetch(`/api/admin/custom?id=${id}`, {method:'DELETE'});
+  await fetch(`/api/admin/custom/delete?id=${id}`, {method:'DELETE'});
   document.getElementById(`custom-row-${id}`)?.remove();
 }
 
