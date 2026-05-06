@@ -383,6 +383,28 @@ def api_login():
         session["user_id"] = user["id"]
         session["username"] = user["username"]
         session["is_admin"] = bool(user["is_admin"])
+
+        # ── 위젯 토큰 발급 (없으면 생성, 있으면 재사용) ──
+        widget_token = None
+        try:
+            conn2 = get_conn()
+            cur2 = conn2.cursor()
+            cur2.execute("SELECT token FROM widget_tokens WHERE user_id=%s", (user["id"],))
+            existing_token = cur2.fetchone()
+            if existing_token:
+                widget_token = existing_token["token"]
+            else:
+                widget_token = secrets.token_hex(32)
+                cur2.execute(
+                    "INSERT INTO widget_tokens (user_id, token, created_at) VALUES (%s, %s, %s)",
+                    (user["id"], widget_token, datetime.now().isoformat())
+                )
+                conn2.commit()
+            cur2.close()
+            conn2.close()
+        except Exception as e:
+            print(f"위젯 토큰 발급 실패: {e}")
+
         return jsonify({
             "status": "success",
             "username": user["username"],
@@ -390,7 +412,8 @@ def api_login():
             "display_name": user["display_name"] or user["nickname"] or user["username"],
             "weight": user["weight"],
             "multiplier": user["multiplier"],
-            "is_admin": bool(user["is_admin"])
+            "is_admin": bool(user["is_admin"]),
+            "widget_token": widget_token  # ← Android 위젯에 전달
         })
     return jsonify({"status": "error", "message": "아이디 또는 비밀번호가 틀렸습니다."}), 401
 
