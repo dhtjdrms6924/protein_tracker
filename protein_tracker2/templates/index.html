@@ -2409,6 +2409,11 @@ function scanQRFrame() {
   const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
   const code = jsQR(imageData.data, imageData.width, imageData.height);
 
+  // 디버그 메시지 화면에 표시
+  document.getElementById('device-msg').style.color = '#94a3b8';
+  document.getElementById('device-msg').textContent = 
+    `스캔중... ${canvas.width}x${canvas.height} / jsQR: ${typeof jsQR}`;
+
   if (code) {
     stopQRScan();
     handleQRResult(code.data);
