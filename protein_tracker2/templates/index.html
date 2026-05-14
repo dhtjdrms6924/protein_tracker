@@ -2492,7 +2492,6 @@ function showWifiModal(token) {
 async function sendWifiToESP32(token) {
   const ssid = document.getElementById('wifi-ssid-input').value.trim();
   const pass = document.getElementById('wifi-pass-input').value;
-  const ip = '192.168.4.1';
   const msg = document.getElementById('wifi-modal-msg');
 
   if (!ssid) {
@@ -2501,41 +2500,45 @@ async function sendWifiToESP32(token) {
     return;
   }
 
-  msg.textContent = '연결 중...';
+  msg.textContent = '블루투스 연결 중...';
   msg.style.color = '#94a3b8';
 
   try {
-    // 1. ESP32에 WiFi 정보 전송
-    const res = await fetch('/api/device/wifi-setup', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ esp32_ip: ip, ssid, password: pass, token })
+    // BLE 기기 검색
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'PROTEIN_DISPENSER' }],
+      optionalServices: ['12345678-1234-1234-1234-123456789012']
     });
-    const data = await res.json();
 
-    if (data.status === 'ok') {
-      msg.textContent = '✅ 전송 완료! ESP32가 재시작됩니다...';
-      msg.style.color = '#4ade80';
+    msg.textContent = '연결 중...';
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService('12345678-1234-1234-1234-123456789012');
+    const characteristic = await service.getCharacteristic('87654321-4321-4321-4321-210987654321');
 
-      // 2. 서버에 기기 등록
-      await fetch('/api/device/register', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ token })
-      });
+    // WiFi 정보 전송
+    const data = JSON.stringify({ ssid, pass });
+    const encoder = new TextEncoder();
+    await characteristic.writeValue(encoder.encode(data));
 
-      setTimeout(() => {
-        document.getElementById('wifi-modal')?.remove();
-        document.getElementById('device-msg').textContent = '✅ 디스펜서 연결 완료!';
-        document.getElementById('device-msg').style.color = '#4ade80';
-        loadDeviceList();
-      }, 2000);
-    } else {
-      msg.textContent = '오류: ' + (data.error || '알 수 없는 오류');
-      msg.style.color = '#f87171';
-    }
+    msg.textContent = '✅ 전송 완료! ESP32가 재시작됩니다...';
+    msg.style.color = '#4ade80';
+
+    // 서버에 기기 등록
+    await fetch('/api/device/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token })
+    });
+
+    setTimeout(() => {
+      document.getElementById('wifi-modal')?.remove();
+      document.getElementById('device-msg').textContent = '✅ 디스펜서 연결 완료!';
+      document.getElementById('device-msg').style.color = '#4ade80';
+      loadDeviceList();
+    }, 2000);
+
   } catch(e) {
-    msg.textContent = 'ESP32에 연결할 수 없습니다. IP를 확인하세요.';
+    msg.textContent = '❌ 블루투스 오류: ' + e.message;
     msg.style.color = '#f87171';
   }
 }
