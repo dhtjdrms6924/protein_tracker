@@ -2446,9 +2446,7 @@ function handleQRResult(qrData) {
 }
 
 function showWifiModal(token) {
-  // 기존 모달 제거
   document.getElementById('wifi-modal')?.remove();
-
   const modal = document.createElement('div');
   modal.id = 'wifi-modal';
   modal.style.cssText = `
@@ -2470,10 +2468,6 @@ function showWifiModal(token) {
                  border-radius:8px;color:#e2e8f0;font-size:0.875rem;font-family:inherit;">
         <label style="color:#94a3b8;font-size:0.8125rem;">WiFi 비밀번호</label>
         <input id="wifi-pass-input" type="password" placeholder="비밀번호"
-          style="padding:10px 14px;background:#0f172a;border:1px solid #334155;
-                 border-radius:8px;color:#e2e8f0;font-size:0.875rem;font-family:inherit;">
-        <label style="color:#94a3b8;font-size:0.8125rem;">ESP32 IP (AP모드: 192.168.4.1)</label>
-        <input id="wifi-ip-input" type="text" value="192.168.4.1"
           style="padding:10px 14px;background:#0f172a;border:1px solid #334155;
                  border-radius:8px;color:#e2e8f0;font-size:0.875rem;font-family:inherit;">
       </div>
@@ -2498,7 +2492,7 @@ function showWifiModal(token) {
 async function sendWifiToESP32(token) {
   const ssid = document.getElementById('wifi-ssid-input').value.trim();
   const pass = document.getElementById('wifi-pass-input').value;
-  const ip = document.getElementById('wifi-ip-input').value.trim();
+  const ip = '192.168.4.1';
   const msg = document.getElementById('wifi-modal-msg');
 
   if (!ssid) {
