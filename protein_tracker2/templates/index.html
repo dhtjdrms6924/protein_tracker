@@ -2328,6 +2328,212 @@ function downloadPhoto(url, filename) {
   a.click();
   document.body.removeChild(a);
 }
+
+// ══════════════════════════════════════════
+//  QR 스캔 + 디스펜서 연결
+// ══════════════════════════════════════════
+let qrStream = null;
+let qrScanning = false;
+
+async function loadDeviceList() {
+  const res = await fetch('/api/device/list').then(r => r.json());
+  const container = document.getElementById('device-list');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!Array.isArray(res) || !res.length) {
+    container.innerHTML = '<div style="color:#94a3b8;font-size:0.8125rem;">연결된 디스펜서 없음</div>';
+    return;
+  }
+  res.forEach(d => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #334155;';
+    div.innerHTML = `
+      <div>
+        <div style="font-size:0.875rem;color:#e2e8f0;font-weight:600;">${d.name}</div>
+        <div style="font-size:0.75rem;color:#475569;">${d.last_seen ? '최근: ' + d.last_seen.slice(0,16) : '미접속'}</div>
+      </div>
+      <button onclick="unlinkDevice(${d.id})"
+        style="background:#f87171;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:0.75rem;font-family:inherit;">
+        해제
+      </button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function unlinkDevice(id) {
+  await fetch(`/api/device/unlink?id=${id}`, {method:'DELETE'});
+  loadDeviceList();
+}
+
+function startQRScan() {
+  const area = document.getElementById('qr-scan-area');
+  area.style.display = 'block';
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(stream => {
+      qrStream = stream;
+      const video = document.getElementById('qr-video');
+      video.srcObject = stream;
+      video.play();
+      qrScanning = true;
+      requestAnimationFrame(scanQRFrame);
+    })
+    .catch(() => {
+      document.getElementById('device-msg').textContent = '카메라 권한이 필요합니다.';
+      document.getElementById('device-msg').style.color = '#f87171';
+      area.style.display = 'none';
+    });
+}
+
+function stopQRScan() {
+  qrScanning = false;
+  if (qrStream) {
+    qrStream.getTracks().forEach(t => t.stop());
+    qrStream = null;
+  }
+  document.getElementById('qr-scan-area').style.display = 'none';
+}
+
+function scanQRFrame() {
+  if (!qrScanning) return;
+  const video = document.getElementById('qr-video');
+  if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+    requestAnimationFrame(scanQRFrame);
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+  if (code) {
+    stopQRScan();
+    handleQRResult(code.data);
+  } else {
+    requestAnimationFrame(scanQRFrame);
+  }
+}
+
+function handleQRResult(qrData) {
+  // QR 데이터 형식: PROTEIN_DISPENSER:토큰값
+  // 예: PROTEIN_DISPENSER:TEST_TOKEN_001
+  let token = '';
+  if (qrData.startsWith('PROTEIN_DISPENSER:')) {
+    token = qrData.replace('PROTEIN_DISPENSER:', '');
+  } else {
+    document.getElementById('device-msg').textContent = '올바른 QR코드가 아닙니다.';
+    document.getElementById('device-msg').style.color = '#f87171';
+    return;
+  }
+
+  // WiFi 입력 모달 표시
+  showWifiModal(token);
+}
+
+function showWifiModal(token) {
+  // 기존 모달 제거
+  document.getElementById('wifi-modal')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'wifi-modal';
+  modal.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,.7);
+    z-index:9999;display:flex;align-items:center;justify-content:center;
+  `;
+  modal.innerHTML = `
+    <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;
+                padding:28px 24px;width:90%;max-width:360px;display:flex;
+                flex-direction:column;gap:14px;">
+      <h3 style="color:#a78bfa;font-size:1rem;font-weight:700;">📡 디스펜서 WiFi 설정</h3>
+      <p style="color:#94a3b8;font-size:0.8125rem;line-height:1.6;">
+        디스펜서가 연결할 <strong style="color:#e2e8f0;">2.4GHz WiFi</strong> 정보를 입력하세요.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="color:#94a3b8;font-size:0.8125rem;">WiFi 이름 (SSID)</label>
+        <input id="wifi-ssid-input" type="text" placeholder="WiFi 이름"
+          style="padding:10px 14px;background:#0f172a;border:1px solid #334155;
+                 border-radius:8px;color:#e2e8f0;font-size:0.875rem;font-family:inherit;">
+        <label style="color:#94a3b8;font-size:0.8125rem;">WiFi 비밀번호</label>
+        <input id="wifi-pass-input" type="password" placeholder="비밀번호"
+          style="padding:10px 14px;background:#0f172a;border:1px solid #334155;
+                 border-radius:8px;color:#e2e8f0;font-size:0.875rem;font-family:inherit;">
+        <label style="color:#94a3b8;font-size:0.8125rem;">ESP32 IP (AP모드: 192.168.4.1)</label>
+        <input id="wifi-ip-input" type="text" value="192.168.4.1"
+          style="padding:10px 14px;background:#0f172a;border:1px solid #334155;
+                 border-radius:8px;color:#e2e8f0;font-size:0.875rem;font-family:inherit;">
+      </div>
+      <div id="wifi-modal-msg" style="font-size:0.8125rem;color:#94a3b8;min-height:18px;"></div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="document.getElementById('wifi-modal').remove()"
+          style="flex:1;padding:10px;background:#334155;color:#94a3b8;border:none;
+                 border-radius:8px;cursor:pointer;font-size:0.875rem;font-family:inherit;">
+          취소
+        </button>
+        <button onclick="sendWifiToESP32('${token}')"
+          style="flex:1;padding:10px;background:#6d28d9;color:#fff;border:none;
+                 border-radius:8px;cursor:pointer;font-size:0.875rem;font-weight:600;font-family:inherit;">
+          연결
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+async function sendWifiToESP32(token) {
+  const ssid = document.getElementById('wifi-ssid-input').value.trim();
+  const pass = document.getElementById('wifi-pass-input').value;
+  const ip = document.getElementById('wifi-ip-input').value.trim();
+  const msg = document.getElementById('wifi-modal-msg');
+
+  if (!ssid) {
+    msg.textContent = 'WiFi 이름을 입력하세요.';
+    msg.style.color = '#f87171';
+    return;
+  }
+
+  msg.textContent = '연결 중...';
+  msg.style.color = '#94a3b8';
+
+  try {
+    // 1. ESP32에 WiFi 정보 전송
+    const res = await fetch('/api/device/wifi-setup', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ esp32_ip: ip, ssid, password: pass, token })
+    });
+    const data = await res.json();
+
+    if (data.status === 'ok') {
+      msg.textContent = '✅ 전송 완료! ESP32가 재시작됩니다...';
+      msg.style.color = '#4ade80';
+
+      // 2. 서버에 기기 등록
+      await fetch('/api/device/register', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token })
+      });
+
+      setTimeout(() => {
+        document.getElementById('wifi-modal')?.remove();
+        document.getElementById('device-msg').textContent = '✅ 디스펜서 연결 완료!';
+        document.getElementById('device-msg').style.color = '#4ade80';
+        loadDeviceList();
+      }, 2000);
+    } else {
+      msg.textContent = '오류: ' + (data.error || '알 수 없는 오류');
+      msg.style.color = '#f87171';
+    }
+  } catch(e) {
+    msg.textContent = 'ESP32에 연결할 수 없습니다. IP를 확인하세요.';
+    msg.style.color = '#f87171';
+  }
+}
+
 </script>
 </body>
 </html>

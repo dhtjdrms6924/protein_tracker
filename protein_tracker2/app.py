@@ -1433,5 +1433,28 @@ def api_widget_quick_add():
 
     return jsonify({"status": "ok", "saved": saved, "image_path": image_path})
 
+@app.route("/api/device/wifi-setup", methods=["POST"])
+def api_device_wifi_setup():
+    """앱 → ESP32로 WiFi 정보 전달 중계"""
+    data = request.json
+    esp32_ip = data.get("esp32_ip")   # ESP32 AP 모드 IP
+    ssid = data.get("ssid")
+    password = data.get("password")
+    token = data.get("token")
+
+    if not all([esp32_ip, ssid, token]):
+        return jsonify({"error": "필수 항목 누락"}), 400
+
+    import requests as req
+    try:
+        res = req.post(
+            f"http://{esp32_ip}/setup",
+            data={"ssid": ssid, "pass": password, "token": token},
+            timeout=5
+        )
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, threaded=True)
