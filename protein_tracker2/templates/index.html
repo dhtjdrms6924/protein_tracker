@@ -2537,10 +2537,29 @@ async function sendWifiToESP32(token) {
       loadDeviceList();
     }, 2000);
 
-  } catch(e) {
+} catch(e) {
+  // ESP32가 재시작하면서 연결 끊기는 건 정상!
+  if (e.message.includes('GATT') || e.message.includes('disconnect')) {
+    msg.textContent = '✅ 전송 완료! ESP32가 재시작됩니다...';
+    msg.style.color = '#4ade80';
+
+    await fetch('/api/device/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token })
+    });
+
+    setTimeout(() => {
+      document.getElementById('wifi-modal')?.remove();
+      document.getElementById('device-msg').textContent = '✅ 디스펜서 연결 완료!';
+      document.getElementById('device-msg').style.color = '#4ade80';
+      loadDeviceList();
+    }, 2000);
+  } else {
     msg.textContent = '❌ 블루투스 오류: ' + e.message;
     msg.style.color = '#f87171';
   }
+}
 }
 
 </script>
