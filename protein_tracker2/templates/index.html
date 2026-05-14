@@ -2397,6 +2397,13 @@ function stopQRScan() {
 
 function scanQRFrame() {
   if (!qrScanning) return;
+
+   if (typeof jsQR === 'undefined') {
+    document.getElementById('device-msg').textContent = 'jsQR 로드 실패!';
+    document.getElementById('device-msg').style.color = '#f87171';
+    return;
+  }
+
   const video = document.getElementById('qr-video');
   if (video.readyState !== video.HAVE_ENOUGH_DATA) {
     requestAnimationFrame(scanQRFrame);
