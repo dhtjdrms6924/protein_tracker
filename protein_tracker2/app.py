@@ -982,10 +982,6 @@ def api_device_unlink():
 
 @app.route("/api/device/status")
 def api_device_status():
-    """
-    하드웨어(ESP32)가 호출하는 엔드포인트.
-    토큰으로 인증 → 오늘 부족한 단백질량 + 활성 제품 정보 반환
-    """
     token = request.headers.get("X-Device-Token") or request.args.get("token")
     if not token:
         return jsonify({"error": "토큰이 없습니다."}), 401
@@ -994,7 +990,6 @@ def api_device_status():
     cur = conn.cursor()
 
     # 토큰으로 유저 찾기
-# pending 상태면 마지막 등록 유저 데이터 반환
     cur.execute("SELECT user_id, status FROM devices WHERE token=%s ORDER BY created_at DESC LIMIT 1", (token,))
     device = cur.fetchone()
     if not device:
@@ -1020,13 +1015,18 @@ def api_device_status():
     user = cur.fetchone()
     goal = float(user["weight"] or 0) * float(user["multiplier"] or 0) if user else 0
 
-    # 활성 프로틴 제품 (가장 최근 등록된 것)
+    # 활성 프로틴 제품
     cur.execute("""
         SELECT name, protein_per_scoop, scoop_weight_g
         FROM protein_products WHERE user_id=%s AND is_active=TRUE
         ORDER BY created_at DESC LIMIT 1
     """, (user_id,))
     product = cur.fetchone()
+
+    # username 가져오기
+    cur.execute("SELECT username FROM users WHERE id=%s", (user_id,))
+    username_row = cur.fetchone()
+    username = username_row["username"] if username_row else "unknown"
 
     conn.commit()
     cur.close()
@@ -1043,14 +1043,9 @@ def api_device_status():
             scoops_needed = round(shortage / protein_per_scoop, 1)
             grams_needed = round(scoops_needed * scoop_weight, 1) if scoop_weight > 0 else 0
 
-    # username 가져오기
-    cur.execute("SELECT username FROM users WHERE id=%s", (user_id,))
-    username_row = cur.fetchone()
-    username = username_row["username"] if username_row else "unknown"
-
     return jsonify({
         "today": today,
-        "username": username,  # 추가
+        "username": username,
         "goal_g": goal,
         "intake_g": intake,
         "shortage_g": shortage,
