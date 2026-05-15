@@ -936,6 +936,22 @@ def api_device_list():
     conn.close()
     return jsonify([dict(r) for r in rows])
 
+@app.route("/api/device/user-change", methods=["POST"])
+def api_device_user_change():
+    data = request.json
+    token = data.get("token")
+    if not token:
+        return jsonify({"error": "토큰 없음"}), 400
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM devices WHERE token = %s", (token,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({"status": "ok"})
+
 @app.route("/api/device/unlink", methods=["DELETE"])
 def api_device_unlink():
     user_id = session.get("user_id")
