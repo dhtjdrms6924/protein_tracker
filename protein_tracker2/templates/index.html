@@ -2458,6 +2458,7 @@ async function handleQRResult(qrData) {
     }
   } else {
     // 첫 등록 → WiFi 설정 필요
+    stopQRScan();
     showWifiModal(token);
   }
 }
