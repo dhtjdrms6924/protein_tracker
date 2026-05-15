@@ -896,7 +896,7 @@ def api_device_register():
     conn = get_conn()
     cur = conn.cursor()
 
-    # pending 상태 기기가 있으면 현재 유저로 업데이트
+    # pending 상태면 현재 유저로 업데이트
     cur.execute("SELECT id FROM devices WHERE token = %s AND status = 'pending'", (token,))
     pending = cur.fetchone()
 
@@ -905,21 +905,25 @@ def api_device_register():
             UPDATE devices SET user_id = %s, status = 'active', created_at = NOW()
             WHERE token = %s AND status = 'pending'
         """, (user_id, token))
-    else:
-        # 이미 이 유저가 등록했는지 확인
-        cur.execute("SELECT id FROM devices WHERE token = %s AND user_id = %s", (token, user_id))
-        existing = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"status": "ok"})
 
-        if existing:
-            cur.close()
-            conn.close()
-            return jsonify({"status": "already_registered"})
+    # active 상태에서 이미 이 유저가 등록했는지 확인
+    cur.execute("SELECT id FROM devices WHERE token = %s AND user_id = %s AND status = 'active'", (token, user_id))
+    existing = cur.fetchone()
 
-        cur.execute("""
-            INSERT INTO devices (user_id, token, name, created_at, status)
-            VALUES (%s, %s, %s, NOW(), 'active')
-        """, (user_id, token, "프로틴 디스펜서"))
+    if existing:
+        cur.close()
+        conn.close()
+        return jsonify({"status": "already_registered"})
 
+    # 새로 삽입
+    cur.execute("""
+        INSERT INTO devices (user_id, token, name, created_at, status)
+        VALUES (%s, %s, %s, NOW(), 'active')
+    """, (user_id, token, "프로틴 디스펜서"))
     conn.commit()
     cur.close()
     conn.close()
@@ -1039,8 +1043,14 @@ def api_device_status():
             scoops_needed = round(shortage / protein_per_scoop, 1)
             grams_needed = round(scoops_needed * scoop_weight, 1) if scoop_weight > 0 else 0
 
+    # username 가져오기
+    cur.execute("SELECT username FROM users WHERE id=%s", (user_id,))
+    username_row = cur.fetchone()
+    username = username_row["username"] if username_row else "unknown"
+
     return jsonify({
         "today": today,
+        "username": username,  # 추가
         "goal_g": goal,
         "intake_g": intake,
         "shortage_g": shortage,
@@ -1048,6 +1058,7 @@ def api_device_status():
         "scoops_needed": scoops_needed,
         "grams_needed": grams_needed
     })
+
 
 # ─────────────────────────────────────────
 # 관리자 라우트
