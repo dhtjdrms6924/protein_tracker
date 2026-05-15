@@ -896,14 +896,14 @@ def api_device_register():
     conn = get_conn()
     cur = conn.cursor()
 
-    # pending 상태면 현재 유저로 업데이트
-    cur.execute("SELECT id FROM devices WHERE token = %s AND status = 'pending'", (token,))
-    pending = cur.fetchone()
+    # pending 상태면 무조건 현재 유저로 업데이트 (기존 유저도 허용)
+    cur.execute("SELECT id, status FROM devices WHERE token = %s ORDER BY created_at DESC LIMIT 1", (token,))
+    device = cur.fetchone()
 
-    if pending:
+    if device and device["status"] == "pending":
         cur.execute("""
             UPDATE devices SET user_id = %s, status = 'active', created_at = NOW()
-            WHERE token = %s AND status = 'pending'
+            WHERE token = %s
         """, (user_id, token))
         conn.commit()
         cur.close()
