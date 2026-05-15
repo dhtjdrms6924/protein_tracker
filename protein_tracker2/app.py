@@ -882,9 +882,7 @@ def api_protein_product():
 def api_device_register():
     user_id = session.get("user_id")
     
-    # 세션 없으면 헤더에서 확인
     if not user_id:
-        # 요청 본문에서 user_id 받기
         data = request.json
         user_id = data.get("user_id")
         token = data.get("token")
@@ -898,18 +896,30 @@ def api_device_register():
     conn = get_conn()
     cur = conn.cursor()
 
-    cur.execute("SELECT id FROM devices WHERE token = %s AND user_id = %s", (token, user_id))
-    existing = cur.fetchone()
+    # pending 상태 기기가 있으면 현재 유저로 업데이트
+    cur.execute("SELECT id FROM devices WHERE token = %s AND status = 'pending'", (token,))
+    pending = cur.fetchone()
 
-    if existing:
-        cur.close()
-        conn.close()
-        return jsonify({"status": "already_registered"})
+    if pending:
+        cur.execute("""
+            UPDATE devices SET user_id = %s, status = 'active', created_at = NOW()
+            WHERE token = %s AND status = 'pending'
+        """, (user_id, token))
+    else:
+        # 이미 이 유저가 등록했는지 확인
+        cur.execute("SELECT id FROM devices WHERE token = %s AND user_id = %s", (token, user_id))
+        existing = cur.fetchone()
 
-    cur.execute("""
-        INSERT INTO devices (user_id, token, name, created_at)
-        VALUES (%s, %s, %s, NOW())
-    """, (user_id, token, "프로틴 디스펜서"))
+        if existing:
+            cur.close()
+            conn.close()
+            return jsonify({"status": "already_registered"})
+
+        cur.execute("""
+            INSERT INTO devices (user_id, token, name, created_at, status)
+            VALUES (%s, %s, %s, NOW(), 'active')
+        """, (user_id, token, "프로틴 디스펜서"))
+
     conn.commit()
     cur.close()
     conn.close()
@@ -945,7 +955,7 @@ def api_device_user_change():
 
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("DELETE FROM devices WHERE token = %s", (token,))
+    cur.execute("UPDATE devices SET status = 'pending' WHERE token = %s", (token,))
     conn.commit()
     cur.close()
     conn.close()
@@ -980,7 +990,8 @@ def api_device_status():
     cur = conn.cursor()
 
     # 토큰으로 유저 찾기
-    cur.execute("SELECT user_id FROM devices WHERE token=%s", (token,))
+# pending 상태면 마지막 등록 유저 데이터 반환
+    cur.execute("SELECT user_id, status FROM devices WHERE token=%s ORDER BY created_at DESC LIMIT 1", (token,))
     device = cur.fetchone()
     if not device:
         cur.close()
