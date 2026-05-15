@@ -1455,6 +1455,24 @@ def api_device_wifi_setup():
         return jsonify({"status": "ok"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/api/device/check", methods=["GET"])
+def api_device_check():
+    """기기 WiFi 설정 여부 확인"""
+    token = request.args.get("token")
+    if not token:
+        return jsonify({"error": "토큰 없음"}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    # devices 테이블에 등록된 기기가 있으면 WiFi 설정 완료된 것
+    cur.execute("SELECT id FROM devices WHERE token = %s", (token,))
+    existing = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    return jsonify({"wifi_configured": existing is not None})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, threaded=True)

@@ -2429,9 +2429,7 @@ function scanQRFrame() {
   }
 }
 
-function handleQRResult(qrData) {
-  // QR 데이터 형식: PROTEIN_DISPENSER:토큰값
-  // 예: PROTEIN_DISPENSER:TEST_TOKEN_001
+async function handleQRResult(qrData) {
   let token = '';
   if (qrData.startsWith('PROTEIN_DISPENSER:')) {
     token = qrData.replace('PROTEIN_DISPENSER:', '');
@@ -2441,8 +2439,27 @@ function handleQRResult(qrData) {
     return;
   }
 
-  // WiFi 입력 모달 표시
-  showWifiModal(token);
+  // 서버에서 이 토큰 기기가 WiFi 설정 완료됐는지 확인
+  const res = await fetch(`/api/device/check?token=${token}`);
+  const data = await res.json();
+
+  if (data.wifi_configured) {
+    // WiFi 이미 설정됨 → 바로 등록
+    const regRes = await fetch('/api/device/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token })
+    });
+    const regData = await regRes.json();
+    if (regData.status === 'ok' || regData.status === 'already_registered') {
+      document.getElementById('device-msg').textContent = '✅ 디스펜서 연결 완료!';
+      document.getElementById('device-msg').style.color = '#4ade80';
+      loadDeviceList();
+    }
+  } else {
+    // 첫 등록 → WiFi 설정 필요
+    showWifiModal(token);
+  }
 }
 
 function showWifiModal(token) {
