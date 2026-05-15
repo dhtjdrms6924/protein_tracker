@@ -896,19 +896,29 @@ def api_device_register():
     conn = get_conn()
     cur = conn.cursor()
 
-    # pending 상태면 무조건 현재 유저로 업데이트 (기존 유저도 허용)
-    cur.execute("SELECT id, status FROM devices WHERE token = %s ORDER BY created_at DESC LIMIT 1", (token,))
-    device = cur.fetchone()
+    # 이미 등록됐는지 확인
+    cur.execute("SELECT id FROM devices WHERE token = %s AND user_id = %s", (token, user_id))
+    existing = cur.fetchone()
 
-    if device and device["status"] == "pending":
-        cur.execute("""
-            UPDATE devices SET user_id = %s, status = 'active', created_at = NOW()
-            WHERE token = %s
-        """, (user_id, token))
-        conn.commit()
+    if existing:
         cur.close()
         conn.close()
-        return jsonify({"status": "ok"})
+        return jsonify({"status": "already_registered"})
+
+    # 처음 등록이면 is_current = True, 아니면 False
+    cur.execute("SELECT id FROM devices WHERE token = %s", (token,))
+    any_existing = cur.fetchone()
+    is_current = not any_existing
+
+    cur.execute("""
+        INSERT INTO devices (user_id, token, name, created_at, status, is_current)
+        VALUES (%s, %s, %s, NOW(), 'active', %s)
+    """, (user_id, token, "프로틴 디스펜서", is_current))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({"status": "ok"})
 
     # active 상태에서 이미 이 유저가 등록했는지 확인
     cur.execute("SELECT id FROM devices WHERE token = %s AND user_id = %s AND status = 'active'", (token, user_id))
@@ -959,7 +969,36 @@ def api_device_user_change():
 
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("UPDATE devices SET status = 'pending' WHERE token = %s", (token,))
+
+    # 등록된 모든 유저 목록
+    cur.execute("""
+        SELECT id, user_id FROM devices 
+        WHERE token = %s 
+        ORDER BY created_at ASC
+    """, (token,))
+    users = cur.fetchall()
+
+    if not users:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "등록된 유저 없음"}), 404
+
+    # 현재 유저 찾기
+    cur.execute("SELECT id FROM devices WHERE token = %s AND is_current = TRUE", (token,))
+    current = cur.fetchone()
+
+    # 다음 유저로 순환
+    ids = [u["id"] for u in users]
+    if current and current["id"] in ids:
+        next_idx = (ids.index(current["id"]) + 1) % len(ids)
+    else:
+        next_idx = 0
+
+    next_id = ids[next_idx]
+
+    # is_current 업데이트
+    cur.execute("UPDATE devices SET is_current = FALSE WHERE token = %s", (token,))
+    cur.execute("UPDATE devices SET is_current = TRUE WHERE id = %s", (next_id,))
     conn.commit()
     cur.close()
     conn.close()
@@ -989,9 +1028,19 @@ def api_device_status():
     conn = get_conn()
     cur = conn.cursor()
 
-    # 토큰으로 유저 찾기
-    cur.execute("SELECT user_id, status FROM devices WHERE token=%s ORDER BY created_at DESC LIMIT 1", (token,))
+    # is_current 유저 찾기
+    cur.execute("""
+        SELECT user_id FROM devices 
+        WHERE token=%s AND is_current=TRUE
+        LIMIT 1
+    """, (token,))
     device = cur.fetchone()
+
+    if not device:
+        # is_current 없으면 첫번째 유저
+        cur.execute("SELECT user_id FROM devices WHERE token=%s LIMIT 1", (token,))
+        device = cur.fetchone()
+
     if not device:
         cur.close()
         conn.close()
@@ -1001,7 +1050,7 @@ def api_device_status():
     today = datetime.now().strftime("%Y-%m-%d")
 
     # last_seen 업데이트
-    cur.execute("UPDATE devices SET last_seen=%s WHERE token=%s", (datetime.now().isoformat(), token))
+    cur.execute("UPDATE devices SET last_seen=%s WHERE token=%s AND is_current=TRUE", (datetime.now().isoformat(), token))
 
     # 오늘 섭취량
     cur.execute("""
