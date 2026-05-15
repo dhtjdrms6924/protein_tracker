@@ -2529,69 +2529,88 @@ async function sendWifiToESP32(token) {
     return;
   }
 
-  msg.textContent = '블루투스 연결 중...';
+  msg.textContent = '🔍 ESP32 검색 중...';
   msg.style.color = '#94a3b8';
 
-  try {
-    // BLE 기기 검색
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [{ name: 'PROTEIN_DISPENSER' }],
-      optionalServices: ['12345678-1234-1234-1234-123456789012']
-    });
+  // Java BLE 인터페이스 사용 (앱) 또는 Web Bluetooth (크롬)
+  if (window.AndroidBLE) {
+    // 안드로이드 앱
+    window.onBleResult = async function(status) {
+      if (status === 'scanning') {
+        msg.textContent = '📡 ESP32 연결 중...';
+      } else if (status === 'ok') {
+        msg.textContent = '✅ 전송 완료! ESP32가 재시작됩니다...';
+        msg.style.color = '#4ade80';
 
-    msg.textContent = '연결 중...';
-    const server = await device.gatt.connect();
-    const service = await server.getPrimaryService('12345678-1234-1234-1234-123456789012');
-    const characteristic = await service.getCharacteristic('87654321-4321-4321-4321-210987654321');
+        await fetch('/api/device/register', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ token })
+        });
 
-    // WiFi 정보 전송
-    const data = JSON.stringify({ ssid, pass });
-    const encoder = new TextEncoder();
-    await characteristic.writeValue(encoder.encode(data));
+        setTimeout(() => {
+          document.getElementById('wifi-modal')?.remove();
+          document.getElementById('device-msg').textContent = '✅ 디스펜서 연결 완료!';
+          document.getElementById('device-msg').style.color = '#4ade80';
+          loadDeviceList();
+        }, 2000);
+      } else if (status.startsWith('error:')) {
+        msg.textContent = '❌ ' + status.replace('error:', '');
+        msg.style.color = '#f87171';
+      }
+    };
+    window.AndroidBLE.sendWifi(ssid, pass, token);
 
-    msg.textContent = '✅ 전송 완료! ESP32가 재시작됩니다...';
-    msg.style.color = '#4ade80';
-
-    // 서버에 기기 등록
-    await fetch('/api/device/register', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ token })
-    });
-
-    setTimeout(() => {
-      document.getElementById('wifi-modal')?.remove();
-      document.getElementById('device-msg').textContent = '✅ 디스펜서 연결 완료!';
-      document.getElementById('device-msg').style.color = '#4ade80';
-      loadDeviceList();
-    }, 2000);
-
-} catch(e) {
-  // ESP32 재시작으로 인한 BLE 끊김은 정상!
-  if (e.message.includes('GATT') || 
-      e.message.includes('disconnect') || 
-      e.message.includes('unknown')) {
-    msg.textContent = '✅ 전송 완료! ESP32가 재시작됩니다...';
-    msg.style.color = '#4ade80';
-
-    await fetch('/api/device/register', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ token })
-    });
-
-    setTimeout(() => {
-      document.getElementById('wifi-modal')?.remove();
-      document.getElementById('device-msg').textContent = '✅ 디스펜서 연결 완료!';
-      document.getElementById('device-msg').style.color = '#4ade80';
-      loadDeviceList();
-    }, 2000);
   } else {
-    msg.textContent = '❌ 블루투스 오류: ' + e.message;
-    msg.style.color = '#f87171';
+    // 크롬 브라우저 Web Bluetooth
+    try {
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ name: 'PROTEIN_DISPENSER' }],
+        optionalServices: ['12345678-1234-1234-1234-123456789012']
+      });
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService('12345678-1234-1234-1234-123456789012');
+      const characteristic = await service.getCharacteristic('87654321-4321-4321-4321-210987654321');
+      const data = JSON.stringify({ ssid, pass });
+      await characteristic.writeValue(new TextEncoder().encode(data));
+
+      msg.textContent = '✅ 전송 완료!';
+      msg.style.color = '#4ade80';
+
+      await fetch('/api/device/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ token })
+      });
+
+      setTimeout(() => {
+        document.getElementById('wifi-modal')?.remove();
+        document.getElementById('device-msg').textContent = '✅ 디스펜서 연결 완료!';
+        document.getElementById('device-msg').style.color = '#4ade80';
+        loadDeviceList();
+      }, 2000);
+
+    } catch(e) {
+      if (e.message.includes('GATT') || e.message.includes('disconnect')) {
+        msg.textContent = '✅ 전송 완료! ESP32가 재시작됩니다...';
+        msg.style.color = '#4ade80';
+        await fetch('/api/device/register', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ token })
+        });
+        setTimeout(() => {
+          document.getElementById('wifi-modal')?.remove();
+          loadDeviceList();
+        }, 2000);
+      } else {
+        msg.textContent = '❌ 오류: ' + e.message;
+        msg.style.color = '#f87171';
+      }
+    }
   }
 }
-}
+
 
 </script>
 </body>
