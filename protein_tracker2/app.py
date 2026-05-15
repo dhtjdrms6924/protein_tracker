@@ -1458,14 +1458,12 @@ def api_device_wifi_setup():
     
 @app.route("/api/device/check", methods=["GET"])
 def api_device_check():
-    """기기 WiFi 설정 여부 확인"""
     token = request.args.get("token")
     if not token:
         return jsonify({"error": "토큰 없음"}), 400
 
-    conn = get_db_connection()
+    conn = get_conn()
     cur = conn.cursor()
-    # devices 테이블에 등록된 기기가 있으면 WiFi 설정 완료된 것
     cur.execute("SELECT id FROM devices WHERE token = %s", (token,))
     existing = cur.fetchone()
     cur.close()
