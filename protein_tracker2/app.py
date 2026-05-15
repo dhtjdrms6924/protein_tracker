@@ -880,35 +880,48 @@ def api_protein_product():
 # ─────────────────────────────────────────
 @app.route("/api/device/register", methods=["POST"])
 def api_device_register():
-    """QR코드에서 읽은 토큰으로 기기 등록"""
     user_id = session.get("user_id")
+    
+    # 세션 없으면 헤더에서 확인
     if not user_id:
-        return jsonify({"error": "로그인이 필요합니다."}), 401
-    token = request.json.get("token", "").strip()
-    if not token:
-        return jsonify({"error": "토큰이 없습니다."}), 400
+        # 요청 본문에서 user_id 받기
+        data = request.json
+        user_id = data.get("user_id")
+        token = data.get("token")
+    else:
+        data = request.json
+        token = data.get("token")
+
+    if not user_id or not token:
+        return jsonify({"error": "로그인 필요"}), 401
+
     conn = get_conn()
     cur = conn.cursor()
-    # 토큰이 이미 다른 유저에게 등록됐는지 확인
-    cur.execute("SELECT id, user_id FROM devices WHERE token=%s", (token,))
+
+    cur.execute("SELECT id FROM devices WHERE token = %s AND user_id = %s", (token, user_id))
     existing = cur.fetchone()
+
     if existing:
-        if existing["user_id"] != user_id:
-            cur.close()
-            conn.close()
-            return jsonify({"error": "이미 다른 계정에 등록된 기기입니다."}), 400
-        # 이미 내 기기면 OK
         cur.close()
         conn.close()
         return jsonify({"status": "already_registered"})
+
     cur.execute("""
-        INSERT INTO devices(user_id, token, name, created_at)
-        VALUES(%s,%s,%s,%s)
-    """, (user_id, token, "내 디스펜서", datetime.now().isoformat()))
+        INSERT INTO devices (user_id, token, name, created_at)
+        VALUES (%s, %s, %s, NOW())
+    """, (user_id, token, "프로틴 디스펜서"))
     conn.commit()
     cur.close()
     conn.close()
+
     return jsonify({"status": "ok"})
+
+@app.route("/api/check-login")
+def check_login():
+    user_id = session.get("user_id")
+    if user_id:
+        return jsonify({"logged_in": True, "user_id": user_id})
+    return jsonify({"logged_in": False})
 
 @app.route("/api/device/list")
 def api_device_list():

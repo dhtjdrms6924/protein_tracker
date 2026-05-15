@@ -2430,6 +2430,8 @@ function scanQRFrame() {
 }
 
 async function handleQRResult(qrData) {
+  stopQRScan();
+  
   let token = '';
   if (qrData.startsWith('PROTEIN_DISPENSER:')) {
     token = qrData.replace('PROTEIN_DISPENSER:', '');
@@ -2439,16 +2441,27 @@ async function handleQRResult(qrData) {
     return;
   }
 
-  // 서버에서 이 토큰 기기가 WiFi 설정 완료됐는지 확인
+  // 현재 로그인 유저 확인
+  const loginRes = await fetch('/api/check-login');
+  const loginData = await loginRes.json();
+  
+  if (!loginData.logged_in) {
+    document.getElementById('device-msg').textContent = '❌ 먼저 로그인하세요!';
+    document.getElementById('device-msg').style.color = '#f87171';
+    return;
+  }
+
+  const user_id = loginData.user_id;
+
+  // WiFi 설정 여부 확인
   const res = await fetch(`/api/device/check?token=${token}`);
   const data = await res.json();
 
   if (data.wifi_configured) {
-    // WiFi 이미 설정됨 → 바로 등록
     const regRes = await fetch('/api/device/register', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ token })
+      body: JSON.stringify({ token, user_id })
     });
     const regData = await regRes.json();
     if (regData.status === 'ok' || regData.status === 'already_registered') {
@@ -2457,8 +2470,6 @@ async function handleQRResult(qrData) {
       loadDeviceList();
     }
   } else {
-    // 첫 등록 → WiFi 설정 필요
-    stopQRScan();
     showWifiModal(token);
   }
 }
