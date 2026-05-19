@@ -850,6 +850,329 @@ body {
 
   #main { padding: 14px; }
 }
+/* ── 분석 탭 ── */
+.analysis-section-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  margin-bottom: 8px;
+}
+
+.chart-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.analysis-stat-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.analysis-stat-card {
+  flex: 1;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.analysis-stat-card.highlight {
+  background: var(--accent-light);
+  border-color: #ddd6fe;
+}
+
+.asc-label {
+  font-size: 0.6875rem;
+  color: var(--text-3);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.asc-value {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--text-1);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.asc-value.accent { color: var(--accent); }
+.asc-value.success { color: var(--success); }
+.asc-value.danger { color: var(--danger); }
+
+.asc-sub {
+  font-size: 0.6875rem;
+  color: var(--text-3);
+}
+
+/* PDCAAS 바 차트 */
+.pdcaas-bar-list { display: flex; flex-direction: column; gap: 10px; }
+
+.pdcaas-bar-item { display: flex; flex-direction: column; gap: 4px; }
+
+.pdcaas-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pdcaas-food-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-1);
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pdcaas-score-badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  background: var(--bg-alt);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.pdcaas-score-badge.high { background: var(--success-bg); color: var(--success); border-color: var(--success-border); }
+.pdcaas-score-badge.mid  { background: #fefce8; color: #b45309; border-color: #fde68a; }
+.pdcaas-score-badge.low  { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
+
+.pdcaas-bar-track {
+  height: 10px;
+  border-radius: var(--r-full);
+  background: var(--bg-alt);
+  overflow: hidden;
+  display: flex;
+}
+
+.pdcaas-bar-eff {
+  height: 100%;
+  border-radius: var(--r-full) 0 0 var(--r-full);
+  background: linear-gradient(90deg, #4ade80, #16a34a);
+  transition: width .5s ease;
+}
+
+.pdcaas-bar-lost {
+  height: 100%;
+  background: #fca5a5;
+  transition: width .5s ease;
+}
+
+.pdcaas-bar-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6875rem;
+  color: var(--text-3);
+}
+
+/* 목표 예측 */
+.forecast-toggle-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.forecast-type-btn {
+  flex: 1;
+  padding: 9px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--border);
+  background: var(--bg-alt);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.forecast-type-btn.active {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.forecast-input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  align-items: flex-end;
+}
+
+.forecast-input-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.forecast-input-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.forecast-input-group input {
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: var(--card-bg);
+  color: var(--text-1);
+  outline: none;
+  transition: border-color .15s;
+}
+.forecast-input-group input:focus { border-color: var(--border-focus); }
+
+.forecast-result-box {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  display: none;
+}
+.forecast-result-box.show { display: block; }
+
+.forecast-compare {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.forecast-compare-card {
+  flex: 1;
+  border-radius: var(--r-md);
+  padding: 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.forecast-compare-card.raw {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+}
+
+.forecast-compare-card.eff {
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+}
+
+.fcc-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-2);
+}
+
+.fcc-days {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.fcc-days.raw { color: #b45309; }
+.fcc-days.eff { color: var(--success); }
+
+.fcc-sub { font-size: 0.6875rem; color: var(--text-3); }
+
+/* 기간 선택 버튼 */
+.period-btn-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.period-btn {
+  padding: 5px 12px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.period-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* PDCAAS 범례 */
+.pdcaas-legend {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 0.6875rem;
+  color: var(--text-3);
+}
+
+.pdcaas-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* 트렌드 라인 차트 SVG */
+.trend-svg-wrap {
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  padding: 12px 8px 8px;
+  margin-bottom: 8px;
+}
+
+.trend-svg-wrap svg { width: 100%; display: block; }
+
+.analysis-empty {
+  text-align: center;
+  color: var(--text-3);
+  font-size: 0.875rem;
+  padding: 32px 0;
+}
+
+.pdcaas-info-box {
+  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+  border: 1px solid #c4b5fd;
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  font-size: 0.8125rem;
+  color: #4c1d95;
+  line-height: 1.6;
+}
+
+.pdcaas-info-box strong { font-weight: 700; }
 </style>
 </head>
 <body>
@@ -902,6 +1225,7 @@ body {
       <button class="nav-btn active" id="btn-tracker" onclick="switchTab('tracker')">트래커</button>
       <button class="nav-btn" id="btn-history" onclick="switchTab('history')">기록</button>
       <button class="nav-btn" id="btn-album" onclick="switchTab('album')">앨범</button>
+      <button class="nav-btn" id="btn-analysis" onclick="switchTab('analysis')">분석</button>
       <button class="nav-btn" id="btn-admin" onclick="switchTab('admin')" style="display:none;background:#f87171;color:#0f172a;">관리자</button>
     </div>
 
@@ -1057,6 +1381,129 @@ body {
         <div id="album-grid" class="album-grid"></div>
         <div id="album-empty" style="display:none;color:#94a3b8;font-size:0.875rem;margin-top:10px;">아직 업로드한 사진이 없어요.</div>
       </div>
+    </div>
+
+    <!-- 분석 탭 -->
+    <div id="content-analysis" class="main-content">
+
+      <!-- 기간 선택 -->
+      <div class="card">
+        <div class="analysis-section-title">단백질 섭취 분석</div>
+
+        <div class="pdcaas-info-box">
+          <strong>📊 유효 단백질(PDCAAS)이란?</strong><br>
+          단백질의 품질은 식품마다 다릅니다. 닭가슴살(0.92), 계란(1.00)은 거의 완전히 흡수되지만,
+          면·국수(0.25), 쌀밥(0.59)은 흡수율이 낮아요. PDCAAS 점수를 반영한 <strong>유효 단백질</strong>이
+          실제 근육 합성에 사용되는 단백질에 더 가깝습니다.
+        </div>
+
+        <div class="period-btn-row">
+          <button class="period-btn active" id="period-7" onclick="setAnalysisPeriod(7)">7일</button>
+          <button class="period-btn" id="period-14" onclick="setAnalysisPeriod(14)">2주</button>
+          <button class="period-btn" id="period-30" onclick="setAnalysisPeriod(30)">30일</button>
+          <button class="period-btn" id="period-90" onclick="setAnalysisPeriod(90)">90일</button>
+        </div>
+
+        <!-- 요약 스탯 -->
+        <div class="analysis-stat-row" id="analysis-stat-row" style="display:none;">
+          <div class="analysis-stat-card">
+            <div class="asc-label">평균 원시 단백질</div>
+            <div class="asc-value" id="stat-avg-raw">—</div>
+            <div class="asc-sub">g / 일</div>
+          </div>
+          <div class="analysis-stat-card highlight">
+            <div class="asc-label">평균 유효 단백질</div>
+            <div class="asc-value accent" id="stat-avg-eff">—</div>
+            <div class="asc-sub">g / 일</div>
+          </div>
+          <div class="analysis-stat-card">
+            <div class="asc-label">품질 효율</div>
+            <div class="asc-value success" id="stat-efficiency">—</div>
+            <div class="asc-sub">유효 / 원시</div>
+          </div>
+        </div>
+
+        <!-- 추이 그래프 (SVG) -->
+        <div id="trend-chart-area">
+          <div class="pdcaas-legend">
+            <span><span class="pdcaas-legend-dot" style="background:#6d28d9;"></span>원시 단백질</span>
+            <span><span class="pdcaas-legend-dot" style="background:#16a34a;"></span>유효 단백질</span>
+            <span><span class="pdcaas-legend-dot" style="background:#e2e8f0;opacity:.8;"></span>목표</span>
+          </div>
+          <div class="trend-svg-wrap" id="trend-svg-wrap">
+            <div class="analysis-empty">데이터를 불러오는 중...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 음식별 PDCAAS 분석 -->
+      <div class="card">
+        <div class="analysis-section-title">음식별 단백질 품질</div>
+        <div class="pdcaas-legend" style="margin-bottom:14px;">
+          <span><span class="pdcaas-legend-dot" style="background:#16a34a;"></span>유효 단백질</span>
+          <span><span class="pdcaas-legend-dot" style="background:#fca5a5;"></span>손실 단백질</span>
+        </div>
+        <div id="pdcaas-bar-list" class="pdcaas-bar-list">
+          <div class="analysis-empty">데이터를 불러오는 중...</div>
+        </div>
+      </div>
+
+      <!-- 목표 달성 예측 -->
+      <div class="card">
+        <div class="analysis-section-title">목표 달성 예측</div>
+        <div class="pdcaas-info-box" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-color:#bbf7d0;color:#14532d;">
+          현재 단백질 섭취 패턴을 기반으로, 목표 달성까지 걸리는 시간을<br>
+          <strong>원시 단백질 vs 유효 단백질</strong> 기준으로 비교합니다.
+        </div>
+
+        <div class="forecast-toggle-row">
+          <button class="forecast-type-btn active" id="fctype-muscle" onclick="setForecastType('muscle')">💪 근육량 목표</button>
+          <button class="forecast-type-btn" id="fctype-weight" onclick="setForecastType('weight')">⚖️ 체중 목표</button>
+        </div>
+
+        <div id="forecast-muscle-inputs">
+          <div class="forecast-input-row">
+            <div class="forecast-input-group">
+              <label>목표 근육 증가량 (kg)</label>
+              <input type="number" id="fc-target-muscle" placeholder="예: 5" min="0" step="0.5">
+            </div>
+          </div>
+        </div>
+
+        <div id="forecast-weight-inputs" style="display:none;">
+          <div class="forecast-input-row">
+            <div class="forecast-input-group">
+              <label>현재 체중 (kg)</label>
+              <input type="number" id="fc-current-weight" placeholder="예: 70" min="0" step="0.1">
+            </div>
+            <div class="forecast-input-group">
+              <label>목표 체중 (kg)</label>
+              <input type="number" id="fc-target-weight" placeholder="예: 75" min="0" step="0.1">
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-analyze" onclick="runForecast()" style="margin-top:0;margin-bottom:14px;">예측 계산</button>
+
+        <div id="forecast-result" class="forecast-result-box">
+          <div id="forecast-result-title" style="font-size:0.875rem;font-weight:700;color:var(--text-1);margin-bottom:4px;"></div>
+          <div style="font-size:0.8125rem;color:var(--text-3);" id="forecast-needed-protein"></div>
+          <div class="forecast-compare">
+            <div class="forecast-compare-card raw">
+              <div class="fcc-label">원시 단백질 기준</div>
+              <div class="fcc-days raw" id="fc-days-raw">—</div>
+              <div class="fcc-sub">일 예상</div>
+            </div>
+            <div class="forecast-compare-card eff">
+              <div class="fcc-label">유효 단백질 기준</div>
+              <div class="fcc-days eff" id="fc-days-eff">—</div>
+              <div class="fcc-sub">일 예상</div>
+            </div>
+          </div>
+          <div id="forecast-diff-msg" style="margin-top:12px;font-size:0.8125rem;color:var(--text-2);line-height:1.6;background:var(--accent-light);border-radius:var(--r-md);padding:10px 12px;border:1px solid #ddd6fe;"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- 관리자 탭 -->
@@ -1277,7 +1724,7 @@ async function sendWidgetTokenToAndroid(retryCount = 0) {
 // ══════════════════════════════════════════
 //  탭 전환
 // ══════════════════════════════════════════
-const SWIPE_TAB_ORDER = ['tracker','history','album'];
+const SWIPE_TAB_ORDER = ['tracker','history','album','analysis'];
 
 function switchTab(id, fromDirection) {
   const prev = document.querySelector('.main-content.active');
@@ -1305,6 +1752,7 @@ function switchTab(id, fromDirection) {
   if (id === 'history') loadHistory();
   if (id === 'album') loadAlbum();
   if (id === 'admin') loadAdminData();
+  if (id === 'analysis') loadAnalysis();
 }
 
 // ── 모바일 스와이프 네비게이션 (실시간 팔로우) ──
@@ -2612,6 +3060,266 @@ async function sendWifiToESP32(token) {
 }
 
 
-</script>
+// ══════════════════════════════════════════
+//  분석 탭 (PDCAAS 유효 단백질)
+// ══════════════════════════════════════════
+let analysisPeriod = 7;
+let analysisData = null;   // { trend, goal }
+let pdcaasData = null;     // food pdcaas array
+let forecastType = 'muscle';
+
+async function loadAnalysis() {
+  await Promise.all([loadTrendData(), loadPdcaasData()]);
+}
+
+async function loadTrendData() {
+  try {
+    const res = await fetch(`/api/analysis/protein-trend?days=${analysisPeriod}`);
+    analysisData = await res.json();
+    renderTrendChart(analysisData);
+    renderStatCards(analysisData);
+  } catch(e) {
+    document.getElementById('trend-svg-wrap').innerHTML = '<div class="analysis-empty">데이터를 불러올 수 없습니다.</div>';
+  }
+}
+
+async function loadPdcaasData() {
+  try {
+    const res = await fetch(`/api/analysis/food-pdcaas?days=${analysisPeriod}`);
+    pdcaasData = await res.json();
+    renderPdcaasBars(pdcaasData);
+  } catch(e) {
+    document.getElementById('pdcaas-bar-list').innerHTML = '<div class="analysis-empty">데이터를 불러올 수 없습니다.</div>';
+  }
+}
+
+function setAnalysisPeriod(days) {
+  analysisPeriod = days;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('period-' + days).classList.add('active');
+  loadAnalysis();
+}
+
+function renderStatCards(data) {
+  const trend = data.trend || [];
+  if (trend.length === 0) {
+    document.getElementById('analysis-stat-row').style.display = 'none';
+    return;
+  }
+  document.getElementById('analysis-stat-row').style.display = 'flex';
+  const avgRaw = trend.reduce((s, d) => s + d.raw, 0) / trend.length;
+  const avgEff = trend.reduce((s, d) => s + d.effective, 0) / trend.length;
+  const eff = avgRaw > 0 ? (avgEff / avgRaw * 100) : 0;
+  document.getElementById('stat-avg-raw').textContent = avgRaw.toFixed(1) + 'g';
+  document.getElementById('stat-avg-eff').textContent = avgEff.toFixed(1) + 'g';
+  document.getElementById('stat-efficiency').textContent = eff.toFixed(0) + '%';
+}
+
+function renderTrendChart(data) {
+  const wrap = document.getElementById('trend-svg-wrap');
+  const trend = data.trend || [];
+  const goal = data.goal || 0;
+
+  if (trend.length === 0) {
+    wrap.innerHTML = '<div class="analysis-empty">아직 섭취 기록이 없어요.<br>음식을 기록하면 추이가 표시됩니다.</div>';
+    return;
+  }
+
+  const W = 340, H = 160, PL = 36, PR = 10, PT = 10, PB = 28;
+  const cW = W - PL - PR, cH = H - PT - PB;
+
+  const allVals = trend.flatMap(d => [d.raw, d.effective, goal]).filter(v => v > 0);
+  const maxVal = Math.max(...allVals) * 1.15 || 1;
+
+  const xStep = trend.length > 1 ? cW / (trend.length - 1) : cW;
+  const yScale = v => PT + cH - (v / maxVal) * cH;
+
+  // x축 레이블 (최대 6개)
+  const labelCount = Math.min(6, trend.length);
+  const labelIndices = trend.length <= 6
+    ? trend.map((_, i) => i)
+    : Array.from({length: labelCount}, (_, i) => Math.round(i * (trend.length - 1) / (labelCount - 1)));
+
+  // y축 레이블
+  const yTicks = [0, maxVal * 0.25, maxVal * 0.5, maxVal * 0.75, maxVal];
+
+  // 폴리라인 포인트
+  const rawPts = trend.map((d, i) => `${PL + i * xStep},${yScale(d.raw)}`).join(' ');
+  const effPts = trend.map((d, i) => `${PL + i * xStep},${yScale(d.effective)}`).join(' ');
+
+  // 채움 경로 (원시)
+  const rawFill = `M${PL + 0 * xStep},${yScale(trend[0].raw)} ` +
+    trend.slice(1).map((d, i) => `L${PL + (i+1) * xStep},${yScale(d.raw)}`).join(' ') +
+    ` L${PL + (trend.length-1) * xStep},${PT + cH} L${PL},${PT + cH} Z`;
+  // 채움 경로 (유효)
+  const effFill = `M${PL + 0 * xStep},${yScale(trend[0].effective)} ` +
+    trend.slice(1).map((d, i) => `L${PL + (i+1) * xStep},${yScale(d.effective)}`).join(' ') +
+    ` L${PL + (trend.length-1) * xStep},${PT + cH} L${PL},${PT + cH} Z`;
+
+  const goalY = yScale(goal);
+
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="rawGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6d28d9" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#6d28d9" stop-opacity="0.02"/>
+    </linearGradient>
+    <linearGradient id="effGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#16a34a" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#16a34a" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+
+  <!-- y축 그리드 -->
+  ${yTicks.slice(1).map(v => `<line x1="${PL}" y1="${yScale(v)}" x2="${W - PR}" y2="${yScale(v)}" stroke="#e2e8f0" stroke-width="1"/>`).join('')}
+
+  <!-- y축 레이블 -->
+  ${yTicks.slice(1,4).map(v => `<text x="${PL - 4}" y="${yScale(v) + 4}" text-anchor="end" font-size="9" fill="#94a3b8">${Math.round(v)}</text>`).join('')}
+
+  <!-- 목표선 -->
+  ${goal > 0 ? `<line x1="${PL}" y1="${goalY}" x2="${W - PR}" y2="${goalY}" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="${W - PR - 2}" y="${goalY - 3}" text-anchor="end" font-size="8" fill="#94a3b8">목표</text>` : ''}
+
+  <!-- 채움 영역 -->
+  <path d="${rawFill}" fill="url(#rawGrad)"/>
+  <path d="${effFill}" fill="url(#effGrad)"/>
+
+  <!-- 원시 단백질 라인 -->
+  <polyline points="${rawPts}" fill="none" stroke="#6d28d9" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- 유효 단백질 라인 -->
+  <polyline points="${effPts}" fill="none" stroke="#16a34a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- 원시 점 -->
+  ${trend.map((d, i) => `<circle cx="${PL + i * xStep}" cy="${yScale(d.raw)}" r="3" fill="#6d28d9" stroke="#fff" stroke-width="1.5"/>`).join('')}
+
+  <!-- 유효 점 -->
+  ${trend.map((d, i) => `<circle cx="${PL + i * xStep}" cy="${yScale(d.effective)}" r="3" fill="#16a34a" stroke="#fff" stroke-width="1.5"/>`).join('')}
+
+  <!-- x축 레이블 -->
+  ${labelIndices.map(i => {
+    const d = trend[i];
+    const parts = d.date.split('-');
+    const label = parts.length >= 3 ? `${parseInt(parts[1])}/${parseInt(parts[2])}` : d.date;
+    return `<text x="${PL + i * xStep}" y="${H - 4}" text-anchor="middle" font-size="9" fill="#94a3b8">${label}</text>`;
+  }).join('')}
+</svg>`;
+}
+
+function renderPdcaasBars(foods) {
+  const el = document.getElementById('pdcaas-bar-list');
+  if (!foods || foods.length === 0) {
+    el.innerHTML = '<div class="analysis-empty">아직 섭취 기록이 없어요.</div>';
+    return;
+  }
+
+  const maxRaw = Math.max(...foods.map(f => f.raw_protein), 1);
+
+  el.innerHTML = foods.map(f => {
+    const effPct = (f.effective_protein / maxRaw * 100).toFixed(1);
+    const lostPct = (f.lost_protein / maxRaw * 100).toFixed(1);
+    const scoreClass = f.pdcaas_score >= 0.85 ? 'high' : f.pdcaas_score >= 0.6 ? 'mid' : 'low';
+    const scoreLabel = `PDCAAS ${f.pdcaas_score.toFixed(2)}`;
+
+    return `<div class="pdcaas-bar-item">
+  <div class="pdcaas-bar-header">
+    <span class="pdcaas-food-name">${f.food_name}</span>
+    <span class="pdcaas-score-badge ${scoreClass}">${scoreLabel}</span>
+  </div>
+  <div class="pdcaas-bar-track">
+    <div class="pdcaas-bar-eff" style="width:${effPct}%"></div>
+    <div class="pdcaas-bar-lost" style="width:${lostPct}%"></div>
+  </div>
+  <div class="pdcaas-bar-footer">
+    <span>유효 ${f.effective_protein}g</span>
+    <span>원시 ${f.raw_protein}g (손실 ${f.lost_protein}g)</span>
+  </div>
+</div>`;
+  }).join('');
+}
+
+function setForecastType(type) {
+  forecastType = type;
+  document.querySelectorAll('.forecast-type-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('fctype-' + type).classList.add('active');
+  document.getElementById('forecast-muscle-inputs').style.display = type === 'muscle' ? 'block' : 'none';
+  document.getElementById('forecast-weight-inputs').style.display = type === 'weight' ? 'block' : 'none';
+  document.getElementById('forecast-result').classList.remove('show');
+}
+
+async function runForecast() {
+  // 현재 평균 계산
+  if (!analysisData || !analysisData.trend || analysisData.trend.length === 0) {
+    await loadTrendData();
+  }
+  const trend = (analysisData && analysisData.trend) || [];
+  const avgRaw = trend.length > 0 ? trend.reduce((s, d) => s + d.raw, 0) / trend.length : 0;
+  const avgEff = trend.length > 0 ? trend.reduce((s, d) => s + d.effective, 0) / trend.length : 0;
+
+  if (avgRaw === 0) {
+    alert('단백질 섭취 기록이 없어 예측이 불가능합니다. 먼저 음식을 기록해주세요.');
+    return;
+  }
+
+  let params = `daily_raw_avg=${avgRaw.toFixed(1)}&daily_eff_avg=${avgEff.toFixed(1)}`;
+
+  if (forecastType === 'muscle') {
+    const muscle = parseFloat(document.getElementById('fc-target-muscle').value) || 0;
+    if (muscle <= 0) { alert('근육 증가 목표를 입력해주세요.'); return; }
+    params += `&target_muscle_kg=${muscle}`;
+  } else {
+    const cur = parseFloat(document.getElementById('fc-current-weight').value) || 0;
+    const tgt = parseFloat(document.getElementById('fc-target-weight').value) || 0;
+    if (cur <= 0 || tgt <= 0) { alert('현재 체중과 목표 체중을 입력해주세요.'); return; }
+    params += `&current_weight=${cur}&target_weight=${tgt}`;
+  }
+
+  try {
+    const res = await fetch(`/api/analysis/goal-forecast?${params}`);
+    const data = await res.json();
+    renderForecastResult(data, avgRaw, avgEff);
+  } catch(e) {
+    alert('예측 계산 중 오류가 발생했습니다.');
+  }
+}
+
+function renderForecastResult(data, avgRaw, avgEff) {
+  const box = document.getElementById('forecast-result');
+  const daysRaw = data.days_raw || 0;
+  const daysEff = data.days_effective || 0;
+  const diff = daysEff - daysRaw;
+
+  let title = '';
+  if (data.target_type === 'muscle') {
+    title = `목표: 근육량 +${data.target_kg}kg 증가`;
+  } else {
+    const sign = data.weight_diff_kg > 0 ? '+' : '';
+    title = `목표: 체중 ${sign}${data.weight_diff_kg}kg (현재 → ${data.target_kg}kg)`;
+  }
+
+  document.getElementById('forecast-result-title').textContent = title;
+  document.getElementById('forecast-needed-protein').textContent =
+    `필요 총 단백질: 약 ${Math.round(data.needed_protein_g).toLocaleString()}g`;
+
+  document.getElementById('fc-days-raw').textContent = daysRaw.toLocaleString();
+  document.getElementById('fc-days-eff').textContent = daysEff.toLocaleString();
+
+  let diffMsg = '';
+  if (diff > 0) {
+    const extra = diff;
+    const extraMonths = (extra / 30).toFixed(1);
+    diffMsg = `⚠️ 현재 식단의 단백질 품질이 낮아, 유효 단백질 기준으로는 <strong>${extra}일 더</strong>(약 ${extraMonths}개월) 걸립니다. `
+      + `단백질 품질이 높은 식품(닭가슴살, 계란, 유청 프로틴 등)으로 대체하면 목표를 더 빨리 달성할 수 있어요.`;
+  } else if (diff < 0) {
+    diffMsg = `✅ 고품질 단백질 식품을 잘 드시고 있어요! 유효 단백질 기준으로 오히려 <strong>${Math.abs(diff)}일 빠르게</strong> 달성 가능합니다.`;
+  } else {
+    diffMsg = `✅ 원시·유효 단백질 기준이 거의 동일합니다. 고품질 단백질 비중이 높은 식단입니다.`;
+  }
+
+  document.getElementById('forecast-diff-msg').innerHTML = diffMsg;
+  box.classList.add('show');
+}
+
+
 </body>
 </html>

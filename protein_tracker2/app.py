@@ -1551,6 +1551,174 @@ def api_device_wifi_setup():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+# ─────────────────────────────────────────
+# 단백질 분석 API (PDCAAS 기반)
+# ─────────────────────────────────────────
+
+# PDCAAS 점수 DB (식품명 키워드 매핑)
+PDCAAS_DB = {
+    # 완전단백질 (동물성)
+    "닭": 0.92, "계란": 1.00, "달걀": 1.00, "우유": 1.00, "요거트": 1.00, "치즈": 0.95,
+    "소고기": 0.92, "돼지고기": 0.91, "참치": 0.94, "연어": 0.94, "생선": 0.90, "새우": 0.88,
+    "고등어": 0.91, "명태": 0.90, "오징어": 0.86, "두부": 0.91, "두유": 0.91,
+    "프로틴": 1.00, "protein": 1.00, "유청": 1.00, "카제인": 1.00, "whey": 1.00,
+    # 불완전단백질 (식물성)
+    "쌀": 0.59, "밥": 0.59, "현미": 0.62, "보리": 0.57, "귀리": 0.57,
+    "빵": 0.40, "국수": 0.25, "면": 0.25, "파스타": 0.40, "라면": 0.25, "우동": 0.30,
+    "밀": 0.40, "밀가루": 0.40, "토스트": 0.40,
+    "콩": 0.91, "병아리콩": 0.71, "렌틸콩": 0.52, "검은콩": 0.78,
+    "아몬드": 0.48, "땅콩": 0.52, "호두": 0.46,
+    "브로콜리": 0.83, "시금치": 0.75, "감자": 0.68,
+    "떡": 0.59, "죽": 0.59,
+}
+
+def get_pdcaas_score(food_name):
+    """음식명으로 PDCAAS 점수 반환 (키워드 매칭)"""
+    name_lower = food_name.lower()
+    best_score = None
+    for keyword, score in PDCAAS_DB.items():
+        if keyword in name_lower:
+            if best_score is None or score > best_score:
+                best_score = score
+    return best_score if best_score is not None else 0.75  # 기본값
+
+@app.route("/api/analysis/protein-trend")
+def api_protein_trend():
+    """최근 N일 단백질 섭취 추이 + 음식별 PDCAAS 유효 단백질 계산"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인 필요"}), 401
+
+    days = int(request.args.get("days", 30))
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # 최근 N일 식사 데이터
+    cur.execute("""
+        SELECT date, food_name, protein_g
+        FROM meals
+        WHERE user_id=%s
+          AND date >= (CURRENT_DATE - INTERVAL '%s days')::TEXT
+        ORDER BY date ASC
+    """, (user_id, days))
+    meals = [dict(r) for r in cur.fetchall()]
+
+    # 유저 정보
+    cur.execute("SELECT weight, multiplier FROM users WHERE id=%s", (user_id,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    goal = float(user["weight"] or 0) * float(user["multiplier"] or 0) if user else 0
+
+    # 날짜별 원시/유효 단백질 집계
+    from collections import defaultdict
+    daily_raw = defaultdict(float)
+    daily_effective = defaultdict(float)
+
+    for meal in meals:
+        date = meal["date"]
+        raw_p = float(meal["protein_g"] or 0)
+        score = get_pdcaas_score(meal["food_name"])
+        daily_raw[date] += raw_p
+        daily_effective[date] += raw_p * score
+
+    # 정렬된 날짜 목록
+    all_dates = sorted(set(daily_raw.keys()) | set(daily_effective.keys()))
+    trend = []
+    for d in all_dates:
+        trend.append({
+            "date": d,
+            "raw": round(daily_raw[d], 1),
+            "effective": round(daily_effective[d], 1)
+        })
+
+    return jsonify({"trend": trend, "goal": goal})
+
+@app.route("/api/analysis/food-pdcaas")
+def api_food_pdcaas():
+    """최근 섭취 음식별 PDCAAS 점수 및 단백질 분포 반환"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인 필요"}), 401
+
+    days = int(request.args.get("days", 30))
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT food_name, SUM(protein_g) as total_protein
+        FROM meals
+        WHERE user_id=%s
+          AND date >= (CURRENT_DATE - INTERVAL '%s days')::TEXT
+        GROUP BY food_name
+        ORDER BY total_protein DESC
+        LIMIT 15
+    """, (user_id, days))
+    foods = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+
+    result = []
+    for f in foods:
+        score = get_pdcaas_score(f["food_name"])
+        raw = float(f["total_protein"] or 0)
+        result.append({
+            "food_name": f["food_name"],
+            "raw_protein": round(raw, 1),
+            "pdcaas_score": score,
+            "effective_protein": round(raw * score, 1),
+            "lost_protein": round(raw * (1 - score), 1)
+        })
+
+    return jsonify(result)
+
+@app.route("/api/analysis/goal-forecast")
+def api_goal_forecast():
+    """목표 달성 예상 기간 계산 (원시 vs 유효 단백질 기준)"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인 필요"}), 401
+
+    # 파라미터
+    target_weight = float(request.args.get("target_weight", 0))
+    target_muscle_kg = float(request.args.get("target_muscle_kg", 0))
+    current_weight = float(request.args.get("current_weight", 0))
+    daily_raw_avg = float(request.args.get("daily_raw_avg", 0))
+    daily_eff_avg = float(request.args.get("daily_eff_avg", 0))
+
+    # 근육 1kg 합성에 필요한 단백질: ~175g (연구 기반 보수적 추정)
+    PROTEIN_PER_KG_MUSCLE = 175.0
+    # 체중 증가 목표 (지방+근육 혼합 기준, 근육 비율 약 40% 가정)
+    MUSCLE_RATIO = 0.4
+
+    results = {}
+
+    if target_muscle_kg > 0:
+        needed = target_muscle_kg * PROTEIN_PER_KG_MUSCLE
+        results["target_type"] = "muscle"
+        results["target_kg"] = target_muscle_kg
+        results["needed_protein_g"] = needed
+        if daily_raw_avg > 0:
+            results["days_raw"] = round(needed / daily_raw_avg)
+        if daily_eff_avg > 0:
+            results["days_effective"] = round(needed / daily_eff_avg)
+
+    elif target_weight > 0 and current_weight > 0:
+        diff = target_weight - current_weight
+        muscle_gain = abs(diff) * MUSCLE_RATIO
+        needed = muscle_gain * PROTEIN_PER_KG_MUSCLE
+        results["target_type"] = "weight"
+        results["target_kg"] = target_weight
+        results["weight_diff_kg"] = round(diff, 1)
+        results["needed_protein_g"] = round(needed, 0)
+        if daily_raw_avg > 0:
+            results["days_raw"] = round(needed / daily_raw_avg) if diff > 0 else 0
+        if daily_eff_avg > 0:
+            results["days_effective"] = round(needed / daily_eff_avg) if diff > 0 else 0
+
+    return jsonify(results)
+
+
 @app.route("/api/device/check", methods=["GET"])
 def api_device_check():
     token = request.args.get("token")
