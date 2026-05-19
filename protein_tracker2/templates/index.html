@@ -1471,33 +1471,59 @@ body {
         </div>
 
         <div id="forecast-weight-inputs" style="display:none;">
-          <div class="forecast-input-row">
-            <div class="forecast-input-group">
-              <label>현재 체중 (kg)</label>
-              <input type="number" id="fc-current-weight" placeholder="예: 70" min="0" step="0.1">
-            </div>
-            <div class="forecast-input-group">
-              <label>목표 체중 (kg)</label>
-              <input type="number" id="fc-target-weight" placeholder="예: 75" min="0" step="0.1">
-            </div>
+          <div class="forecast-input-group" style="margin-bottom:10px;">
+            <label>현재 체중 (kg)</label>
+            <input type="number" id="fc-current-weight" placeholder="예: 70" min="0" step="0.1">
+          </div>
+          <div class="forecast-input-group" style="margin-bottom:14px;">
+            <label>목표 체중 (kg)</label>
+            <input type="number" id="fc-target-weight" placeholder="예: 75" min="0" step="0.1">
           </div>
         </div>
 
-        <button class="btn-analyze" onclick="runForecast()" style="margin-top:0;margin-bottom:14px;">예측 계산</button>
+        <button class="btn-analyze" onclick="runForecast()" style="margin-top:0;margin-bottom:14px;display:block;width:100%;">예측 계산</button>
 
         <div id="forecast-result" class="forecast-result-box">
           <div id="forecast-result-title" style="font-size:0.875rem;font-weight:700;color:var(--text-1);margin-bottom:4px;"></div>
-          <div style="font-size:0.8125rem;color:var(--text-3);" id="forecast-needed-protein"></div>
-          <div class="forecast-compare">
-            <div class="forecast-compare-card raw">
-              <div class="fcc-label">원시 단백질 기준</div>
-              <div class="fcc-days raw" id="fc-days-raw">—</div>
-              <div class="fcc-sub">일 예상</div>
+          <div style="font-size:0.8125rem;color:var(--text-3);margin-bottom:12px;" id="forecast-needed-protein"></div>
+          <div class="forecast-compare" style="flex-direction:column;gap:8px;">
+            <!-- 카드 1: 현재 식단 그대로 -->
+            <div class="forecast-compare-card raw" style="text-align:left;display:flex;align-items:center;gap:12px;padding:14px 16px;">
+              <div style="font-size:1.75rem;line-height:1;">🍜</div>
+              <div style="flex:1;">
+                <div class="fcc-label" style="margin-bottom:2px;">현재 식단 유지 시 (원시 단백질 기준)</div>
+                <div style="display:flex;align-items:baseline;gap:6px;">
+                  <span class="fcc-days raw" id="fc-days-raw" style="font-size:1.5rem;">—</span>
+                  <span class="fcc-sub">일 예상</span>
+                  <span id="fc-months-raw" style="font-size:0.75rem;color:#b45309;"></span>
+                </div>
+              </div>
             </div>
-            <div class="forecast-compare-card eff">
-              <div class="fcc-label">유효 단백질 기준</div>
-              <div class="fcc-days eff" id="fc-days-eff">—</div>
-              <div class="fcc-sub">일 예상</div>
+            <!-- 카드 2: 유효 단백질 반영 -->
+            <div class="forecast-compare-card" style="background:#fef3c7;border-color:#fde68a;text-align:left;display:flex;align-items:center;gap:12px;padding:14px 16px;">
+              <div style="font-size:1.75rem;line-height:1;">⚗️</div>
+              <div style="flex:1;">
+                <div class="fcc-label" style="margin-bottom:2px;">PDCAAS 유효 단백질 기준 (현실적 예측)</div>
+                <div style="display:flex;align-items:baseline;gap:6px;">
+                  <span class="fcc-days" id="fc-days-eff" style="font-size:1.5rem;color:#b45309;">—</span>
+                  <span class="fcc-sub">일 예상</span>
+                  <span id="fc-months-eff" style="font-size:0.75rem;color:#b45309;"></span>
+                </div>
+                <div id="fc-eff-note" style="font-size:0.6875rem;color:#92400e;margin-top:2px;"></div>
+              </div>
+            </div>
+            <!-- 카드 3: 고품질 식단으로 바꾸면 -->
+            <div class="forecast-compare-card eff" style="text-align:left;display:flex;align-items:center;gap:12px;padding:14px 16px;">
+              <div style="font-size:1.75rem;line-height:1;">💪</div>
+              <div style="flex:1;">
+                <div class="fcc-label" style="margin-bottom:2px;">고품질 단백질 식단으로 개선 시</div>
+                <div style="display:flex;align-items:baseline;gap:6px;">
+                  <span class="fcc-days eff" id="fc-days-optimal" style="font-size:1.5rem;">—</span>
+                  <span class="fcc-sub">일 예상</span>
+                  <span id="fc-months-optimal" style="font-size:0.75rem;color:#16a34a;"></span>
+                </div>
+                <div style="font-size:0.6875rem;color:#166534;margin-top:2px;">PDCAAS 0.92 기준 (닭가슴살·계란 중심 식단)</div>
+              </div>
             </div>
           </div>
           <div id="forecast-diff-msg" style="margin-top:12px;font-size:0.8125rem;color:var(--text-2);line-height:1.6;background:var(--accent-light);border-radius:var(--r-md);padding:10px 12px;border:1px solid #ddd6fe;"></div>
@@ -3177,8 +3203,8 @@ function renderTrendChart(data) {
   ${yTicks.slice(1,4).map(v => `<text x="${PL - 4}" y="${yScale(v) + 4}" text-anchor="end" font-size="9" fill="#94a3b8">${Math.round(v)}</text>`).join('')}
 
   <!-- 목표선 -->
-  ${goal > 0 ? `<line x1="${PL}" y1="${goalY}" x2="${W - PR}" y2="${goalY}" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4,3"/>
-  <text x="${W - PR - 2}" y="${goalY - 3}" text-anchor="end" font-size="8" fill="#94a3b8">목표</text>` : ''}
+  ${goal > 0 ? `<line x1="${PL}" y1="${goalY}" x2="${W - PR}" y2="${goalY}" stroke="#475569" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="${W - PR - 2}" y="${goalY - 4}" text-anchor="end" font-size="9" font-weight="700" fill="#475569">목표</text>` : ''}
 
   <!-- 채움 영역 -->
   <path d="${rawFill}" fill="url(#rawGrad)"/>
@@ -3287,7 +3313,11 @@ function renderForecastResult(data, avgRaw, avgEff) {
   const box = document.getElementById('forecast-result');
   const daysRaw = data.days_raw || 0;
   const daysEff = data.days_effective || 0;
-  const diff = daysEff - daysRaw;
+
+  // 고품질 식단 시나리오: PDCAAS 0.92 기준으로 avgRaw가 그대로 적용된다고 가정
+  const daysOptimal = avgRaw > 0 ? Math.round((data.needed_protein_g || 0) / (avgRaw * 0.92)) : 0;
+
+  const toMonths = d => d >= 60 ? `(약 ${(d/30).toFixed(1)}개월)` : '';
 
   let title = '';
   if (data.target_type === 'muscle') {
@@ -3301,19 +3331,31 @@ function renderForecastResult(data, avgRaw, avgEff) {
   document.getElementById('forecast-needed-protein').textContent =
     `필요 총 단백질: 약 ${Math.round(data.needed_protein_g).toLocaleString()}g`;
 
+  // 카드 1: 원시 기준
   document.getElementById('fc-days-raw').textContent = daysRaw.toLocaleString();
-  document.getElementById('fc-days-eff').textContent = daysEff.toLocaleString();
+  document.getElementById('fc-months-raw').textContent = toMonths(daysRaw);
 
+  // 카드 2: 유효 기준
+  document.getElementById('fc-days-eff').textContent = daysEff.toLocaleString();
+  document.getElementById('fc-months-eff').textContent = toMonths(daysEff);
+  const effRatio = avgRaw > 0 ? (avgEff / avgRaw * 100).toFixed(0) : 0;
+  document.getElementById('fc-eff-note').textContent = `현재 식단 평균 품질 효율 ${effRatio}% — 흡수되지 못하는 단백질 반영`;
+
+  // 카드 3: 최적 식단
+  document.getElementById('fc-days-optimal').textContent = daysOptimal.toLocaleString();
+  document.getElementById('fc-months-optimal').textContent = toMonths(daysOptimal);
+
+  // 차이 메시지
+  const diff = daysEff - daysOptimal;
   let diffMsg = '';
-  if (diff > 0) {
-    const extra = diff;
-    const extraMonths = (extra / 30).toFixed(1);
-    diffMsg = `⚠️ 현재 식단의 단백질 품질이 낮아, 유효 단백질 기준으로는 <strong>${extra}일 더</strong>(약 ${extraMonths}개월) 걸립니다. `
-      + `단백질 품질이 높은 식품(닭가슴살, 계란, 유청 프로틴 등)으로 대체하면 목표를 더 빨리 달성할 수 있어요.`;
-  } else if (diff < 0) {
-    diffMsg = `✅ 고품질 단백질 식품을 잘 드시고 있어요! 유효 단백질 기준으로 오히려 <strong>${Math.abs(diff)}일 빠르게</strong> 달성 가능합니다.`;
+  if (diff > 7) {
+    diffMsg = `💡 고품질 식단으로 전환하면 유효 단백질 기준 대비 <strong>${diff}일 단축</strong>됩니다. `
+      + `현재 섭취량을 유지하면서 닭가슴살·계란·유청 프로틴 비중을 높이는 것만으로도 효과가 있어요.`;
+  } else if (daysEff > daysRaw + 7) {
+    diffMsg = `⚠️ 원시 단백질 기준보다 유효 기준이 <strong>${daysEff - daysRaw}일 더</strong> 걸립니다. `
+      + `면류·쌀 위주 식단의 단백질 손실이 크기 때문이에요. 동물성 단백질 비중을 늘려보세요.`;
   } else {
-    diffMsg = `✅ 원시·유효 단백질 기준이 거의 동일합니다. 고품질 단백질 비중이 높은 식단입니다.`;
+    diffMsg = `✅ 현재 고품질 단백질 비중이 양호합니다. 꾸준히 유지하면 예측 기간 내 달성 가능해요.`;
   }
 
   document.getElementById('forecast-diff-msg').innerHTML = diffMsg;
