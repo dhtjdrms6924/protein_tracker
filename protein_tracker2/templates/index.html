@@ -2941,12 +2941,21 @@ async function handleQRResult(qrData) {
     if (regData.status === 'ok' || regData.status === 'already_registered') {
       document.getElementById('device-msg').textContent = '✅ 디스펜서 연결 완료!';
       document.getElementById('device-msg').style.color = '#4ade80';
+      // 기존 코드에서 "✅ 디스펜서 연결 완료!" 직후에 추가
+      localStorage.setItem('device_token', token);
+      startWifiTriggerPolling(token);
       loadDeviceList();
     }
   } else {
     showWifiModal(token);
   }
 }
+
+// 페이지 로드 시 기존 토큰으로 폴링 재시작
+window.addEventListener('load', () => {
+  const savedToken = localStorage.getItem('device_token');
+  if (savedToken) startWifiTriggerPolling(savedToken);
+});
 
 function showWifiModal(token) {
   document.getElementById('wifi-modal')?.remove();
@@ -3360,6 +3369,23 @@ function renderForecastResult(data, avgRaw, avgEff) {
 
   document.getElementById('forecast-diff-msg').innerHTML = diffMsg;
   box.classList.add('show');
+}
+
+// ── WiFi 재설정 트리거 폴링 ──────────────
+let _wifiPollTimer = null;
+
+function startWifiTriggerPolling(token) {
+  if (_wifiPollTimer) return;
+  _wifiPollTimer = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/device/wifi-trigger/check?token=${token}`);
+      const data = await res.json();
+      if (data.triggered) {
+        // 버튼 B+C 3초가 눌렸다는 신호 → WiFi 설정 모달 자동 오픈
+        showWifiModal(token);
+      }
+    } catch (e) {}
+  }, 3000); // 3초마다 체크
 }
 
 </script>

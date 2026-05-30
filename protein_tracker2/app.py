@@ -1734,6 +1734,35 @@ def api_device_check():
 
     return jsonify({"wifi_configured": existing is not None})
 
+# ─────────────────────────────────────────
+# 기기 → 앱 WiFi 재설정 트리거
+# ─────────────────────────────────────────
+from collections import defaultdict
+import time
+
+# 토큰별 wifi_setup 요청 시각 저장 (메모리)
+_wifi_trigger = {}  # { token: timestamp }
+
+@app.route("/api/device/wifi-trigger", methods=["POST"])
+def api_wifi_trigger():
+    """ESP32가 버튼 입력을 감지하면 여기로 알림"""
+    token = request.json.get("token")
+    if not token:
+        return jsonify({"error": "토큰 없음"}), 400
+    _wifi_trigger[token] = time.time()
+    return jsonify({"status": "ok"})
+
+@app.route("/api/device/wifi-trigger/check")
+def api_wifi_trigger_check():
+    """앱이 주기적으로 폴링해서 WiFi 재설정 필요 여부 확인"""
+    token = request.args.get("token")
+    if not token:
+        return jsonify({"triggered": False})
+    ts = _wifi_trigger.get(token)
+    if ts and time.time() - ts < 60:  # 60초 이내 요청이면 triggered
+        _wifi_trigger.pop(token, None)  # 1회성
+        return jsonify({"triggered": True})
+    return jsonify({"triggered": False})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, threaded=True)
