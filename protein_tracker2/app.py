@@ -110,8 +110,16 @@ def init_db():
         token TEXT UNIQUE NOT NULL,
         name TEXT DEFAULT '내 디스펜서',
         created_at TEXT,
-        last_seen TEXT
+        last_seen TEXT,
+        wifi_trigger_at TIMESTAMP
     )""")
+
+    # 기존 테이블에 wifi_trigger_at 없으면 추가
+    try:
+        cur.execute("ALTER TABLE devices ADD COLUMN wifi_trigger_at TIMESTAMP")
+        conn.commit()
+    except Exception:
+        conn.rollback()
 
     # AI 텍스트 검색 캐시 테이블
     cur.execute("""CREATE TABLE IF NOT EXISTS ai_food_cache (
@@ -1737,11 +1745,6 @@ def api_device_check():
 # ─────────────────────────────────────────
 # 기기 → 앱 WiFi 재설정 트리거
 # ─────────────────────────────────────────
-from collections import defaultdict
-import time
-
-# 토큰별 wifi_setup 요청 시각 저장 (메모리)
-_wifi_trigger = {}  # { token: timestamp }
 
 @app.route("/api/device/wifi-trigger", methods=["POST"])
 def api_wifi_trigger():
@@ -1749,7 +1752,12 @@ def api_wifi_trigger():
     token = request.json.get("token")
     if not token:
         return jsonify({"error": "토큰 없음"}), 400
-    _wifi_trigger[token] = time.time()
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("UPDATE devices SET wifi_trigger_at = NOW() WHERE token = %s", (token,))
+    conn.commit()
+    cur.close()
+    conn.close()
     return jsonify({"status": "ok"})
 
 @app.route("/api/device/wifi-trigger/check")
@@ -1758,11 +1766,20 @@ def api_wifi_trigger_check():
     token = request.args.get("token")
     if not token:
         return jsonify({"triggered": False})
-    ts = _wifi_trigger.get(token)
-    if ts and time.time() - ts < 60:  # 60초 이내 요청이면 triggered
-        _wifi_trigger.pop(token, None)  # 1회성
-        return jsonify({"triggered": True})
-    return jsonify({"triggered": False})
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT wifi_trigger_at FROM devices
+        WHERE token = %s AND wifi_trigger_at > NOW() - INTERVAL '60 seconds'
+        LIMIT 1
+    """, (token,))
+    row = cur.fetchone()
+    if row:
+        cur.execute("UPDATE devices SET wifi_trigger_at = NULL WHERE token = %s", (token,))
+        conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"triggered": row is not None})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, threaded=True)

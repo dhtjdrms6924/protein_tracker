@@ -1907,6 +1907,8 @@ async function registerDevice(token) {
   if (res.status === 'ok' || res.status === 'already_registered') {
     msg.style.color = '#4ade80';
     msg.textContent = '기기 등록 완료!';
+    localStorage.setItem('device_token', token);      // ← 추가
+    startWifiTriggerPolling(token);                    // ← 추가
     loadDeviceList();
   } else {
     msg.style.color = '#f87171';
