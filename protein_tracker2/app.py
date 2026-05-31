@@ -1781,5 +1781,16 @@ def api_wifi_trigger_check():
     conn.close()
     return jsonify({"triggered": row is not None})
 
+@app.route("/api/device/debug-token")
+def debug_token():
+    if not session.get("user_id"):
+        return jsonify({"error": "로그인 필요"}), 401
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT token, user_id, is_current, status FROM devices WHERE user_id=%s", (session["user_id"],))
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    return jsonify([dict(r) for r in rows])
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, threaded=True)
