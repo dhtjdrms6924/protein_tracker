@@ -4555,7 +4555,7 @@ function showSubSettings(type) {
           <input type="password" id="sub-wifi-pass" placeholder="비밀번호 입력">
         </div>
         <div id="sub-wifi-msg" style="font-size:13px;color:var(--text-3);min-height:18px;margin-bottom:8px;"></div>
-        <button class="sub-save-btn" onclick="sendWifiFromSettings('${token}')">디스펜서에 전송</button>
+        <button class="sub-save-btn" onclick="sendWifiFromSettings(localStorage.getItem('device_token') || '')">디스펜서에 전송</button>
         <p class="sub-note" style="margin-top:12px;">⚠️ WiFi를 전송하면 디스펜서가 재시작됩니다.</p>
       </div>
     `;
