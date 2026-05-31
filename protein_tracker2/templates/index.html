@@ -4361,32 +4361,40 @@ async function registerDevice(token) {
   const msg = document.getElementById('device-msg');
   if (msg) msg.textContent = '등록 중...';
 
-  // 먼저 WiFi 설정 여부 확인
   try {
-    const checkRes = await fetch(`/api/device/check?token=${token}`);
+    const checkRes = await fetch(`/api/device/check?token=${encodeURIComponent(token)}`);
     const checkData = await checkRes.json();
 
     if (!checkData.wifi_configured) {
-      // WiFi 미설정 → 바로 모달 표시
       showWifiModal(token);
       return;
     }
-  } catch(e) {}
-
-  // WiFi 설정됨 → 바로 등록
-  const res = await fetch('/api/device/register', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({token})
-  }).then(r => r.json());
-
-  if (res.status === 'ok' || res.status === 'already_registered') {
-    if (msg) msg.textContent = '기기 등록 완료!';
-    localStorage.setItem('device_token', token);
-    startWifiTriggerPolling(token);
-    loadDeviceList();
-  } else {
-    if (msg) msg.textContent = res.error || '등록 실패';
+  } catch(e) {
+    console.error('device/check 실패:', e);  // ← 에러 확인용
+    if (msg) msg.textContent = '서버 연결 실패';
+    return;  // ← 실패 시 멈추기
   }
+
+  try {
+    const res = await fetch('/api/device/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({token})
+    }).then(r => r.json());
+
+    if (res.status === 'ok' || res.status === 'already_registered') {
+      if (msg) msg.textContent = '기기 등록 완료!';
+      localStorage.setItem('device_token', token);
+      startWifiTriggerPolling(token);
+      loadDeviceList();
+    } else {
+      if (msg) msg.textContent = res.error || '등록 실패';
+    }
+  } catch(e) {
+    console.error('device/register 실패:', e);
+    if (msg) msg.textContent = '등록 중 오류 발생';
+  }
+
   if (msg) setTimeout(() => msg.textContent = '', 3000);
 }
 
