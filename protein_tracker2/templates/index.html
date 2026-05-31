@@ -4632,28 +4632,73 @@ async function saveGoalSub() {
 
 async function sendWifiFromSettings(token) {
   const ssid = document.getElementById('sub-wifi-ssid')?.value.trim();
-  const pass = document.getElementById('sub-wifi-pass')?.value;
+  const pass = document.getElementById('sub-wifi-pass')?.value || '';
   const msg  = document.getElementById('sub-wifi-msg');
-  if (!token) { msg.textContent = '먼저 디스펜서를 등록하세요.'; msg.style.color='var(--red)'; return; }
-  if (!ssid)  { msg.textContent = 'WiFi 이름을 입력하세요.'; msg.style.color='var(--red)'; return; }
-  msg.textContent = '전송 중...'; msg.style.color = 'var(--text-3)';
 
-  // Reuse the existing sendWifiToESP32 logic
-  // Temporarily inject into the wifi-modal fields for reuse
-  const tmpDiv = document.createElement('div');
-  tmpDiv.innerHTML = `<input id="wifi-ssid-input" value="${ssid.replace(/"/g,'')}" style="display:none">
-                      <input id="wifi-pass-input" type="password" style="display:none">`;
-  tmpDiv.querySelector('#wifi-pass-input').value = pass;
-  document.body.appendChild(tmpDiv);
+  if (!token) {
+    msg.textContent = '먼저 디스펜서를 등록하세요.';
+    msg.style.color = 'var(--red)'; return;
+  }
+  if (!ssid) {
+    msg.textContent = 'WiFi 이름을 입력하세요.';
+    msg.style.color = 'var(--red)'; return;
+  }
 
-  // Override modal-msg to sub-wifi-msg
-  const origMsg = document.getElementById('wifi-modal-msg');
+  const setMsg = (text, color = 'var(--text-3)') => {
+    if (msg) { msg.textContent = text; msg.style.color = color; }
+  };
 
-  await sendWifiToESP32(token);
+  const finishOk = async () => {
+    setMsg('✅ 전송 완료! 디스펜서가 재시작됩니다...', 'var(--green)');
+    await fetch('/api/device/register', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token })
+    }).catch(() => {});
+    setTimeout(() => { showToast('✅ 디스펜서 WiFi 설정 완료!'); loadDeviceList(); }, 2000);
+  };
 
-  // Cleanup
-  tmpDiv.remove();
-  showToast('📡 WiFi 정보 전송 완료');
+  // ── 안드로이드 앱 BLE (AndroidBLE 인터페이스) ──
+  if (window.AndroidBLE) {
+    setMsg('📡 ESP32 BLE 연결 중...');
+    window.onBleResult = async (status) => {
+      if (status === 'scanning')       setMsg('📡 ESP32 연결 중...');
+      else if (status === 'ok')        await finishOk();
+      else if (status.startsWith('error:')) setMsg('❌ ' + status.replace('error:', ''), 'var(--red)');
+    };
+    window.AndroidBLE.sendWifi(ssid, pass, token);
+    return;
+  }
+
+  // ── 크롬 Web Bluetooth (PC/iOS 크롬) ──
+  if (!navigator.bluetooth) {
+    setMsg('❌ 이 브라우저는 블루투스를 지원하지 않습니다.\n안드로이드 앱에서 시도해주세요.', 'var(--red)');
+    return;
+  }
+
+  setMsg('🔍 블루투스 기기 검색 중...');
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'PROTEIN_DISPENSER' }],
+      optionalServices: ['12345678-1234-1234-1234-123456789012']
+    });
+    setMsg('🔗 연결 중...');
+    const server  = await device.gatt.connect();
+    const service = await server.getPrimaryService('12345678-1234-1234-1234-123456789012');
+    const char    = await service.getCharacteristic('87654321-4321-4321-4321-210987654321');
+    await char.writeValue(new TextEncoder().encode(JSON.stringify({ ssid, pass })));
+    await finishOk();
+  } catch(e) {
+    // GATT 끊김은 전송 성공 후 ESP32가 재시작한 것
+    if (e.message && (e.message.includes('GATT') || e.message.includes('disconnect'))) {
+      await finishOk();
+    } else if (e.name === 'NotFoundError') {
+      setMsg('❌ 주변에 PROTEIN_DISPENSER 기기를 찾을 수 없습니다.', 'var(--red)');
+    } else if (e.name === 'SecurityError') {
+      setMsg('❌ 블루투스 권한이 없습니다. 브라우저 설정을 확인하세요.', 'var(--red)');
+    } else {
+      setMsg('❌ 오류: ' + (e.message || e.name), 'var(--red)');
+    }
+  }
 }
 
 function updateSettingsValues() {
