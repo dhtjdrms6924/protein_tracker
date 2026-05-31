@@ -227,7 +227,7 @@ body {
   margin: 16px 0;
   position: relative;
   overflow: hidden;
-  height: 264px; /* 5.5 items × 48px */
+  height: 264px;
 }
 .ob-picker-highlight {
   position: absolute;
@@ -236,20 +236,21 @@ body {
   height: 48px;
   background: var(--bg);
   border-radius: var(--r-md);
-  pointer-events: none; z-index: 1;
+  pointer-events: none;
+  z-index: 1; /* behind scroll */
 }
 .ob-picker-overlay-top,
 .ob-picker-overlay-bot {
   position: absolute; left: 0; right: 0; height: 96px;
-  pointer-events: none; z-index: 2;
+  pointer-events: none; z-index: 3; /* above scroll */
 }
 .ob-picker-overlay-top {
   top: 0;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.95) 0%, transparent 100%);
+  background: linear-gradient(to bottom, rgba(255,255,255,0.97) 0%, transparent 100%);
 }
 .ob-picker-overlay-bot {
   bottom: 0;
-  background: linear-gradient(to top, rgba(255,255,255,0.95) 0%, transparent 100%);
+  background: linear-gradient(to top, rgba(255,255,255,0.97) 0%, transparent 100%);
 }
 
 .ob-picker-scroll {
@@ -258,9 +259,10 @@ body {
   scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  /* padding so first and last items can center */
   padding: 108px 0;
   box-sizing: border-box;
+  position: relative;
+  z-index: 2; /* above highlight, below overlays */
 }
 .ob-picker-scroll::-webkit-scrollbar { display: none; }
 
@@ -586,22 +588,45 @@ body {
 .topbar-icon-btn:active { opacity: .7; }
 .topbar-icon-btn svg { width: 24px; height: 24px; }
 
-/* week strip */
-.week-strip {
-  display: grid; grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+/* week strip - horizontal scroll, selected always centered */
+.week-strip-wrap {
+  overflow: hidden;
+  margin: 0 -20px;
+  padding: 0 20px;
 }
-.week-day-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.week-strip {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0 4px;
+}
+.week-strip::-webkit-scrollbar { display: none; }
+
+.week-day-col {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  flex-shrink: 0;
+  /* 7 visible per screen */
+  width: calc((100vw - 40px) / 7);
+  min-width: 40px;
+  scroll-snap-align: center;
+  cursor: pointer;
+}
+@media (min-width: 768px) {
+  .week-day-col { width: 48px; }
+}
 .week-day-label {
   font-size: 12px; font-weight: 500; color: var(--text-3);
 }
 .week-day-num {
-  width: 38px; height: 38px;
+  width: 36px; height: 36px;
   border-radius: var(--r-full);
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; font-weight: 600; color: var(--text-1);
-  cursor: pointer;
+  font-size: 15px; font-weight: 600; color: var(--text-1);
   transition: all .15s;
+  position: relative;
 }
 .week-day-num.today {
   background: var(--blue);
@@ -611,18 +636,6 @@ body {
   background: var(--text-1);
   color: white;
 }
-.week-day-num.has-data::after {
-  content: '';
-  display: block;
-  width: 4px; height: 4px;
-  border-radius: 50%;
-  background: var(--green);
-  position: absolute;
-  bottom: -6px;
-}
-.week-day-col.has-dot .week-day-num {
-  position: relative;
-}
 .week-day-col.has-dot .week-day-num::after {
   content: '';
   display: block;
@@ -630,8 +643,84 @@ body {
   border-radius: 50%;
   background: var(--green);
   position: absolute;
-  bottom: -7px;
+  bottom: -6px; left: 50%; transform: translateX(-50%);
 }
+
+/* ────────────── MINI CALENDAR POPUP ────────────── */
+#mini-cal-overlay {
+  position: fixed; inset: 0; z-index: 350;
+  background: rgba(0,0,0,0.3);
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s;
+}
+#mini-cal-overlay.open { opacity: 1; pointer-events: all; }
+
+#mini-cal-popup {
+  position: fixed;
+  top: 100px; left: 16px; right: 16px;
+  z-index: 351;
+  background: white;
+  border-radius: var(--r-xl);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 16px;
+  transform: scale(0.92) translateY(-12px);
+  opacity: 0; pointer-events: none;
+  transition: all .22s cubic-bezier(0.4,0,0.2,1);
+  max-width: 400px;
+  margin: 0 auto;
+}
+@media (min-width: 768px) {
+  #mini-cal-popup { left: 50%; right: auto; transform-origin: top left; width: 340px; margin-left: -170px; }
+}
+#mini-cal-overlay.open + #mini-cal-popup,
+#mini-cal-popup.open {
+  transform: scale(1) translateY(0);
+  opacity: 1; pointer-events: all;
+}
+.mc-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.mc-nav-btn {
+  width: 32px; height: 32px; border: none; background: var(--bg);
+  border-radius: var(--r-full); font-size: 16px; color: var(--blue);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.mc-month-label {
+  font-size: 16px; font-weight: 800; color: var(--text-1);
+  cursor: pointer;
+}
+.mc-today-btn {
+  padding: 4px 12px; border: 1px solid var(--blue);
+  background: var(--blue-light); color: var(--blue);
+  border-radius: var(--r-full); font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.mc-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+}
+.mc-day-hdr {
+  text-align: center; font-size: 11px; font-weight: 600;
+  color: var(--text-3); padding: 4px 0;
+}
+.mc-cell {
+  aspect-ratio: 1;
+  border-radius: var(--r-sm);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  color: var(--text-2); transition: all .1s;
+  position: relative;
+}
+.mc-cell:active { opacity: .7; }
+.mc-cell.empty { pointer-events: none; }
+.mc-cell.today { background: var(--blue); color: white; }
+.mc-cell.selected:not(.today) { background: var(--text-1); color: white; }
+.mc-cell.has-data::after {
+  content: ''; width: 4px; height: 4px; border-radius: 50%;
+  background: var(--green); position: absolute; bottom: 2px;
+  left: 50%; transform: translateX(-50%);
+}
+.mc-cell.today.has-data::after { background: rgba(255,255,255,0.7); }
 
 /* section header */
 .section-label {
@@ -1017,7 +1106,6 @@ body {
   margin: 0 16px;
   background: white;
   border-radius: var(--r-xl);
-  overflow: hidden;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   display: none;
 }
@@ -1740,22 +1828,29 @@ body {
   #swipe-container {
     margin-left: 260px;
     width: calc(300vw - 780px);
-    /* override width */
   }
   
   #desktop-sidebar { display: flex; }
   
-  /* tabs content max width */
-  .pane-content-inner {
-    max-width: 680px;
-    margin: 0 auto;
+  /* Content max width centered */
+  #pane-main, #pane-album, #pane-social {
+    max-width: none;
   }
-  
-  .goal-card, .meal-section { }
+  .main-topbar, .goal-card, .meal-section, .section-label,
+  .album-topbar, .album-grid-wrap, .album-date-label {
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+  }
+  .goal-card { width: calc(100% - 32px); margin-left: auto; margin-right: auto; }
+  .meal-section { width: calc(100% - 0px); }
   
   /* Adjust album grid for larger screens */
   .album-grid-wrap {
     grid-template-columns: repeat(5, 1fr);
+    width: 100%;
+    max-width: none;
   }
 }
 
@@ -2118,10 +2213,10 @@ body {
     <div class="swipe-pane" id="pane-main">
       <div class="main-topbar">
         <div class="main-topbar-row1">
-          <div class="main-year-month">
-            <span class="main-year" id="main-year" onclick="openYearPicker()">2026년</span>
+          <div class="main-year-month" onclick="openMiniCal()" style="cursor:pointer;">
+            <span class="main-year" id="main-year">2026년</span>
             <span class="main-month-sep"> </span>
-            <span class="main-month" id="main-month" onclick="openMonthPicker()">5월</span>
+            <span class="main-month" id="main-month">5월</span>
           </div>
           <div class="topbar-icons">
             <button class="topbar-icon-btn" onclick="showHistory()" title="달력 기록">
@@ -2140,7 +2235,9 @@ body {
           </div>
         </div>
         <!-- Week strip -->
-        <div class="week-strip" id="week-strip"></div>
+        <div class="week-strip-wrap">
+          <div class="week-strip" id="week-strip"></div>
+        </div>
       </div>
 
       <div class="section-label">단백질 목표</div>
@@ -2267,7 +2364,7 @@ body {
 
 
 <!-- ═══════════ STATS SCREEN ═══════════ -->
-<div id="stats-screen">
+<div id="stats-screen" ontouchstart="statsSwipeStart(event)" ontouchend="statsSwipeEnd(event)">
   <div class="stats-topbar">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div class="stats-topbar-title">통계</div>
@@ -2639,15 +2736,16 @@ body {
   </div>
 </div>
 
-<!-- DATE PICKER MODAL -->
-<div id="date-picker-modal" class="modal-overlay" onclick="if(event.target===this)closeDatePicker()">
-  <div class="modal-box">
-    <h3 id="date-picker-title">년도 선택</h3>
-    <div id="date-picker-content"></div>
-    <div style="margin-top:16px;">
-      <button class="modal-cancel" style="width:100%;" onclick="closeDatePicker()">취소</button>
-    </div>
+<!-- MINI CALENDAR POPUP -->
+<div id="mini-cal-overlay" onclick="closeMiniCal()"></div>
+<div id="mini-cal-popup">
+  <div class="mc-header">
+    <button class="mc-nav-btn" onclick="mcChangeMonth(-1)">‹</button>
+    <span class="mc-month-label" id="mc-month-label">2026년 5월</span>
+    <button class="mc-nav-btn" onclick="mcChangeMonth(1)">›</button>
+    <button class="mc-today-btn" onclick="mcGoToday()">오늘</button>
   </div>
+  <div class="mc-grid" id="mc-grid"></div>
 </div>
 
 <!-- TOAST -->
@@ -3034,6 +3132,9 @@ async function sendWidgetTokenToAndroid(retryCount = 0) {
 // ══════════════════════════════════════════
 //  DATE / WEEK STRIP
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+//  DATE / WEEK STRIP (sliding, selected centered)
+// ══════════════════════════════════════════
 function updateMainDateLabel() {
   const d = new Date(currentDate + 'T00:00:00');
   document.getElementById('main-year').textContent = d.getFullYear() + '년';
@@ -3044,28 +3145,39 @@ function renderWeekStrip() {
   const strip = document.getElementById('week-strip');
   strip.innerHTML = '';
   const d = new Date(currentDate + 'T00:00:00');
-  // Find Sunday of the current week
-  const dow = d.getDay();
-  const weekStart = new Date(d);
-  weekStart.setDate(d.getDate() - dow);
-  
   const labels = ['일','월','화','수','목','금','토'];
-  for (let i = 0; i < 7; i++) {
-    const day = new Date(weekStart);
-    day.setDate(weekStart.getDate() + i);
+
+  // Build 5 weeks centered on current date for smooth sliding
+  const TOTAL_DAYS = 35;
+  const CENTER = Math.floor(TOTAL_DAYS / 2);
+  let selectedIdx = CENTER;
+
+  for (let i = 0; i < TOTAL_DAYS; i++) {
+    const day = new Date(d);
+    day.setDate(d.getDate() - CENTER + i);
     const dateStr = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
     const isToday = dateStr === today;
     const isSelected = dateStr === currentDate;
-    
+    if (isSelected) selectedIdx = i;
+
     const col = document.createElement('div');
     col.className = 'week-day-col';
+    col.dataset.date = dateStr;
     col.innerHTML = `
-      <div class="week-day-label">${labels[i]}</div>
-      <div class="week-day-num ${isToday ? 'today' : ''} ${isSelected && !isToday ? 'selected' : ''}"
-           onclick="selectDate('${dateStr}')">${day.getDate()}</div>
+      <div class="week-day-label">${labels[day.getDay()]}</div>
+      <div class="week-day-num ${isToday ? 'today' : ''} ${isSelected && !isToday ? 'selected' : ''}">${day.getDate()}</div>
     `;
+    col.addEventListener('click', () => selectDate(dateStr));
     strip.appendChild(col);
   }
+
+  // Scroll selected to center after paint
+  requestAnimationFrame(() => {
+    const colW = strip.querySelector('.week-day-col')?.offsetWidth || 48;
+    const stripW = strip.parentElement?.offsetWidth || window.innerWidth - 40;
+    const targetScroll = selectedIdx * colW - (stripW / 2 - colW / 2);
+    strip.scrollLeft = Math.max(0, targetScroll);
+  });
 }
 
 function selectDate(dateStr) {
@@ -3075,55 +3187,68 @@ function selectDate(dateStr) {
   loadMeals();
 }
 
-function openYearPicker() {
+// ══════════════════════════════════════════
+//  MINI CALENDAR POPUP
+// ══════════════════════════════════════════
+let mcYear = new Date().getFullYear();
+let mcMonth = new Date().getMonth();
+
+function openMiniCal() {
   const d = new Date(currentDate + 'T00:00:00');
-  const curYear = d.getFullYear();
-  const modal = document.getElementById('date-picker-modal');
-  document.getElementById('date-picker-title').textContent = '년도 선택';
-  const content = document.getElementById('date-picker-content');
-  const years = [];
-  for (let y = 2020; y <= curYear; y++) years.push(y);
-  content.innerHTML = `<div class="year-grid">
-    ${years.map(y => `<div class="year-item ${y===curYear?'selected':''}" onclick="pickYear(${y})">${y}</div>`).join('')}
-  </div>`;
-  modal.classList.add('open');
+  mcYear = d.getFullYear();
+  mcMonth = d.getMonth();
+  renderMiniCal();
+  document.getElementById('mini-cal-overlay').classList.add('open');
+  document.getElementById('mini-cal-popup').classList.add('open');
 }
 
-function openMonthPicker() {
-  const d = new Date(currentDate + 'T00:00:00');
-  const curMonth = d.getMonth() + 1;
-  const modal = document.getElementById('date-picker-modal');
-  document.getElementById('date-picker-title').textContent = '월 선택';
-  const content = document.getElementById('date-picker-content');
+function closeMiniCal() {
+  document.getElementById('mini-cal-overlay').classList.remove('open');
+  document.getElementById('mini-cal-popup').classList.remove('open');
+}
+
+function mcChangeMonth(delta) {
+  mcMonth += delta;
+  if (mcMonth < 0) { mcMonth = 11; mcYear--; }
+  if (mcMonth > 11) { mcMonth = 0; mcYear++; }
+  renderMiniCal();
+}
+
+function mcGoToday() {
+  const d = new Date();
+  mcYear = d.getFullYear();
+  mcMonth = d.getMonth();
+  const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  closeMiniCal();
+  selectDate(todayStr);
+}
+
+function renderMiniCal() {
   const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  content.innerHTML = `<div class="month-grid">
-    ${months.map((m,i) => `<div class="month-item ${i+1===curMonth?'selected':''}" onclick="pickMonth(${i+1})">${m}</div>`).join('')}
-  </div>`;
-  modal.classList.add('open');
+  document.getElementById('mc-month-label').textContent = `${mcYear}년 ${months[mcMonth]}`;
+
+  const grid = document.getElementById('mc-grid');
+  const dayLabels = ['일','월','화','수','목','금','토'];
+  let html = dayLabels.map(l => `<div class="mc-day-hdr">${l}</div>`).join('');
+
+  const firstDay = new Date(mcYear, mcMonth, 1).getDay();
+  const daysInMonth = new Date(mcYear, mcMonth + 1, 0).getDate();
+  const todayD = new Date();
+  const todayStr = `${todayD.getFullYear()}-${String(todayD.getMonth()+1).padStart(2,'0')}-${String(todayD.getDate()).padStart(2,'0')}`;
+
+  for (let i = 0; i < firstDay; i++) html += `<div class="mc-cell empty"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${mcYear}-${String(mcMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = dateStr === todayStr;
+    const isSelected = dateStr === currentDate;
+    html += `<div class="mc-cell ${isToday?'today':''} ${isSelected&&!isToday?'selected':''}" onclick="mcPickDate('${dateStr}')">${d}</div>`;
+  }
+  grid.innerHTML = html;
 }
 
-function pickYear(y) {
-  const d = new Date(currentDate + 'T00:00:00');
-  d.setFullYear(y);
-  currentDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  closeDatePicker();
-  renderWeekStrip();
-  updateMainDateLabel();
-  loadMeals();
-}
-
-function pickMonth(m) {
-  const d = new Date(currentDate + 'T00:00:00');
-  d.setMonth(m - 1);
-  currentDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  closeDatePicker();
-  renderWeekStrip();
-  updateMainDateLabel();
-  loadMeals();
-}
-
-function closeDatePicker() {
-  document.getElementById('date-picker-modal').classList.remove('open');
+function mcPickDate(dateStr) {
+  closeMiniCal();
+  selectDate(dateStr);
 }
 
 // ══════════════════════════════════════════
@@ -3186,6 +3311,26 @@ function dsNavActive(name) {
   document.querySelectorAll('.ds-nav-item').forEach(el => el.classList.remove('active'));
   const el = document.getElementById('dsnav-' + name);
   if (el) el.classList.add('active');
+}
+
+// Stats screen swipe (left = go to album pane)
+let _statsSwipeStartX = 0;
+function statsSwipeStart(e) {
+  _statsSwipeStartX = e.touches[0].clientX;
+}
+function statsSwipeEnd(e) {
+  const dx = e.changedTouches[0].clientX - _statsSwipeStartX;
+  if (Math.abs(dx) < 60) return;
+  if (dx < 0) {
+    // swipe left → go to album (pane 1)
+    hideStats();
+    swipeTo(1);
+  }
+  // swipe right on stats → back to tracker
+  if (dx > 0) {
+    hideStats();
+    swipeTo(0);
+  }
 }
 
 // ══════════════════════════════════════════
@@ -3411,12 +3556,13 @@ function closeAddSheet() {
 function triggerImageCapture(mode) {
   closeAddSheet();
   const input = document.getElementById('file-input');
-  const ua = navigator.userAgent;
-  const isAndroid = /Android/.test(ua) && /wv|Version\/[\d.]+.*Chrome/.test(ua);
   if (mode === 'camera') {
     input.setAttribute('capture', 'environment');
+    input.removeAttribute('multiple');
   } else {
+    // gallery: remove capture so it goes straight to photo library
     input.removeAttribute('capture');
+    input.removeAttribute('multiple');
   }
   input.click();
 }
