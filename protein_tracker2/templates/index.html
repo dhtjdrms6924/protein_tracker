@@ -3092,17 +3092,12 @@ function obSecondary() {
 
 function obFinish() {
   if (whySlideTimer) clearInterval(whySlideTimer);
-  // Store onboarding data to pass to signup
+  // 온보딩 완료 표시
+  localStorage.setItem('ob_done', '1');
   localStorage.setItem('ob_weight', obWeightUnit === 'kg' ? obWeight : Math.round(obWeight / 2.205));
   localStorage.setItem('ob_multiplier', (calcProteinGoal() / (obWeightUnit === 'kg' ? obWeight : Math.round(obWeight / 2.205))).toFixed(2));
   document.getElementById('onboarding-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
-  // Pre-fill weight if signup
-  const storedWeight = localStorage.getItem('ob_weight');
-  if (storedWeight) {
-    document.getElementById('weight-input').value = storedWeight;
-    document.getElementById('multiplier-input').value = localStorage.getItem('ob_multiplier') || '1.5';
-  }
 }
 
 // ══════════════════════════════════════════
@@ -3189,21 +3184,28 @@ function showApp(userData) {
 }
 
 function applyUserData(userData) {
-  const nickname = userData.nickname || userData.username;
-  const displayName = userData.display_name || nickname;
-  document.getElementById('ds-user-name').textContent = nickname;
-  document.getElementById('ds-user-sub').textContent = '@' + userData.username;
-  document.getElementById('profile-nickname').value = nickname;
-  document.getElementById('profile-display-name').value = displayName;
-  if (userData.weight) document.getElementById('weight-input').value = userData.weight;
-  if (userData.multiplier) document.getElementById('multiplier-input').value = userData.multiplier;
+  // 프로필 localStorage에 저장 (설정창에서 사용)
+  const profile = {
+    nickname: userData.nickname || userData.username || '',
+    display_name: userData.display_name || userData.nickname || '',
+    weight: userData.weight || '',
+    multiplier: userData.multiplier || 1.5,
+    username: userData.username || '',
+    is_admin: userData.is_admin || false
+  };
+  localStorage.setItem('profile', JSON.stringify(profile));
+
+  // 단백질 목표 계산
   if (userData.weight && userData.multiplier) {
     goalProtein = parseFloat(userData.weight) * parseFloat(userData.multiplier);
+    localStorage.setItem('protein_goal', Math.round(goalProtein));
+  } else if (localStorage.getItem('protein_goal')) {
+    goalProtein = parseInt(localStorage.getItem('protein_goal'));
   }
+
+  // 관리자 섹션 표시
   const adminSection = document.getElementById('admin-section');
-  const dsAdmin = document.getElementById('dsnav-admin');
   if (adminSection) adminSection.style.display = userData.is_admin ? 'block' : 'none';
-  if (dsAdmin) dsAdmin.style.display = userData.is_admin ? 'flex' : 'none';
 }
 
 // ══════════════════════════════════════════
@@ -4861,34 +4863,43 @@ async function deleteCustom(id) {
 //  INIT
 // ══════════════════════════════════════════
 window.addEventListener('load', async () => {
-  // Check if already logged in
-  const res = await fetch('/api/check-login');
-  const data = await res.json();
-  
-  if (data.logged_in) {
-    document.getElementById('onboarding-screen').style.display = 'none';
-    document.getElementById('auth-screen').style.display = 'none';
-    showApp(data);
-  } else {
-    // Show onboarding only on first visit
-    const hasSeenOnboarding = localStorage.getItem('ob_done');
-    if (hasSeenOnboarding) {
+  // 항상 서버에서 로그인 상태 확인
+  try {
+    const res = await fetch('/api/check-login');
+    const data = await res.json();
+
+    if (data.logged_in) {
       document.getElementById('onboarding-screen').style.display = 'none';
-      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('auth-screen').style.display = 'none';
+      showApp(data);
     } else {
-      initOnboarding();
-      localStorage.setItem('ob_done', '1');
+      // 로그인 안됨 → 무조건 앱 숨기기
+      document.getElementById('app-screen').style.display = 'none';
+
+      const hasSeenOnboarding = localStorage.getItem('ob_done');
+      if (hasSeenOnboarding) {
+        document.getElementById('onboarding-screen').style.display = 'none';
+        document.getElementById('auth-screen').style.display = 'flex';
+      } else {
+        document.getElementById('auth-screen').style.display = 'none';
+        initOnboarding();
+      }
     }
+  } catch(e) {
+    // 네트워크 오류 시에도 로그인 화면 표시
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('onboarding-screen').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
   }
-  
-  // Android WebView detection
+
+  // Android WebView 감지
   const ua = navigator.userAgent;
   const isAndroidWebView = /Android/.test(ua) && /wv|Version\/[\d.]+.*Chrome/.test(ua);
-  if (isAndroidWebView) {
+  if (isAndroidWebView && document.getElementById('file-input')) {
     document.getElementById('file-input').setAttribute('capture', 'environment');
   }
-  
-  // Resume polling if device token stored
+
+  // 저장된 기기 토큰으로 폴링 재시작
   const storedToken = localStorage.getItem('device_token');
   if (storedToken) startWifiTriggerPolling(storedToken);
 });
