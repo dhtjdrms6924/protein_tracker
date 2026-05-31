@@ -3468,6 +3468,8 @@ function hideStats() {
 function showSettings() {
   document.getElementById('settings-screen').style.display = 'flex';
   updateSettingsValues();
+  const profile = JSON.parse(localStorage.getItem('profile') || '{}');
+  if (profile.is_admin) loadAdminData();  // ← 이거 추가
 }
 
 function hideSettings() {
