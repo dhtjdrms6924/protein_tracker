@@ -1026,6 +1026,97 @@ body {
   overflow-y: auto;
 }
 
+#admin-screen {
+  display: none;
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--bg);
+  flex-direction: column;
+  overflow-y: auto;
+}
+.admin-topbar {
+  background: var(--bg);
+  padding: 52px 20px 12px;
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--separator);
+}
+@media (min-width: 768px) {
+  .admin-topbar { padding-top: 20px; }
+}
+.admin-back-btn {
+  background: transparent; border: none;
+  font-size: 22px; color: var(--blue);
+  cursor: pointer; padding: 4px 8px;
+  line-height: 1;
+}
+.admin-topbar-title {
+  font-size: 20px; font-weight: 800; color: var(--text-1);
+  flex: 1;
+}
+.admin-body {
+  padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 16px;
+  padding-bottom: calc(var(--tab-h) + 20px);
+}
+.admin-card {
+  background: var(--bg-card);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  border: 1px solid var(--separator);
+}
+.admin-card-title {
+  font-size: 15px; font-weight: 700;
+  color: var(--text-1); margin-bottom: 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+.admin-card-title span {
+  font-size: 13px; font-weight: 400; color: var(--text-3);
+}
+.admin-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--separator);
+}
+.admin-item:last-child { border-bottom: none; }
+.admin-item-name {
+  font-size: 14px; font-weight: 600; color: var(--text-1);
+  margin-bottom: 2px;
+}
+.admin-item-meta {
+  font-size: 12px; color: var(--text-3);
+}
+.admin-item-actions {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;
+}
+.admin-btn {
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: inherit; border: 1px solid;
+}
+.admin-btn-edit   { background: var(--bg-input); color: var(--text-2); border-color: var(--separator); }
+.admin-btn-add    { background: #e8f8ec; color: #1d7a3c; border-color: #a3e6b3; }
+.admin-btn-del    { background: var(--red-bg); color: var(--red); border-color: #fecaca; }
+.admin-edit-row {
+  display: none; margin-top: 8px;
+  background: var(--bg-input); padding: 10px;
+  border-radius: 8px; border: 1px solid var(--separator);
+  display: none; flex-direction: column; gap: 8px;
+}
+.admin-edit-row.open { display: flex; }
+.admin-edit-input-row {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.admin-edit-input-row input {
+  flex: 1; min-width: 80px;
+  padding: 6px 10px; border: 1px solid var(--separator);
+  border-radius: 6px; font-size: 13px; font-family: inherit;
+  background: var(--bg-card); color: var(--text-1);
+}
+.admin-btn-save {
+  padding: 6px 14px; background: var(--blue); color: #fff;
+  border: none; border-radius: 6px; font-size: 13px;
+  font-weight: 600; cursor: pointer; font-family: inherit;
+}
+
 .history-topbar {
   background: var(--bg);
   padding: 52px 20px 12px;
@@ -3468,8 +3559,6 @@ function hideStats() {
 function showSettings() {
   document.getElementById('settings-screen').style.display = 'flex';
   updateSettingsValues();
-  const profile = JSON.parse(localStorage.getItem('profile') || '{}');
-  if (profile.is_admin) loadAdminData();  // ← 이거 추가
 }
 
 function hideSettings() {
@@ -4557,7 +4646,7 @@ function showSubSettings(type) {
           <input type="password" id="sub-wifi-pass" placeholder="비밀번호 입력">
         </div>
         <div id="sub-wifi-msg" style="font-size:13px;color:var(--text-3);min-height:18px;margin-bottom:8px;"></div>
-        <button class="sub-save-btn" onclick="sendWifiFromSettings(localStorage.getItem('device_token') || '')">디스펜서에 전송</button>
+        <button class="sub-save-btn" onclick="sendWifiFromSettings('${token}')">디스펜서에 전송</button>
         <p class="sub-note" style="margin-top:12px;">⚠️ WiFi를 전송하면 디스펜서가 재시작됩니다.</p>
       </div>
     `;
