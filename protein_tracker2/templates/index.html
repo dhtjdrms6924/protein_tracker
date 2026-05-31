@@ -1364,110 +1364,118 @@ body {
   line-height: 1.6;
 }
 
-/* ────────────── SETTINGS SCREEN ────────────── */
-#settings-screen {
+/* ────────────── SETTINGS SCREENS ────────────── */
+#settings-screen, #sub-settings-screen {
   display: none;
   position: fixed; inset: 0; z-index: 200;
   background: var(--bg);
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .settings-topbar {
   background: var(--bg);
-  padding: 52px 20px 12px;
-  position: sticky; top: 0; z-index: 10;
-  display: flex; align-items: center; gap: 12px;
+  padding: 52px 16px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--separator);
+  flex-shrink: 0;
 }
 @media (min-width: 768px) {
   .settings-topbar { padding-top: 20px; }
 }
 
 .settings-back-btn {
+  width: 36px; height: 36px;
   background: transparent; border: none;
-  font-size: 22px; color: var(--blue);
-  cursor: pointer; padding: 4px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--blue); border-radius: var(--r-full);
 }
 .settings-title {
-  font-size: 20px; font-weight: 800; color: var(--text-1);
+  font-size: 17px; font-weight: 700; color: var(--text-1);
 }
-
-.settings-section {
-  margin: 0 16px 8px;
+.settings-body {
+  flex: 1; overflow-y: auto;
+  padding: 8px 16px 0;
+  -webkit-overflow-scrolling: touch;
 }
+.settings-section { margin-bottom: 4px; }
 .settings-section-label {
-  font-size: 13px; font-weight: 600;
-  color: var(--text-3);
-  padding: 12px 4px 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 13px; font-weight: 600; color: var(--text-3);
+  padding: 16px 4px 6px; letter-spacing: 0.01em;
 }
-
 .settings-card {
-  background: white;
-  border-radius: var(--r-xl);
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  background: white; border-radius: var(--r-xl);
+  overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
-
 .settings-row {
   display: flex; align-items: center;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--separator);
-  gap: 12px;
-  cursor: pointer;
-  transition: background .1s;
+  padding: 13px 16px; border-bottom: 1px solid var(--separator);
+  gap: 12px; cursor: pointer; transition: background .1s; min-height: 52px;
 }
 .settings-row:last-child { border-bottom: none; }
 .settings-row:active { background: var(--bg); }
-.settings-row-icon { font-size: 20px; width: 28px; text-align: center; }
-.settings-row-text { flex: 1; }
-.settings-row-label { font-size: 15px; font-weight: 500; color: var(--text-1); }
-.settings-row-sub { font-size: 13px; color: var(--text-3); margin-top: 1px; }
-.settings-row-arrow { font-size: 14px; color: var(--text-4); }
-
-/* settings input fields */
-.settings-input-card {
-  background: white;
-  border-radius: var(--r-xl);
-  padding: 16px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+.settings-row-icon {
+  width: 28px; text-align: center; font-size: 19px; color: var(--text-2);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
 }
-.settings-field { margin-bottom: 12px; }
-.settings-field:last-child { margin-bottom: 0; }
-.settings-field label {
+.settings-row-text { flex: 1; min-width: 0; }
+.settings-row-label { font-size: 15px; font-weight: 500; color: var(--text-1); }
+.settings-row-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.settings-row-value { font-size: 15px; color: var(--text-3); white-space: nowrap; }
+.settings-row-arrow { font-size: 18px; color: var(--text-4); margin-left: 4px; flex-shrink: 0; }
+
+/* sub-settings fields */
+.sub-field { margin-bottom: 16px; }
+.sub-field label {
   display: block; font-size: 13px; font-weight: 600;
   color: var(--text-3); margin-bottom: 6px;
 }
+.sub-field input, .sub-field select {
+  width: 100%; padding: 13px 14px;
+  border: 1px solid var(--separator); border-radius: var(--r-md);
+  font-size: 16px; font-family: inherit;
+  background: white; color: var(--text-1); box-sizing: border-box;
+}
+.sub-field input:focus, .sub-field select:focus { outline: none; border-color: var(--blue); }
+.sub-save-btn {
+  width: 100%; padding: 15px;
+  background: var(--blue); color: white; border: none;
+  border-radius: var(--r-full); font-size: 16px; font-weight: 700;
+  font-family: inherit; cursor: pointer; margin-top: 8px;
+}
+.sub-note { font-size: 13px; color: var(--text-3); text-align: center; padding: 8px 0; line-height: 1.5; }
+.wifi-status-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: var(--r-full);
+  font-size: 13px; font-weight: 600;
+  background: #e8f8ec; color: #1d7a3c; margin-bottom: 16px;
+}
+.wifi-status-badge.inactive { background: #fef2f2; color: var(--red); }
+
+/* legacy compat */
+.settings-input-card {
+  background: white; border-radius: var(--r-xl);
+  padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.settings-field { margin-bottom: 12px; }
+.settings-field:last-child { margin-bottom: 0; }
+.settings-field label { display: block; font-size: 13px; font-weight: 600; color: var(--text-3); margin-bottom: 6px; }
 .settings-field input {
   width: 100%; padding: 12px 14px;
-  border: 1px solid var(--separator);
-  border-radius: var(--r-md);
-  font-size: 16px; font-family: inherit;
-  background: var(--bg); color: var(--text-1);
-  transition: border-color .15s;
+  border: 1px solid var(--separator); border-radius: var(--r-md);
+  font-size: 16px; font-family: inherit; background: var(--bg); color: var(--text-1);
 }
 .settings-field input:focus { outline: none; border-color: var(--blue); }
-
 .btn-settings-save {
-  width: 100%; padding: 14px;
-  background: var(--blue); color: white; border: none;
-  border-radius: var(--r-full);
-  font-size: 16px; font-weight: 700; font-family: inherit;
+  width: 100%; padding: 14px; background: var(--blue); color: white; border: none;
+  border-radius: var(--r-full); font-size: 16px; font-weight: 700; font-family: inherit;
   cursor: pointer; margin-top: 12px;
-  transition: opacity .15s;
 }
-.btn-settings-save:active { opacity: .85; }
-
 .btn-settings-danger {
-  width: 100%; padding: 14px;
-  background: var(--red-bg); color: var(--red); border: 1px solid #fecaca;
-  border-radius: var(--r-full);
-  font-size: 15px; font-weight: 600; font-family: inherit;
-  cursor: pointer;
-  transition: all .15s;
+  width: 100%; padding: 14px; background: var(--red-bg); color: var(--red);
+  border: 1px solid #fecaca; border-radius: var(--r-full);
+  font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
 }
-.btn-settings-danger:active { opacity: .8; }
 
 /* ────────────── ADD FOOD SHEET ────────────── */
 .sheet-option-grid {
@@ -2532,108 +2540,169 @@ body {
 <!-- ═══════════ SETTINGS SCREEN ═══════════ -->
 <div id="settings-screen">
   <div class="settings-topbar">
-    <button class="settings-back-btn" onclick="hideSettings()">‹</button>
+    <button class="settings-back-btn" onclick="hideSettings()">
+      <svg width="11" height="19" viewBox="0 0 11 19" fill="none"><path d="M10 1L1.5 9.5L10 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
     <span class="settings-title">설정</span>
+    <div style="width:36px;"></div>
   </div>
 
-  <!-- Profile & Goals -->
-  <div class="settings-section">
-    <div class="settings-section-label">프로필 & 목표</div>
-    <div class="settings-input-card">
-      <div class="settings-field">
-        <label>닉네임</label>
-        <input type="text" id="profile-nickname" placeholder="닉네임">
-      </div>
-      <div class="settings-field">
-        <label>실제 이름 (선택)</label>
-        <input type="text" id="profile-display-name" placeholder="실제 이름">
-      </div>
-      <div class="settings-field">
-        <label>체중 (kg)</label>
-        <input type="number" id="weight-input" placeholder="70" min="0" step="0.1">
-      </div>
-      <div class="settings-field">
-        <label>단백질 목표 배수 (체중 × ?)</label>
-        <input type="number" id="multiplier-input" placeholder="1.5" min="0" step="0.1" value="1.5">
-      </div>
-      <button class="btn-settings-save" onclick="saveProfile()">저장</button>
-    </div>
-  </div>
+  <div class="settings-body">
 
-  <!-- Account -->
-  <div class="settings-section">
-    <div class="settings-section-label">계정</div>
-    <div class="settings-input-card">
-      <div class="settings-field">
-        <label>현재 비밀번호</label>
-        <input type="password" id="pw-current" placeholder="현재 비밀번호">
+    <!-- 사용자 섹션 -->
+    <div class="settings-section-label">사용자</div>
+    <div class="settings-card">
+      <div class="settings-row" onclick="showSubSettings('account')">
+        <div class="settings-row-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="settings-row-text"><div class="settings-row-label">계정</div></div>
+        <div class="settings-row-value" id="settings-account-val">—</div>
+        <div class="settings-row-arrow">›</div>
       </div>
-      <div class="settings-field">
-        <label>새 비밀번호</label>
-        <input type="password" id="pw-new" placeholder="새 비밀번호">
-      </div>
-      <div class="settings-field">
-        <label>새 비밀번호 확인</label>
-        <input type="password" id="pw-confirm" placeholder="새 비밀번호 확인">
-      </div>
-      <button class="btn-settings-save" onclick="changePassword()">비밀번호 변경</button>
-    </div>
-  </div>
-
-  <!-- Dispenser -->
-  <div class="settings-section">
-    <div class="settings-section-label">디스펜서 연결</div>
-    <div class="settings-input-card">
-      <div id="device-list" style="padding-bottom:8px;"></div>
-      <button class="btn-settings-save" onclick="startQRScan()" style="margin-top:0;">QR 스캔으로 등록</button>
-      <span id="device-msg" style="display:block;font-size:13px;color:var(--green);margin-top:6px;"></span>
-      <div id="qr-scan-area" style="display:none;margin-top:10px;">
-        <video id="qr-video"></video>
-        <button onclick="stopQRScan()" style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--separator);padding:10px;border-radius:var(--r-full);cursor:pointer;font-size:14px;font-family:inherit;">취소</button>
+      <div class="settings-row" onclick="showSubSettings('weight')">
+        <div class="settings-row-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        </div>
+        <div class="settings-row-text"><div class="settings-row-label">체중 (kg)</div></div>
+        <div class="settings-row-value" id="settings-weight-val">—</div>
+        <div class="settings-row-arrow">›</div>
       </div>
     </div>
-  </div>
 
-  <!-- Protein products -->
-  <div class="settings-section">
-    <div class="settings-section-label">프로틴 제품</div>
-    <div class="settings-input-card">
-      <div id="product-list"></div>
-      <button class="btn-settings-save" onclick="document.getElementById('product-img-input').click()" style="margin-top:8px;">영양성분표 등록</button>
-      <input type="file" id="product-img-input" accept="image/*" style="display:none" onchange="analyzeProductLabel(this.files[0])">
-      <div id="product-analyze-status" style="font-size:13px;color:var(--text-3);margin-top:6px;"></div>
-      <div id="product-confirm-area" style="display:none;flex-direction:column;gap:8px;margin-top:8px;">
-        <div id="product-preview-info" style="font-size:14px;color:var(--text-1);background:var(--bg);padding:12px;border-radius:var(--r-md);line-height:1.6;"></div>
-        <button class="btn-settings-save" onclick="saveProductFromAnalysis()">저장</button>
-        <button onclick="cancelProductAnalysis()" style="width:100%;padding:12px;background:transparent;border:1px solid var(--separator);color:var(--text-3);border-radius:var(--r-full);cursor:pointer;font-size:14px;font-family:inherit;">취소</button>
+    <!-- 단백질 섹션 -->
+    <div class="settings-section-label">단백질</div>
+    <div class="settings-card">
+      <div class="settings-row" onclick="showSubSettings('protein-goal')">
+        <div class="settings-row-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <div class="settings-row-text"><div class="settings-row-label">단백질 목표 (g)</div></div>
+        <div class="settings-row-value" id="settings-goal-val">—</div>
+        <div class="settings-row-arrow">›</div>
+      </div>
+      <div class="settings-row" onclick="showSubSettings('find-goal')">
+        <div class="settings-row-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </div>
+        <div class="settings-row-text"><div class="settings-row-label">단백질 목표 찾기</div></div>
+        <div class="settings-row-arrow">›</div>
       </div>
     </div>
-  </div>
 
-  <!-- Logout / Delete -->
-  <div class="settings-section">
+    <!-- 앱 섹션 -->
+    <div class="settings-section-label">앱</div>
+    <div class="settings-card">
+      <div class="settings-row" onclick="showSubSettings('language')">
+        <div class="settings-row-icon">🌐</div>
+        <div class="settings-row-text"><div class="settings-row-label">언어</div></div>
+        <div class="settings-row-value">한국어</div>
+        <div class="settings-row-arrow">›</div>
+      </div>
+      <div class="settings-row" onclick="showSubSettings('week-start')">
+        <div class="settings-row-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div class="settings-row-text"><div class="settings-row-label">한 주의 시작</div></div>
+        <div class="settings-row-value">일요일</div>
+        <div class="settings-row-arrow">›</div>
+      </div>
+      <div class="settings-row" onclick="showSubSettings('unit')">
+        <div class="settings-row-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        </div>
+        <div class="settings-row-text"><div class="settings-row-label">무게 단위</div></div>
+        <div class="settings-row-value">킬로그램 (kg)</div>
+        <div class="settings-row-arrow">›</div>
+      </div>
+    </div>
+
+    <!-- 디스펜서 섹션 -->
+    <div class="settings-section-label">디스펜서</div>
+    <div class="settings-card">
+      <div class="settings-row" onclick="showSubSettings('dispenser-connect')">
+        <div class="settings-row-icon">📱</div>
+        <div class="settings-row-text">
+          <div class="settings-row-label">기기 연결</div>
+          <div class="settings-row-sub" id="settings-device-sub">연결된 기기 없음</div>
+        </div>
+        <div class="settings-row-arrow">›</div>
+      </div>
+      <div class="settings-row" onclick="showSubSettings('wifi')">
+        <div class="settings-row-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>
+        </div>
+        <div class="settings-row-text">
+          <div class="settings-row-label">WiFi 설정</div>
+          <div class="settings-row-sub">디스펜서 WiFi 정보 업데이트</div>
+        </div>
+        <div class="settings-row-arrow">›</div>
+      </div>
+      <div class="settings-row" onclick="showSubSettings('protein-product')">
+        <div class="settings-row-icon">🥤</div>
+        <div class="settings-row-text"><div class="settings-row-label">프로틴 제품</div></div>
+        <div class="settings-row-arrow">›</div>
+      </div>
+    </div>
+
+    <!-- 지원 섹션 -->
+    <div class="settings-section-label">지원</div>
+    <div class="settings-card">
+      <div class="settings-row" onclick="showToast('준비 중입니다')">
+        <div class="settings-row-icon">✉️</div>
+        <div class="settings-row-text"><div class="settings-row-label">문의하기</div></div>
+        <div class="settings-row-arrow">›</div>
+      </div>
+      <div class="settings-row" onclick="showToast('준비 중입니다')">
+        <div class="settings-row-icon">📄</div>
+        <div class="settings-row-text"><div class="settings-row-label">이용약관</div></div>
+        <div class="settings-row-arrow">›</div>
+      </div>
+    </div>
+
+    <!-- 계정 관리 -->
     <div class="settings-section-label">계정 관리</div>
-    <div class="settings-input-card" style="gap:10px;display:flex;flex-direction:column;">
-      <button class="btn-settings-save" style="background:#636366;" onclick="doLogout()">로그아웃</button>
-      <button class="btn-settings-danger" onclick="showDeleteConfirm()">계정 삭제</button>
+    <div class="settings-card">
+      <div class="settings-row" onclick="doLogout()">
+        <div class="settings-row-icon">🚪</div>
+        <div class="settings-row-text"><div class="settings-row-label" style="color:var(--blue);">로그아웃</div></div>
+      </div>
+      <div class="settings-row" onclick="showDeleteConfirm()">
+        <div class="settings-row-icon">🗑️</div>
+        <div class="settings-row-text"><div class="settings-row-label" style="color:var(--red);">계정 삭제</div></div>
+      </div>
     </div>
-  </div>
 
-  <!-- Admin (hidden) -->
-  <div class="settings-section" id="admin-section" style="display:none;">
-    <div class="settings-section-label">관리자</div>
-    <div class="admin-card">
-      <div style="font-size:15px;font-weight:700;margin-bottom:10px;">AI 검색 캐시 <span id="cache-count" style="font-size:13px;color:var(--text-3);font-weight:400;"></span></div>
-      <div id="cache-list"></div>
+    <!-- Admin (hidden) -->
+    <div id="admin-section" style="display:none;">
+      <div class="settings-section-label">관리자</div>
+      <div class="settings-card">
+        <div class="admin-card">
+          <div style="font-size:15px;font-weight:700;margin-bottom:10px;">AI 검색 캐시 <span id="cache-count"></span></div>
+          <div id="cache-list"></div>
+        </div>
+        <div class="admin-card">
+          <div style="font-size:15px;font-weight:700;margin-bottom:10px;">커스텀 음식 DB <span id="custom-count"></span></div>
+          <div id="custom-list"></div>
+        </div>
+      </div>
     </div>
-    <div class="admin-card" style="margin-top:0;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:10px;">커스텀 음식 DB <span id="custom-count" style="font-size:13px;color:var(--text-3);font-weight:400;"></span></div>
-      <div id="custom-list"></div>
-    </div>
-  </div>
 
-  <div style="height:40px;"></div>
+    <div style="height:48px;"></div>
+  </div>
 </div><!-- /settings-screen -->
+
+<!-- ═══════════ SUB-SETTINGS PANEL ═══════════ -->
+<div id="sub-settings-screen">
+  <div class="settings-topbar">
+    <button class="settings-back-btn" onclick="hideSubSettings()">
+      <svg width="11" height="19" viewBox="0 0 11 19" fill="none"><path d="M10 1L1.5 9.5L10 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <span class="settings-title" id="sub-settings-title">설정</span>
+    <div style="width:36px;"></div>
+  </div>
+  <div class="settings-body" id="sub-settings-body"></div>
+</div>
 
 
 <!-- ═══════════ ADD SHEET (choose method) ═══════════ -->
@@ -3396,10 +3465,12 @@ function hideStats() {
 
 function showSettings() {
   document.getElementById('settings-screen').style.display = 'flex';
+  updateSettingsValues();
 }
 
 function hideSettings() {
   document.getElementById('settings-screen').style.display = 'none';
+  document.getElementById('sub-settings-screen').style.display = 'none';
 }
 
 // ══════════════════════════════════════════
@@ -4395,7 +4466,201 @@ async function deleteAccount() {
 }
 
 // ══════════════════════════════════════════
-//  WiFi 재설정 트리거 폴링 + 모달
+//  SUB-SETTINGS PANEL
+// ══════════════════════════════════════════
+function hideSubSettings() {
+  document.getElementById('sub-settings-screen').style.display = 'none';
+}
+
+function showSubSettings(type) {
+  const screen = document.getElementById('sub-settings-screen');
+  const title  = document.getElementById('sub-settings-title');
+  const body   = document.getElementById('sub-settings-body');
+  screen.style.display = 'flex';
+
+  const profile = JSON.parse(localStorage.getItem('profile') || '{}');
+
+  if (type === 'account') {
+    title.textContent = '계정';
+    body.innerHTML = `
+      <div style="padding:16px 0;">
+        <div class="sub-field"><label>닉네임</label>
+          <input type="text" id="sub-nickname" value="${profile.nickname||''}" placeholder="닉네임">
+        </div>
+        <div class="sub-field"><label>현재 비밀번호</label>
+          <input type="password" id="sub-pw-current" placeholder="현재 비밀번호">
+        </div>
+        <div class="sub-field"><label>새 비밀번호</label>
+          <input type="password" id="sub-pw-new" placeholder="새 비밀번호 (변경 시만)">
+        </div>
+        <div class="sub-field"><label>새 비밀번호 확인</label>
+          <input type="password" id="sub-pw-confirm" placeholder="새 비밀번호 확인">
+        </div>
+        <button class="sub-save-btn" onclick="saveAccountSub()">저장</button>
+      </div>
+    `;
+  } else if (type === 'weight') {
+    const w = profile.weight || '';
+    title.textContent = '체중';
+    body.innerHTML = `
+      <div style="padding:16px 0;">
+        <div class="sub-field"><label>체중 (kg)</label>
+          <input type="number" id="sub-weight" value="${w}" placeholder="70" min="0" step="0.1">
+        </div>
+        <p class="sub-note">체중은 일일 단백질 목표 계산에 사용됩니다.</p>
+        <button class="sub-save-btn" onclick="saveWeightSub()">저장</button>
+      </div>
+    `;
+  } else if (type === 'protein-goal') {
+    const goal = localStorage.getItem('protein_goal') || '';
+    title.textContent = '단백질 목표';
+    body.innerHTML = `
+      <div style="padding:16px 0;">
+        <div class="sub-field"><label>일일 단백질 목표 (g)</label>
+          <input type="number" id="sub-goal" value="${goal}" placeholder="120" min="0" step="1">
+        </div>
+        <p class="sub-note">권장량: 체중(kg) × 1.2~2.0g</p>
+        <button class="sub-save-btn" onclick="saveGoalSub()">저장</button>
+      </div>
+    `;
+  } else if (type === 'find-goal') {
+    title.textContent = '단백질 목표 찾기';
+    // Reuse onboarding flow — just jump back to step 3
+    hideSubSettings();
+    hideSettings();
+    showOnboarding(3);
+  } else if (type === 'wifi') {
+    title.textContent = 'WiFi 설정';
+    const token = localStorage.getItem('device_token') || '';
+    body.innerHTML = `
+      <div style="padding:16px 0;">
+        <p class="sub-note" style="text-align:left;padding:0 0 12px;">
+          디스펜서가 연결할 <strong>2.4GHz WiFi</strong> 정보를 입력하세요.<br>
+          입력 후 <strong>전송</strong>을 누르면 디스펜서에 적용됩니다.
+        </p>
+        <div class="sub-field"><label>WiFi 이름 (SSID)</label>
+          <input type="text" id="sub-wifi-ssid" placeholder="WiFi 이름 입력">
+        </div>
+        <div class="sub-field"><label>WiFi 비밀번호</label>
+          <input type="password" id="sub-wifi-pass" placeholder="비밀번호 입력">
+        </div>
+        <div id="sub-wifi-msg" style="font-size:13px;color:var(--text-3);min-height:18px;margin-bottom:8px;"></div>
+        <button class="sub-save-btn" onclick="sendWifiFromSettings('${token}')">디스펜서에 전송</button>
+        <p class="sub-note" style="margin-top:12px;">⚠️ WiFi를 전송하면 디스펜서가 재시작됩니다.</p>
+      </div>
+    `;
+  } else if (type === 'dispenser-connect') {
+    title.textContent = '기기 연결';
+    body.innerHTML = `
+      <div style="padding:16px 0;">
+        <div id="device-list" style="margin-bottom:12px;"></div>
+        <button class="sub-save-btn" onclick="startQRScan()">QR 스캔으로 등록</button>
+        <span id="device-msg" style="display:block;font-size:13px;color:var(--green);margin-top:8px;"></span>
+        <div id="qr-scan-area" style="display:none;margin-top:12px;">
+          <video id="qr-video" style="width:100%;border-radius:var(--r-lg);"></video>
+          <button onclick="stopQRScan()" style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--separator);padding:10px;border-radius:var(--r-full);cursor:pointer;font-size:14px;font-family:inherit;">취소</button>
+        </div>
+      </div>
+    `;
+    loadDeviceList();
+  } else if (type === 'protein-product') {
+    title.textContent = '프로틴 제품';
+    body.innerHTML = `
+      <div style="padding:16px 0;">
+        <div id="product-list" style="margin-bottom:12px;"></div>
+        <button class="sub-save-btn" onclick="document.getElementById('product-img-input').click()">영양성분표 사진으로 등록</button>
+        <input type="file" id="product-img-input" accept="image/*" style="display:none" onchange="analyzeProductLabel(this.files[0])">
+        <div id="product-analyze-status" style="font-size:13px;color:var(--text-3);margin-top:8px;"></div>
+        <div id="product-confirm-area" style="display:none;flex-direction:column;gap:8px;margin-top:8px;">
+          <div id="product-preview-info" style="font-size:14px;color:var(--text-1);background:var(--bg);padding:12px;border-radius:var(--r-md);line-height:1.6;"></div>
+          <button class="sub-save-btn" onclick="saveProductFromAnalysis()">저장</button>
+          <button onclick="cancelProductAnalysis()" style="width:100%;padding:12px;background:transparent;border:1px solid var(--separator);color:var(--text-3);border-radius:var(--r-full);cursor:pointer;font-size:14px;font-family:inherit;">취소</button>
+        </div>
+      </div>
+    `;
+    loadProductList();
+  }
+}
+
+async function saveAccountSub() {
+  const nickname = document.getElementById('sub-nickname')?.value.trim();
+  const pwCur  = document.getElementById('sub-pw-current')?.value;
+  const pwNew  = document.getElementById('sub-pw-new')?.value;
+  const pwConf = document.getElementById('sub-pw-confirm')?.value;
+
+  if (nickname) {
+    const profile = JSON.parse(localStorage.getItem('profile') || '{}');
+    profile.nickname = nickname;
+    localStorage.setItem('profile', JSON.stringify(profile));
+    await fetch('/api/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nickname}) });
+  }
+  if (pwNew) {
+    if (pwNew !== pwConf) { showToast('새 비밀번호가 일치하지 않습니다'); return; }
+    const res = await fetch('/api/change-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({current:pwCur, new_pw:pwNew}) }).then(r=>r.json());
+    if (res.status !== 'ok') { showToast(res.error || '비밀번호 변경 실패'); return; }
+  }
+  showToast('✅ 저장되었습니다');
+  hideSubSettings();
+  updateSettingsValues();
+}
+
+async function saveWeightSub() {
+  const w = parseFloat(document.getElementById('sub-weight')?.value);
+  if (!w || w < 1) { showToast('올바른 체중을 입력하세요'); return; }
+  const profile = JSON.parse(localStorage.getItem('profile') || '{}');
+  profile.weight = w;
+  localStorage.setItem('profile', JSON.stringify(profile));
+  await fetch('/api/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({weight:w}) });
+  showToast('✅ 체중 저장됨');
+  hideSubSettings();
+  updateSettingsValues();
+}
+
+async function saveGoalSub() {
+  const g = parseInt(document.getElementById('sub-goal')?.value);
+  if (!g || g < 1) { showToast('올바른 목표값을 입력하세요'); return; }
+  localStorage.setItem('protein_goal', g);
+  await fetch('/api/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({protein_goal:g}) });
+  showToast('✅ 목표 저장됨');
+  hideSubSettings();
+  proteinGoal = g;
+  updateSettingsValues();
+  loadMeals();
+}
+
+async function sendWifiFromSettings(token) {
+  const ssid = document.getElementById('sub-wifi-ssid')?.value.trim();
+  const pass = document.getElementById('sub-wifi-pass')?.value;
+  const msg  = document.getElementById('sub-wifi-msg');
+  if (!token) { msg.textContent = '먼저 디스펜서를 등록하세요.'; msg.style.color='var(--red)'; return; }
+  if (!ssid)  { msg.textContent = 'WiFi 이름을 입력하세요.'; msg.style.color='var(--red)'; return; }
+  msg.textContent = '전송 중...'; msg.style.color = 'var(--text-3)';
+
+  // Reuse the existing sendWifiToESP32 logic
+  // Temporarily inject into the wifi-modal fields for reuse
+  const tmpDiv = document.createElement('div');
+  tmpDiv.innerHTML = `<input id="wifi-ssid-input" value="${ssid.replace(/"/g,'')}" style="display:none">
+                      <input id="wifi-pass-input" type="password" style="display:none">`;
+  tmpDiv.querySelector('#wifi-pass-input').value = pass;
+  document.body.appendChild(tmpDiv);
+
+  // Override modal-msg to sub-wifi-msg
+  const origMsg = document.getElementById('wifi-modal-msg');
+
+  await sendWifiToESP32(token);
+
+  // Cleanup
+  tmpDiv.remove();
+  showToast('📡 WiFi 정보 전송 완료');
+}
+
+function updateSettingsValues() {
+  const profile = JSON.parse(localStorage.getItem('profile') || '{}');
+  const el = (id) => document.getElementById(id);
+  if (el('settings-weight-val'))  el('settings-weight-val').textContent  = profile.weight ? profile.weight + ' kg' : '—';
+  if (el('settings-goal-val'))    el('settings-goal-val').textContent    = (localStorage.getItem('protein_goal') || proteinGoal || '—') + (localStorage.getItem('protein_goal') ? ' g' : '');
+  if (el('settings-account-val')) el('settings-account-val').textContent = profile.nickname || '—';
+}
 // ══════════════════════════════════════════
 let _wifiPollTimer = null;
 
