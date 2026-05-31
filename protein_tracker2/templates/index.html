@@ -1743,126 +1743,158 @@ body {
 }
 
 /* ────────────── PC/TABLET LAYOUT ────────────── */
-@media (min-width: 768px) {
-  /* On larger screens, show a sidebar and larger content area */
-  #app-screen {
-    flex-direction: row;
-  }
-  
-  #tab-bar {
-    display: none;
-  }
-  
-  /* Sidebar on desktop */
-  #desktop-sidebar {
-    width: 260px;
-    min-width: 260px;
-    height: 100vh;
-    background: #1c1c1e;
-    position: fixed;
-    left: 0; top: 0; bottom: 0;
-    z-index: 50;
-    display: flex; flex-direction: column;
-    padding: 32px 0 32px;
-    overflow-y: auto;
-  }
-  
-  .ds-logo {
-    padding: 0 20px 24px;
-    border-bottom: 1px solid #3a3a3c;
-    margin-bottom: 12px;
-  }
-  .ds-logo-icon {
-    width: 44px; height: 44px;
-    background: white; border-radius: 12px;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 18px; font-weight: 800; font-style: italic;
-    color: #1c1c1e; margin-bottom: 10px;
-  }
-  .ds-logo-title { font-size: 18px; font-weight: 800; color: white; }
-  
-  .ds-user {
-    padding: 12px 20px 16px;
-    border-bottom: 1px solid #3a3a3c;
-    margin-bottom: 12px;
-  }
-  .ds-user-name { font-size: 15px; font-weight: 700; color: white; }
-  .ds-user-sub { font-size: 12px; color: #8e8e93; }
-  
-  .ds-nav { flex: 1; }
-  
-  .ds-nav-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 13px 20px;
-    cursor: pointer;
-    transition: background .1s;
-    border-radius: 0;
-  }
-  .ds-nav-item:hover { background: #2c2c2e; }
-  .ds-nav-item.active { background: #2c2c2e; border-left: 3px solid var(--blue); }
-  .ds-nav-icon { font-size: 18px; width: 24px; text-align: center; color: #8e8e93; }
-  .ds-nav-item.active .ds-nav-icon { color: var(--blue); }
-  .ds-nav-label { font-size: 15px; font-weight: 600; color: #8e8e93; }
-  .ds-nav-item.active .ds-nav-label { color: white; }
-  
-  .ds-bottom {
-    padding: 16px 20px 0;
-    border-top: 1px solid #3a3a3c;
-    display: flex; flex-direction: column; gap: 8px;
-  }
-  .btn-ds-settings, .btn-ds-logout {
-    width: 100%; padding: 10px;
-    border-radius: var(--r-md);
-    font-size: 14px; font-weight: 600; font-family: inherit;
-    cursor: pointer;
-  }
-  .btn-ds-settings {
-    background: #2c2c2e; color: white; border: none;
-  }
-  .btn-ds-logout {
-    background: transparent; color: #8e8e93;
-    border: 1px solid #3a3a3c;
-  }
-  
-  /* Main content area on desktop */
-  #swipe-container {
-    margin-left: 260px;
-    width: calc(300vw - 780px);
-  }
-  
-  #desktop-sidebar { display: flex; }
-  
-  /* Content max width centered */
-  #pane-main, #pane-album, #pane-social {
-    max-width: none;
-  }
-  .main-topbar, .goal-card, .meal-section, .section-label,
-  .album-topbar, .album-grid-wrap, .album-date-label {
-    max-width: 720px;
-    margin-left: auto;
-    margin-right: auto;
-    box-sizing: border-box;
-  }
-  .goal-card { width: calc(100% - 32px); margin-left: auto; margin-right: auto; }
-  .meal-section { width: calc(100% - 0px); }
-  
-  /* Adjust album grid for larger screens */
-  .album-grid-wrap {
-    grid-template-columns: repeat(5, 1fr);
-    width: 100%;
-    max-width: none;
-  }
-}
+/* Hide desktop sidebar always - using top nav instead */
+#desktop-sidebar { display: none !important; }
 
-/* Hide desktop sidebar on mobile */
-#desktop-sidebar { display: none; }
+@media (min-width: 768px) {
+  /* Top navbar for desktop */
+  #app-screen {
+    flex-direction: column;
+  }
+  
+  /* Show top nav bar on desktop */
+  #pc-topnav { display: flex !important; }
+  
+  /* Hide mobile tab bar */
+  #tab-bar { display: none; }
+  
+  /* Swipe container full width, no sidebar offset */
+  #swipe-container {
+    margin-left: 0;
+    width: 300vw;
+    height: calc(100vh - 56px); /* minus topnav */
+  }
+
+  .swipe-pane {
+    width: 100vw;
+  }
+
+  /* Center main content */
+  .main-topbar {
+    max-width: 800px;
+    margin-left: auto; margin-right: auto;
+    padding-left: 24px; padding-right: 24px;
+  }
+  .section-label {
+    max-width: 800px;
+    margin-left: auto; margin-right: auto;
+    padding-left: 24px; padding-right: 24px;
+  }
+  .goal-card {
+    max-width: 768px;
+    margin-left: auto; margin-right: auto;
+  }
+  .meal-section {
+    max-width: 768px;
+    margin-left: auto; margin-right: auto;
+    margin-top: 0;
+  }
+  .album-topbar {
+    max-width: 960px;
+    margin-left: auto; margin-right: auto;
+  }
+  .album-grid-wrap {
+    max-width: 960px;
+    margin-left: auto; margin-right: auto;
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .album-date-label {
+    max-width: 960px;
+    margin-left: auto; margin-right: auto;
+  }
+  
+  /* Stats screen desktop */
+  #stats-screen {
+    padding-top: 56px; /* below topnav */
+  }
+  .stats-topbar { padding-top: 20px; }
+  .stats-card { max-width: 768px; margin-left: auto; margin-right: auto; }
+  
+  /* History/settings screens */
+  .history-topbar { padding-top: 20px; max-width: 800px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+  .history-cal-card { max-width: 800px; margin-left: auto; margin-right: auto; }
+  #day-detail-panel { max-width: 800px; margin-left: auto; margin-right: auto; }
+  .settings-topbar { padding-top: 20px; }
+  .settings-section { max-width: 640px; margin-left: auto; margin-right: auto; }
+  
+  /* Sheets centered */
+  .sheet { max-width: 520px; left: 50%; transform: translateX(-50%) translateY(100%); right: auto; width: 100%; }
+  .sheet.open { transform: translateX(-50%) translateY(0); }
+  
+  /* Main topbar padding-top less on desktop */
+  .main-topbar { padding-top: 16px; }
+}
 
 @media (min-width: 1024px) {
-  .album-grid-wrap { grid-template-columns: repeat(6, 1fr); }
+  .album-grid-wrap { grid-template-columns: repeat(6, 1fr); max-width: 1100px; }
+  .goal-card { max-width: 860px; }
+  .meal-section { max-width: 860px; }
+  .main-topbar { max-width: 860px; }
+  .section-label { max-width: 860px; }
 }
 
-/* QR video */
-#qr-video { width: 100%; border-radius: var(--r-lg); }
+/* ────────────── PC TOP NAV ────────────── */
+#pc-topnav {
+  display: none; /* shown via media query */
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 56px; z-index: 100;
+  background: rgba(249,249,249,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--separator);
+  align-items: center;
+  padding: 0 24px;
+  gap: 0;
+}
+.pc-nav-logo {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 16px; font-weight: 800; color: var(--text-1);
+  margin-right: 32px; text-decoration: none;
+}
+.pc-nav-logo-icon {
+  width: 32px; height: 32px; background: #1c1c1e;
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800; font-style: italic; color: white;
+}
+.pc-nav-tabs {
+  display: flex; gap: 4px; flex: 1;
+}
+.pc-nav-tab {
+  padding: 6px 16px; border-radius: var(--r-full);
+  font-size: 14px; font-weight: 600; color: var(--text-3);
+  cursor: pointer; border: none; background: transparent;
+  font-family: inherit; transition: all .15s;
+}
+.pc-nav-tab:hover { background: var(--separator); color: var(--text-1); }
+.pc-nav-tab.active { background: var(--blue-light); color: var(--blue); }
+.pc-nav-right {
+  display: flex; gap: 8px; align-items: center; margin-left: auto;
+}
+.pc-nav-add-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 16px;
+  background: var(--blue); color: white; border: none;
+  border-radius: var(--r-full);
+  font-size: 14px; font-weight: 700; font-family: inherit;
+  cursor: pointer; transition: opacity .15s;
+}
+.pc-nav-add-btn:active { opacity: .85; }
+.pc-nav-icon-btn {
+  width: 36px; height: 36px;
+  background: transparent; border: none;
+  border-radius: var(--r-full);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-2);
+  transition: background .1s;
+}
+.pc-nav-icon-btn:hover { background: var(--separator); }
+.pc-nav-icon-btn svg { width: 20px; height: 20px; }
+
+/* Push content below fixed topnav on desktop */
+@media (min-width: 768px) {
+  #app-screen { padding-top: 56px; }
+  #swipe-container { height: calc(100vh - 56px); }
+}
 #qr-scan-area { padding: 16px 20px; }
 
 /* ────────────── NOTIFICATION / Toast ────────────── */
