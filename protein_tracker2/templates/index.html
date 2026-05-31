@@ -4286,20 +4286,35 @@ function stopQRScan() {
 
 async function registerDevice(token) {
   const msg = document.getElementById('device-msg');
-  msg.textContent = '등록 중...';
+  if (msg) msg.textContent = '등록 중...';
+
+  // 먼저 WiFi 설정 여부 확인
+  try {
+    const checkRes = await fetch(`/api/device/check?token=${token}`);
+    const checkData = await checkRes.json();
+
+    if (!checkData.wifi_configured) {
+      // WiFi 미설정 → 바로 모달 표시
+      showWifiModal(token);
+      return;
+    }
+  } catch(e) {}
+
+  // WiFi 설정됨 → 바로 등록
   const res = await fetch('/api/device/register', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({token})
   }).then(r => r.json());
+
   if (res.status === 'ok' || res.status === 'already_registered') {
-    msg.textContent = '기기 등록 완료!';
+    if (msg) msg.textContent = '기기 등록 완료!';
     localStorage.setItem('device_token', token);
     startWifiTriggerPolling(token);
     loadDeviceList();
   } else {
-    msg.textContent = res.error || '등록 실패';
+    if (msg) msg.textContent = res.error || '등록 실패';
   }
-  setTimeout(() => msg.textContent = '', 3000);
+  if (msg) setTimeout(() => msg.textContent = '', 3000);
 }
 
 // ══════════════════════════════════════════
@@ -4380,7 +4395,7 @@ async function deleteAccount() {
 }
 
 // ══════════════════════════════════════════
-//  WIFI TRIGGER POLLING
+//  WiFi 재설정 트리거 폴링 + 모달
 // ══════════════════════════════════════════
 let _wifiPollTimer = null;
 
@@ -4390,9 +4405,101 @@ function startWifiTriggerPolling(token) {
     try {
       const res = await fetch(`/api/device/wifi-trigger/check?token=${token}`);
       const data = await res.json();
-      if (data.triggered) showToast('📶 WiFi 재설정 요청');
+      if (data.triggered) {
+        // 버튼 B+C 3초 누름 감지 → WiFi 설정 모달 자동 오픈
+        showWifiModal(token);
+      }
     } catch(e) {}
   }, 3000);
+}
+
+// 페이지 로드 시 기존 토큰으로 폴링 재시작
+window.addEventListener('load', () => {
+  const savedToken = localStorage.getItem('device_token');
+  if (savedToken) startWifiTriggerPolling(savedToken);
+});
+
+function showWifiModal(token) {
+  document.getElementById('wifi-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'wifi-modal';
+  modal.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,.7);
+    z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;
+  `;
+  modal.innerHTML = `
+    <div style="background:#1e293b;border:1px solid #334155;border-radius:20px;
+                padding:28px 24px;width:100%;max-width:360px;display:flex;
+                flex-direction:column;gap:14px;">
+      <h3 style="color:#a78bfa;font-size:1rem;font-weight:700;margin:0;">📡 디스펜서 WiFi 설정</h3>
+      <p style="color:#94a3b8;font-size:0.8125rem;line-height:1.6;margin:0;">
+        디스펜서가 연결할 <strong style="color:#e2e8f0;">2.4GHz WiFi</strong> 정보를 입력하세요.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="color:#94a3b8;font-size:0.8125rem;">WiFi 이름 (SSID)</label>
+        <input id="wifi-ssid-input" type="text" placeholder="WiFi 이름"
+          style="padding:10px 14px;background:#0f172a;border:1px solid #334155;
+                 border-radius:8px;color:#e2e8f0;font-size:0.875rem;font-family:inherit;outline:none;">
+        <label style="color:#94a3b8;font-size:0.8125rem;">WiFi 비밀번호</label>
+        <input id="wifi-pass-input" type="password" placeholder="비밀번호"
+          style="padding:10px 14px;background:#0f172a;border:1px solid #334155;
+                 border-radius:8px;color:#e2e8f0;font-size:0.875rem;font-family:inherit;outline:none;">
+      </div>
+      <div id="wifi-modal-msg" style="font-size:0.8125rem;color:#94a3b8;min-height:18px;"></div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="document.getElementById('wifi-modal').remove()"
+          style="flex:1;padding:11px;background:#334155;color:#94a3b8;border:none;
+                 border-radius:10px;cursor:pointer;font-size:0.875rem;font-family:inherit;">취소</button>
+        <button onclick="sendWifiToESP32('${token}')"
+          style="flex:1;padding:11px;background:#6d28d9;color:#fff;border:none;
+                 border-radius:10px;cursor:pointer;font-size:0.875rem;font-weight:700;font-family:inherit;">연결</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+async function sendWifiToESP32(token) {
+  const ssid = document.getElementById('wifi-ssid-input').value.trim();
+  const pass = document.getElementById('wifi-pass-input').value;
+  const msg  = document.getElementById('wifi-modal-msg');
+
+  if (!ssid) { msg.textContent = 'WiFi 이름을 입력하세요.'; msg.style.color = '#f87171'; return; }
+
+  msg.textContent = '🔍 ESP32 검색 중...'; msg.style.color = '#94a3b8';
+
+  const finishOk = async () => {
+    msg.textContent = '✅ 전송 완료! ESP32가 재시작됩니다...'; msg.style.color = '#4ade80';
+    await fetch('/api/device/register', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token })
+    });
+    setTimeout(() => { document.getElementById('wifi-modal')?.remove(); showToast('✅ 디스펜서 연결 완료!'); loadDeviceList(); }, 2000);
+  };
+
+  if (window.AndroidBLE) {
+    window.onBleResult = async (status) => {
+      if (status === 'scanning') { msg.textContent = '📡 ESP32 연결 중...'; }
+      else if (status === 'ok') { await finishOk(); }
+      else if (status.startsWith('error:')) { msg.textContent = '❌ ' + status.replace('error:',''); msg.style.color='#f87171'; }
+    };
+    window.AndroidBLE.sendWifi(ssid, pass, token);
+  } else {
+    try {
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ name: 'PROTEIN_DISPENSER' }],
+        optionalServices: ['12345678-1234-1234-1234-123456789012']
+      });
+      const server  = await device.gatt.connect();
+      const service = await server.getPrimaryService('12345678-1234-1234-1234-123456789012');
+      const char    = await service.getCharacteristic('87654321-4321-4321-4321-210987654321');
+      await char.writeValue(new TextEncoder().encode(JSON.stringify({ ssid, pass })));
+      await finishOk();
+    } catch(e) {
+      if (e.message.includes('GATT') || e.message.includes('disconnect')) { await finishOk(); }
+      else { msg.textContent = '❌ 오류: ' + e.message; msg.style.color = '#f87171'; }
+    }
+  }
 }
 
 // ══════════════════════════════════════════
