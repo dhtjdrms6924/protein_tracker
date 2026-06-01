@@ -3498,32 +3498,49 @@ function renderWeekStrip() {
     updateBoxPosition(strip);
   });
 
-  // 드래그/스크롤로 날짜 선택
-  initStripScroll(strip);
+  // 이벤트 리스너는 최초 1회만 등록
+  if (!strip._scrollInited) {
+    strip._scrollInited = true;
+    initStripScroll(strip);
+  }
+}
+
+function getColW(strip) {
+  return strip.querySelector('.week-day-col')?.offsetWidth || 44;
+}
+
+function getStripVisibleW(strip) {
+  // strip 자체의 clientWidth (padding 영향 없음)
+  return strip.clientWidth || (window.innerWidth - 40);
+}
+
+function getScrollTarget(strip, idx) {
+  const colW = getColW(strip);
+  const visW = getStripVisibleW(strip);
+  return Math.max(0, idx * colW - (visW / 2 - colW / 2));
 }
 
 function scrollStripToIdx(strip, idx, smooth) {
-  const colW = strip.querySelector('.week-day-col')?.offsetWidth || 44;
-  const stripW = strip.parentElement?.offsetWidth || (window.innerWidth - 40);
-  const target = Math.max(0, idx * colW - (stripW / 2 - colW / 2));
+  const target = getScrollTarget(strip, idx);
   if (!smooth) {
     strip.scrollLeft = target;
     updateBoxPosition(strip);
     return;
   }
-  // requestAnimationFrame easing — CSS smooth 없이 한 방향으로만
   if (strip._scrollRaf) cancelAnimationFrame(strip._scrollRaf);
   const start = strip.scrollLeft;
   const dist = target - start;
-  const duration = Math.min(300, Math.max(120, Math.abs(dist) * 0.6));
+  if (Math.abs(dist) < 1) { updateBoxPosition(strip); return; }
+  const duration = Math.min(280, Math.max(100, Math.abs(dist) * 0.5));
   const startTime = performance.now();
-  function ease(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; } // easeInOut
+  function ease(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
   function step(now) {
     const elapsed = now - startTime;
     const progress = Math.min(elapsed / duration, 1);
     strip.scrollLeft = start + dist * ease(progress);
     updateBoxPosition(strip);
     if (progress < 1) strip._scrollRaf = requestAnimationFrame(step);
+    else strip._scrollRaf = null;
   }
   strip._scrollRaf = requestAnimationFrame(step);
 }
@@ -3531,21 +3548,23 @@ function scrollStripToIdx(strip, idx, smooth) {
 function updateBoxPosition(strip) {
   const wrap = strip.parentElement;
   if (!wrap) return;
-  const col = strip.querySelector('.week-day-col');
-  if (!col) return;
-  const colW = col.offsetWidth;
+  const colW = getColW(strip);
+  const visW = getStripVisibleW(strip);
+  // strip 안에서 가시 영역 중앙 위치
+  // strip은 overflow:auto이고 wrap 안에 있음
+  // strip의 실제 화면 left 좌표
+  const stripRect = strip.getBoundingClientRect();
+  const centerScreen = stripRect.left + visW / 2;
   const wrapRect = wrap.getBoundingClientRect();
-  // 화면 정중앙이 wrap 안에서 몇 px인지
-  const centerInWrap = window.innerWidth / 2 - wrapRect.left;
-  const boxLeft = centerInWrap - colW / 2;
+  const boxLeft = centerScreen - wrapRect.left - colW / 2;
   wrap.style.setProperty('--box-left', boxLeft + 'px');
   wrap.style.setProperty('--box-w', colW + 'px');
 }
 
 function getCenterIdx(strip) {
-  const colW = strip.querySelector('.week-day-col')?.offsetWidth || 44;
-  const stripW = strip.parentElement?.offsetWidth || (window.innerWidth - 40);
-  return Math.round((strip.scrollLeft + stripW / 2 - colW / 2) / colW);
+  const colW = getColW(strip);
+  const visW = getStripVisibleW(strip);
+  return Math.round((strip.scrollLeft + visW / 2 - colW / 2) / colW);
 }
 
 function updateCenterHighlight(strip) {
@@ -3633,8 +3652,27 @@ function snapToCenter(strip, vibrate) {
   }
 }
 
+let _selectDateToken = 0; // race condition 방지용 토큰
+
+function updateWeekStripSelection() {
+  // 이벤트 재등록 없이 시각적 선택 상태만 업데이트
+  const strip = document.getElementById('week-strip');
+  if (!strip) return;
+  strip.querySelectorAll('.week-day-col').forEach(col => {
+    const dateStr = col.dataset.date;
+    const numEl = col.querySelector('.week-day-num');
+    if (!numEl) return;
+    const isToday = dateStr === today;
+    const isSelected = dateStr === currentDate;
+    numEl.className = 'week-day-num' +
+      (isToday ? ' today' : '') +
+      (isSelected && !isToday ? ' selected' : '');
+  });
+}
+
 function selectDate(dateStr, direction) {
   if (dateStr === currentDate) return;
+  const token = ++_selectDateToken;
   const wrap = document.getElementById('main-content-wrap');
 
   // 페이드 아웃
@@ -3644,8 +3682,9 @@ function selectDate(dateStr, direction) {
   }
 
   setTimeout(() => {
+    if (token !== _selectDateToken) return; // 더 최신 호출이 있으면 무시
     currentDate = dateStr;
-    renderWeekStrip();
+    updateWeekStripSelection(); // renderWeekStrip 대신 시각만 업데이트
     updateMainDateLabel();
     loadMeals();
 
