@@ -594,24 +594,23 @@ body {
   overflow: hidden;
   margin: 0 -20px;
   padding: 0 20px;
-  /* 중앙 선택 박스 */
 }
-/* 중앙 선택 하이라이트 박스 */
-.week-strip-wrap::before {
-  content: '';
+/* 중앙 선택 하이라이트 박스 - JS로 삽입한 div */
+.week-center-box {
   position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -60%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: calc((100vw - 40px) / 7);
-  height: 56px;
-  background: rgba(0,122,255,0.08);
-  border: 1.5px solid rgba(0,122,255,0.25);
+  height: calc(100% - 4px);
+  background: rgba(0,122,255,0.07);
+  border: 1.5px solid rgba(0,122,255,0.3);
   border-radius: 12px;
   pointer-events: none;
   z-index: 2;
 }
 @media (min-width: 768px) {
-  .week-strip-wrap::before { width: 48px; }
+  .week-center-box { width: 48px; }
 }
 .week-strip {
   display: flex;
@@ -3529,66 +3528,70 @@ function updateCenterHighlight(strip) {
 
 let _stripScrollTimer = null;
 let _lastCenterIdx = -1;
+let _isTouchDevice = false;
 
 function initStripScroll(strip) {
-  // 스크롤 중 중앙 아이템 강조 + 스크롤 끝나면 스냅
+  const wrap = strip.parentElement;
+
+  // 중앙 박스 div 삽입
+  if (!wrap.querySelector('.week-center-box')) {
+    const box = document.createElement('div');
+    box.className = 'week-center-box';
+    wrap.appendChild(box);
+  }
+
+  // 터치 기기 감지
+  strip.addEventListener('touchstart', () => { _isTouchDevice = true; }, { once: true, passive: true });
+
+  // ── 모바일 터치 스와이프 ──
+  strip.addEventListener('touchmove', () => {
+    updateCenterHighlight(strip);
+  }, { passive: true });
+
+  strip.addEventListener('touchend', () => {
+    clearTimeout(_stripScrollTimer);
+    _stripScrollTimer = setTimeout(() => {
+      snapToCenter(strip, true);
+    }, 60);
+  }, { passive: true });
+
+  // scroll 이벤트 (터치 관성 스크롤용)
   strip.addEventListener('scroll', () => {
+    if (!_isTouchDevice) return; // PC에서는 무시
     updateCenterHighlight(strip);
     clearTimeout(_stripScrollTimer);
     _stripScrollTimer = setTimeout(() => {
-      const centerIdx = getCenterIdx(strip);
-      const col = strip.querySelectorAll('.week-day-col')[centerIdx];
-      if (!col) return;
-      const dateStr = col.dataset.date;
-
-      // 진동 피드백 (날짜가 바뀔 때만)
-      if (centerIdx !== _lastCenterIdx) {
-        _lastCenterIdx = centerIdx;
-        if (navigator.vibrate) navigator.vibrate(8);
-      }
-
-      // 스냅
-      scrollStripToIdx(strip, centerIdx, true);
-
-      // 날짜 선택
-      if (dateStr !== currentDate) {
-        const direction = dateStr > currentDate ? 'left' : 'right';
-        selectDate(dateStr, direction);
-      }
-    }, 120);
+      snapToCenter(strip, true);
+    }, 150);
   }, { passive: true });
 
-  // 터치 드래그 끝나면 즉시 스냅
-  strip.addEventListener('touchend', () => {
-    clearTimeout(_stripScrollTimer);
-    setTimeout(() => {
-      const centerIdx = getCenterIdx(strip);
-      const col = strip.querySelectorAll('.week-day-col')[centerIdx];
-      if (!col) return;
-      scrollStripToIdx(strip, centerIdx, true);
-      const dateStr = col.dataset.date;
-      if (centerIdx !== _lastCenterIdx) {
-        _lastCenterIdx = centerIdx;
-        if (navigator.vibrate) navigator.vibrate(8);
-      }
-      if (dateStr !== currentDate) {
-        selectDate(dateStr, dateStr > currentDate ? 'left' : 'right');
-      }
-    }, 50);
-  }, { passive: true });
-
-  // 탭으로 날짜 선택 시에도 중앙 스크롤
+  // ── PC 클릭으로 날짜 선택 ──
   strip.addEventListener('click', e => {
     const col = e.target.closest('.week-day-col');
     if (!col) return;
     const idx = parseInt(col.dataset.idx);
     const dateStr = col.dataset.date;
     scrollStripToIdx(strip, idx, true);
-    if (navigator.vibrate) navigator.vibrate(8);
     if (dateStr !== currentDate) {
       selectDate(dateStr, dateStr > currentDate ? 'left' : 'right');
     }
   });
+}
+
+function snapToCenter(strip, vibrate) {
+  const centerIdx = getCenterIdx(strip);
+  const col = strip.querySelectorAll('.week-day-col')[centerIdx];
+  if (!col) return;
+  scrollStripToIdx(strip, centerIdx, true);
+  updateCenterHighlight(strip);
+  const dateStr = col.dataset.date;
+  if (vibrate && centerIdx !== _lastCenterIdx) {
+    _lastCenterIdx = centerIdx;
+    if (navigator.vibrate) navigator.vibrate(10);
+  }
+  if (dateStr !== currentDate) {
+    selectDate(dateStr, dateStr > currentDate ? 'left' : 'right');
+  }
 }
 
 function selectDate(dateStr, direction) {
