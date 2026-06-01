@@ -437,12 +437,10 @@ body {
   text-align: center; margin-bottom: 10px;
 }
 .auth-logo-icon {
-  width: 72px; height: 72px;
-  background: white;
-  border-radius: 18px;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 26px; font-weight: 800; font-style: italic;
-  color: #1c1c1e;
+  width: 80px; height: 80px;
+  border-radius: 20px;
+  display: inline-block;
+  object-fit: cover;
   margin-bottom: 14px;
 }
 .auth-title {
@@ -2486,7 +2484,7 @@ body {
 <div id="auth-screen">
   <div class="auth-box">
     <div class="auth-logo">
-      <div class="auth-logo-icon">Pr</div>
+      <img class="auth-logo-icon" src="/static/app_image.png" alt="단백질 트래커">
       <div class="auth-title">단백질 트래커</div>
       <div class="auth-sub" id="auth-subtitle">계정에 로그인하세요</div>
     </div>
