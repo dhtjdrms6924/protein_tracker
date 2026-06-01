@@ -595,6 +595,21 @@ body {
   margin: 0 -20px;
   padding: 0 20px;
 }
+/* 선택 날짜 가운데 하이라이트 박스 */
+.week-strip-wrap::after {
+  content: '';
+  position: absolute;
+  /* JS가 --box-left, --box-w 변수로 위치 조정 */
+  left: var(--box-left, calc(50% - 22px));
+  top: 2px;
+  width: var(--box-w, 44px);
+  height: calc(100% - 4px);
+  background: rgba(0,122,255,0.07);
+  border: 1.5px solid rgba(0,122,255,0.28);
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 2;
+}
 
 .week-strip {
   display: flex;
@@ -603,8 +618,7 @@ body {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   padding: 4px 0 6px;
-  /* 양쪽 끝 패딩으로 첫/마지막 날짜도 가운데 올 수 있게 */
-  scroll-behavior: smooth;
+  /* scroll-behavior은 JS가 직접 제어 — CSS smooth 제거 */
   cursor: grab;
   user-select: none;
 }
@@ -3481,6 +3495,7 @@ function renderWeekStrip() {
   requestAnimationFrame(() => {
     scrollStripToIdx(strip, selectedIdx, false);
     updateCenterHighlight(strip);
+    updateBoxPosition(strip);
   });
 
   // 드래그/스크롤로 날짜 선택
@@ -3490,12 +3505,41 @@ function renderWeekStrip() {
 function scrollStripToIdx(strip, idx, smooth) {
   const colW = strip.querySelector('.week-day-col')?.offsetWidth || 44;
   const stripW = strip.parentElement?.offsetWidth || (window.innerWidth - 40);
-  const target = idx * colW - (stripW / 2 - colW / 2);
-  if (smooth) {
-    strip.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
-  } else {
-    strip.scrollLeft = Math.max(0, target);
+  const target = Math.max(0, idx * colW - (stripW / 2 - colW / 2));
+  if (!smooth) {
+    strip.scrollLeft = target;
+    updateBoxPosition(strip);
+    return;
   }
+  // requestAnimationFrame easing — CSS smooth 없이 한 방향으로만
+  if (strip._scrollRaf) cancelAnimationFrame(strip._scrollRaf);
+  const start = strip.scrollLeft;
+  const dist = target - start;
+  const duration = Math.min(300, Math.max(120, Math.abs(dist) * 0.6));
+  const startTime = performance.now();
+  function ease(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; } // easeInOut
+  function step(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    strip.scrollLeft = start + dist * ease(progress);
+    updateBoxPosition(strip);
+    if (progress < 1) strip._scrollRaf = requestAnimationFrame(step);
+  }
+  strip._scrollRaf = requestAnimationFrame(step);
+}
+
+function updateBoxPosition(strip) {
+  const wrap = strip.parentElement;
+  if (!wrap) return;
+  const col = strip.querySelector('.week-day-col');
+  if (!col) return;
+  const colW = col.offsetWidth;
+  const wrapRect = wrap.getBoundingClientRect();
+  // 화면 정중앙이 wrap 안에서 몇 px인지
+  const centerInWrap = window.innerWidth / 2 - wrapRect.left;
+  const boxLeft = centerInWrap - colW / 2;
+  wrap.style.setProperty('--box-left', boxLeft + 'px');
+  wrap.style.setProperty('--box-w', colW + 'px');
 }
 
 function getCenterIdx(strip) {
@@ -3522,8 +3566,14 @@ function initStripScroll(strip) {
   strip.addEventListener('touchstart', () => { _isTouchDevice = true; }, { once: true, passive: true });
 
   // ── 모바일 터치 스와이프 ──
+  strip.addEventListener('touchstart', () => {
+    // 손가락 닿으면 진행 중인 RAF 즉시 취소
+    if (strip._scrollRaf) { cancelAnimationFrame(strip._scrollRaf); strip._scrollRaf = null; }
+  }, { passive: true });
+
   strip.addEventListener('touchmove', () => {
     updateCenterHighlight(strip);
+    updateBoxPosition(strip);
   }, { passive: true });
 
   strip.addEventListener('touchend', () => {
@@ -3535,8 +3585,9 @@ function initStripScroll(strip) {
 
   // scroll 이벤트 (터치 관성 스크롤 전용)
   strip.addEventListener('scroll', () => {
-    if (!_isTouchDevice) return; // PC 마우스 스크롤 무시
+    if (!_isTouchDevice) return;
     updateCenterHighlight(strip);
+    updateBoxPosition(strip);
     clearTimeout(_stripScrollTimer);
     _stripScrollTimer = setTimeout(() => {
       snapToCenter(strip, true);
@@ -3747,6 +3798,12 @@ function initSwipeGesture() {
     dragging = false; blocked = false;
   }, { passive: true });
 }
+
+// 창 크기 변경 시 박스 재계산
+window.addEventListener('resize', () => {
+  const strip = document.getElementById('week-strip');
+  if (strip) updateBoxPosition(strip);
+});
 
 function dsNavActive(name) {
   document.querySelectorAll('.ds-nav-item').forEach(el => el.classList.remove('active'));
