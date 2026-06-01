@@ -595,22 +595,16 @@ body {
   margin: 0 -20px;
   padding: 0 20px;
 }
-/* 중앙 선택 하이라이트 박스 - JS로 삽입한 div */
+/* 중앙 선택 하이라이트 박스 - JS로 위치/크기 직접 계산 */
 .week-center-box {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: calc((100vw - 40px) / 7);
-  height: calc(100% - 4px);
+  top: 2px;
   background: rgba(0,122,255,0.07);
   border: 1.5px solid rgba(0,122,255,0.3);
   border-radius: 12px;
   pointer-events: none;
   z-index: 2;
-}
-@media (min-width: 768px) {
-  .week-center-box { width: 48px; }
+  transition: left .15s cubic-bezier(0.4,0,0.2,1);
 }
 .week-strip {
   display: flex;
@@ -3530,6 +3524,24 @@ let _stripScrollTimer = null;
 let _lastCenterIdx = -1;
 let _isTouchDevice = false;
 
+function positionCenterBox(strip) {
+  const wrap = strip.parentElement;
+  const box = wrap.querySelector('.week-center-box');
+  if (!box) return;
+  const col = strip.querySelector('.week-day-col');
+  if (!col) return;
+  const colW = col.offsetWidth;
+  const wrapRect = wrap.getBoundingClientRect();
+  const wrapW = wrapRect.width;
+  // 화면 중앙의 wrap 내부 좌표 = 화면 중앙 - wrap의 화면상 left
+  const screenCenter = window.innerWidth / 2;
+  const wrapLeft = wrapRect.left;
+  const centerInWrap = screenCenter - wrapLeft;
+  box.style.left = (centerInWrap - colW / 2) + 'px';
+  box.style.width = colW + 'px';
+  box.style.height = (strip.offsetHeight - 4) + 'px';
+}
+
 function initStripScroll(strip) {
   const wrap = strip.parentElement;
 
@@ -3539,6 +3551,10 @@ function initStripScroll(strip) {
     box.className = 'week-center-box';
     wrap.appendChild(box);
   }
+
+  // 레이아웃 완료 후 박스 위치 계산
+  requestAnimationFrame(() => positionCenterBox(strip));
+  window.addEventListener('resize', () => positionCenterBox(strip));
 
   // 터치 기기 감지
   strip.addEventListener('touchstart', () => { _isTouchDevice = true; }, { once: true, passive: true });
@@ -3555,9 +3571,9 @@ function initStripScroll(strip) {
     }, 60);
   }, { passive: true });
 
-  // scroll 이벤트 (터치 관성 스크롤용)
+  // scroll 이벤트 (터치 관성 스크롤 전용)
   strip.addEventListener('scroll', () => {
-    if (!_isTouchDevice) return; // PC에서는 무시
+    if (!_isTouchDevice) return; // PC 마우스 스크롤 무시
     updateCenterHighlight(strip);
     clearTimeout(_stripScrollTimer);
     _stripScrollTimer = setTimeout(() => {
@@ -3565,13 +3581,23 @@ function initStripScroll(strip) {
     }, 150);
   }, { passive: true });
 
-  // ── PC 클릭으로 날짜 선택 ──
+  // ── PC: 마우스 휠/드래그 완전 차단 ──
+  strip.addEventListener('wheel', e => {
+    e.preventDefault();
+  }, { passive: false });
+
+  strip.addEventListener('mousedown', e => {
+    e.preventDefault(); // 드래그 스크롤 방지
+  });
+
+  // ── 클릭으로만 날짜 선택 (PC/모바일 공통) ──
   strip.addEventListener('click', e => {
     const col = e.target.closest('.week-day-col');
     if (!col) return;
     const idx = parseInt(col.dataset.idx);
     const dateStr = col.dataset.date;
     scrollStripToIdx(strip, idx, true);
+    if (_isTouchDevice && navigator.vibrate) navigator.vibrate(10);
     if (dateStr !== currentDate) {
       selectDate(dateStr, dateStr > currentDate ? 'left' : 'right');
     }
