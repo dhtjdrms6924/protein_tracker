@@ -3837,7 +3837,7 @@ function showGalleryHint() {
   const hint = document.createElement('div');
   hint.id = 'gallery-hint';
   hint.style.cssText = 'position:fixed;bottom:calc(var(--tab-h) + 20px);left:16px;right:16px;background:#1c1c1e;color:white;border-radius:var(--r-lg);padding:14px 16px;z-index:800;display:flex;align-items:flex-start;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.3);animation:galleryHintIn .25s ease;';
-  hint.innerHTML = \`
+  hint.innerHTML = `
     <span style="font-size:22px;flex-shrink:0;">💡</span>
     <div style="flex:1;">
       <div style="font-size:14px;font-weight:700;margin-bottom:4px;">갤러리 앱을 선택해주세요</div>
@@ -3848,7 +3848,7 @@ function showGalleryHint() {
       </div>
     </div>
     <button onclick="document.getElementById('gallery-hint').remove()" style="background:none;border:none;color:#8e8e93;font-size:20px;cursor:pointer;flex-shrink:0;padding:0;line-height:1;">✕</button>
-  \`;
+  `;
   document.body.appendChild(hint);
   setTimeout(() => hint?.remove(), 6000);
 }
