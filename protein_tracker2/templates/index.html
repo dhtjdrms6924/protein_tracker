@@ -2293,9 +2293,12 @@ body {
 
     <!-- Step 0: Welcome -->
     <div class="ob-step active" id="ob-step-0">
-      <div class="ob-app-icon"><span class="ob-app-icon-text">Pr</span></div>
+      <div class="ob-app-icon">
+        <img src="/static/app_image.png" alt="앱 로고" style="width:96px;height:96px;border-radius:22px;object-fit:cover;">
+      </div>
       <div class="ob-welcome-title">단백질 트래커에<br>오신 것을 환영합니다</div>
       <div class="ob-welcome-sub">몇 가지 간단한 질문을 통해 당신에게<br>최적의 일일 단백질 목표를 찾아드릴게요.</div>
+      <button onclick="obFinish()" style="margin-top:24px;background:transparent;border:none;color:var(--text-3);font-size:14px;cursor:pointer;font-family:inherit;text-decoration:underline;">이미 계정이 있어요 → 로그인</button>
     </div>
 
     <!-- Step 1: Why -->
@@ -5659,10 +5662,18 @@ window.addEventListener('load', async () => {
       document.getElementById('auth-screen').style.display = 'none';
       showApp(data);
     } else {
-      // 로그인 안됨 → 항상 로그인 화면
+      // 로그인 안됨
       document.getElementById('app-screen').style.display = 'none';
-      document.getElementById('onboarding-screen').style.display = 'none';
-      document.getElementById('auth-screen').style.display = 'flex';
+      const hasSeenOnboarding = localStorage.getItem('ob_done');
+      if (hasSeenOnboarding) {
+        // 기존 사용자 → 바로 로그인 화면
+        document.getElementById('onboarding-screen').style.display = 'none';
+        document.getElementById('auth-screen').style.display = 'flex';
+      } else {
+        // 새 사용자 (또는 새 기기) → 온보딩
+        document.getElementById('auth-screen').style.display = 'none';
+        initOnboarding();
+      }
     }
   } catch(e) {
     document.getElementById('app-screen').style.display = 'none';
