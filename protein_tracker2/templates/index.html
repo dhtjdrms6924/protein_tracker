@@ -1266,6 +1266,7 @@ body {
   background: var(--bg);
   flex-direction: column;
   overflow-y: auto;
+  padding-bottom: calc(var(--tab-h) + 16px);
 }
 
 /* stats is actually shown via tab button toggling visibility of swipe area, 
@@ -1872,6 +1873,41 @@ body {
   box-shadow: 0 1px 4px rgba(0,0,0,0.12);
 }
 
+/* ────────────── DATE SLIDE ANIMATION ────────────── */
+#main-content-wrap {
+  will-change: transform, opacity;
+  transition: transform .28s cubic-bezier(0.4,0,0.2,1), opacity .2s ease;
+}
+#main-content-wrap.slide-out-left {
+  transform: translateX(-32px);
+  opacity: 0;
+  pointer-events: none;
+}
+#main-content-wrap.slide-out-right {
+  transform: translateX(32px);
+  opacity: 0;
+  pointer-events: none;
+}
+#main-content-wrap.slide-in {
+  transform: translateX(0);
+  opacity: 1;
+}
+.today-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 5px 12px;
+  background: var(--blue-light);
+  color: var(--blue);
+  border: 1px solid var(--blue);
+  border-radius: var(--r-full);
+  font-size: 12px; font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.today-btn:active { opacity: .75; }
+.today-btn.hidden { display: none; }
+
 /* ────────────── SPINNER ────────────── */
 @keyframes galleryHintIn { from { transform:translateY(16px);opacity:0; } to { transform:translateY(0);opacity:1; } }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -2395,6 +2431,7 @@ body {
             <span class="main-month" id="main-month">5월</span>
           </div>
           <div class="topbar-icons">
+            <button class="today-btn" id="today-btn" onclick="goToday()" style="display:none;">오늘</button>
             <button class="topbar-icon-btn" onclick="showHistory()" title="달력 기록">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -2416,6 +2453,7 @@ body {
         </div>
       </div>
 
+      <div id="main-content-wrap">
       <div class="section-label">단백질 목표</div>
 
       <!-- Protein ring card -->
@@ -2451,6 +2489,7 @@ body {
       </div>
 
       <div style="height: calc(var(--tab-h) + 20px);"></div>
+      </div><!-- /main-content-wrap -->
     </div><!-- /pane-main -->
 
     <!-- Pane 1: Album -->
@@ -3417,7 +3456,7 @@ function renderWeekStrip() {
       <div class="week-day-label">${labels[day.getDay()]}</div>
       <div class="week-day-num ${isToday ? 'today' : ''} ${isSelected && !isToday ? 'selected' : ''}">${day.getDate()}</div>
     `;
-    col.addEventListener('click', () => selectDate(dateStr));
+    col.addEventListener('click', () => selectDate(dateStr, dateStr > currentDate ? 'left' : 'right'));
     strip.appendChild(col);
   }
 
@@ -3430,11 +3469,46 @@ function renderWeekStrip() {
   });
 }
 
-function selectDate(dateStr) {
-  currentDate = dateStr;
-  renderWeekStrip();
-  updateMainDateLabel();
-  loadMeals();
+function selectDate(dateStr, direction) {
+  const wrap = document.getElementById('main-content-wrap');
+  const outCls = direction === 'right' ? 'slide-out-right' : 'slide-out-left';
+
+  // 슬라이드 아웃
+  if (wrap) {
+    wrap.classList.remove('slide-in', 'slide-out-left', 'slide-out-right');
+    wrap.classList.add(outCls);
+  }
+
+  setTimeout(() => {
+    currentDate = dateStr;
+    renderWeekStrip();
+    updateMainDateLabel();
+    loadMeals();
+
+    // 반대 방향에서 슬라이드 인
+    if (wrap) {
+      const inFrom = direction === 'right' ? 'slide-out-left' : 'slide-out-right';
+      wrap.classList.remove('slide-out-left', 'slide-out-right');
+      wrap.classList.add(inFrom);
+      // 다음 프레임에 transition 적용
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          wrap.classList.remove('slide-out-left', 'slide-out-right');
+          wrap.classList.add('slide-in');
+        });
+      });
+    }
+
+    // 오늘 버튼 표시/숨김
+    const todayBtn = document.getElementById('today-btn');
+    if (todayBtn) todayBtn.style.display = dateStr === today ? 'none' : 'flex';
+  }, 200);
+}
+
+function goToday() {
+  const prevDate = currentDate;
+  const direction = prevDate > today ? 'right' : 'left';
+  selectDate(today, direction);
 }
 
 // ══════════════════════════════════════════
@@ -3499,7 +3573,8 @@ function renderMiniCal() {
 
 function mcPickDate(dateStr) {
   closeMiniCal();
-  selectDate(dateStr);
+  const direction = dateStr > currentDate ? 'left' : 'right';
+  selectDate(dateStr, direction);
 }
 
 // ══════════════════════════════════════════
@@ -3609,6 +3684,8 @@ function showStats() {
   screen.style.display = 'flex';
   document.getElementById('tab-stats').classList.add('active');
   document.getElementById('tab-tracker').classList.remove('active');
+  const ptb = document.getElementById('pane-tab-bar');
+  if (ptb) ptb.style.display = 'none';
   loadAnalysis();
 }
 
@@ -3616,6 +3693,8 @@ function hideStats() {
   document.getElementById('stats-screen').style.display = 'none';
   document.getElementById('tab-stats').classList.remove('active');
   document.getElementById('tab-tracker').classList.toggle('active', currentSwipePane === 0);
+  const ptb = document.getElementById('pane-tab-bar');
+  if (ptb) ptb.style.display = 'flex';
 }
 
 function showSettings() {
