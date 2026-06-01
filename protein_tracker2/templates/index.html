@@ -595,22 +595,16 @@ body {
   margin: 0 -20px;
   padding: 0 20px;
 }
-/* 선택 날짜 가운데 하이라이트 박스 — JS 불필요, 순수 CSS */
+/* 선택 날짜 하이라이트 박스 — 위치/크기는 JS가 실제 DOM rect 기준으로 설정 */
 .week-center-box {
   position: absolute;
   top: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  /* wrap 전체(100%) - padding 양쪽(40px) = 컬럼 영역 → /7 = 정확한 1칸 너비 */
-  width: calc((100% - 40px) / 7);
   height: calc(100% - 4px);
   background: rgba(142,142,147,0.15);
   border-radius: 12px;
   pointer-events: none;
   z-index: 2;
-}
-@media (min-width: 768px) {
-  .week-center-box { width: 48px; }
+  /* left, width → updateBoxPosition()이 getBoundingClientRect()로 직접 설정 */
 }
 
 .week-strip {
@@ -3597,7 +3591,23 @@ function scrollStripToIdx(strip, idx, smooth) {
 }
 
 function updateBoxPosition(strip) {
-  // .week-center-box가 pure CSS (calc)로 정확히 위치하므로 JS 불필요
+  const wrap = strip.parentElement;
+  if (!wrap) return;
+  const box = wrap.querySelector('.week-center-box');
+  if (!box) return;
+
+  // 검은 동그라미(선택된 날짜)의 컬럼을 실제 DOM 위치 기준으로 읽어서 박스에 적용
+  // → 어떤 창 크기에서도 수학 계산 없이 항상 정확히 일치
+  const col = strip.querySelector('.week-day-col.center-selected')
+    || strip.querySelector(`.week-day-col[data-date="${currentDate}"]`);
+  if (!col) return;
+
+  const colRect = col.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+
+  box.style.left = (colRect.left - wrapRect.left) + 'px';
+  box.style.width = colRect.width + 'px';
+  box.style.transform = 'none';
 }
 
 function getCenterIdx(strip) {
