@@ -499,6 +499,30 @@ def api_update_profile():
     return jsonify({"status": "ok"})
 
 
+@app.route("/api/change-password", methods=["POST"])
+def api_change_password():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인이 필요합니다."}), 401
+    data = request.json
+    current_pw = data.get("current", "").strip()
+    new_pw = data.get("new_pw", "").strip()
+    if not current_pw or not new_pw:
+        return jsonify({"status": "error", "error": "현재/새 비밀번호를 입력하세요."}), 400
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT password FROM users WHERE id=%s", (user_id,))
+    row = cur.fetchone()
+    if not row or row["password"] != current_pw:
+        cur.close(); conn.close()
+        return jsonify({"status": "error", "error": "현재 비밀번호가 맞지 않습니다."}), 400
+    cur.execute("UPDATE users SET password=%s WHERE id=%s", (new_pw, user_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+
 # ─────────────────────────────────────────
 # 메인 라우트
 # ─────────────────────────────────────────

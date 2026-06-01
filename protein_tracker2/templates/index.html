@@ -40,6 +40,20 @@
   --tab-h: 83px;
 }
 
+body.dark-mode {
+  --bg: #1c1c1e;
+  --bg-card: #2c2c2e;
+  --bg-input: #3a3a3c;
+  --text-1: #ffffff;
+  --text-2: #ebebf5;
+  --text-3: #aeaeb2;
+  --text-4: #636366;
+  --separator: rgba(255,255,255,0.12);
+  --blue-light: #1a2d4a;
+  --green-bg: #1a2e1f;
+  --red-bg: #2e1a1a;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 body {
@@ -1553,6 +1567,13 @@ body {
 .settings-row-value { font-size: 15px; color: var(--text-3); white-space: nowrap; }
 .settings-row-arrow { font-size: 18px; color: var(--text-4); margin-left: 4px; flex-shrink: 0; }
 
+.toggle-switch { position: relative; display: inline-block; width: 51px; height: 31px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--text-4); border-radius: 34px; transition: .25s; }
+.toggle-slider:before { position: absolute; content: ""; height: 27px; width: 27px; left: 2px; bottom: 2px; background: white; border-radius: 50%; transition: .25s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+input:checked + .toggle-slider { background: var(--green); }
+input:checked + .toggle-slider:before { transform: translateX(20px); }
+
 /* sub-settings fields */
 .sub-field { margin-bottom: 16px; }
 .sub-field label {
@@ -1563,7 +1584,7 @@ body {
   width: 100%; padding: 13px 14px;
   border: 1px solid var(--separator); border-radius: var(--r-md);
   font-size: 16px; font-family: inherit;
-  background: white; color: var(--text-1); box-sizing: border-box;
+  background: var(--bg-card); color: var(--text-1); box-sizing: border-box;
 }
 .sub-field input:focus, .sub-field select:focus { outline: none; border-color: var(--blue); }
 .sub-save-btn {
@@ -1573,6 +1594,18 @@ body {
   font-family: inherit; cursor: pointer; margin-top: 8px;
 }
 .sub-note { font-size: 13px; color: var(--text-3); text-align: center; padding: 8px 0; line-height: 1.5; }
+
+.sub-option-list { display: flex; flex-direction: column; gap: 8px; }
+.sub-option-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; background: var(--bg-card); border-radius: var(--r-md);
+  cursor: pointer; font-size: 15px; color: var(--text-1);
+  border: 1.5px solid transparent; transition: border-color 0.15s;
+}
+.sub-option-item.selected { border-color: var(--blue); color: var(--blue); }
+.sub-option-item.disabled { opacity: 0.4; cursor: default; }
+.sub-option-check { font-size: 16px; color: var(--blue); font-weight: 700; }
+
 .wifi-status-badge {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 14px; border-radius: var(--r-full);
@@ -2307,7 +2340,7 @@ body {
       </div>
       <div class="ob-welcome-title">단백질 트래커에<br>오신 것을 환영합니다</div>
       <div class="ob-welcome-sub">몇 가지 간단한 질문을 통해 당신에게<br>최적의 일일 단백질 목표를 찾아드릴게요.</div>
-      <button onclick="obFinish()" style="margin-top:24px;background:transparent;border:none;color:var(--text-3);font-size:14px;cursor:pointer;font-family:inherit;text-decoration:underline;">이미 계정이 있어요 → 로그인</button>
+      <button onclick="goDirectToLogin()" style="margin-top:24px;background:transparent;border:none;color:var(--text-3);font-size:14px;cursor:pointer;font-family:inherit;text-decoration:underline;">이미 계정이 있어요 → 로그인</button>
     </div>
 
     <!-- Step 1: Why -->
@@ -2618,7 +2651,6 @@ body {
             <div class="ring-divider"></div>
             <div class="ring-goal">
               <span id="ring-goal-val">105g</span>
-              <span class="ring-goal-edit" onclick="openGoalEdit()" title="목표 수정">✏️</span>
             </div>
           </div>
         </div>
@@ -2868,15 +2900,8 @@ body {
         <div class="settings-row-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
         </div>
-        <div class="settings-row-text"><div class="settings-row-label">단백질 목표 (g)</div></div>
+        <div class="settings-row-text"><div class="settings-row-label">단백질 목표 수정</div></div>
         <div class="settings-row-value" id="settings-goal-val">—</div>
-        <div class="settings-row-arrow">›</div>
-      </div>
-      <div class="settings-row" onclick="showSubSettings('find-goal')">
-        <div class="settings-row-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        </div>
-        <div class="settings-row-text"><div class="settings-row-label">단백질 목표 찾기</div></div>
         <div class="settings-row-arrow">›</div>
       </div>
     </div>
@@ -2887,7 +2912,7 @@ body {
       <div class="settings-row" onclick="showSubSettings('language')">
         <div class="settings-row-icon">🌐</div>
         <div class="settings-row-text"><div class="settings-row-label">언어</div></div>
-        <div class="settings-row-value">한국어</div>
+        <div class="settings-row-value" id="settings-language-val">한국어</div>
         <div class="settings-row-arrow">›</div>
       </div>
       <div class="settings-row" onclick="showSubSettings('week-start')">
@@ -2895,7 +2920,7 @@ body {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </div>
         <div class="settings-row-text"><div class="settings-row-label">한 주의 시작</div></div>
-        <div class="settings-row-value">일요일</div>
+        <div class="settings-row-value" id="settings-weekstart-val">일요일</div>
         <div class="settings-row-arrow">›</div>
       </div>
       <div class="settings-row" onclick="showSubSettings('unit')">
@@ -2903,8 +2928,18 @@ body {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
         </div>
         <div class="settings-row-text"><div class="settings-row-label">무게 단위</div></div>
-        <div class="settings-row-value">킬로그램 (kg)</div>
+        <div class="settings-row-value" id="settings-unit-val">킬로그램 (kg)</div>
         <div class="settings-row-arrow">›</div>
+      </div>
+      <div class="settings-row" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="settings-row-icon">🌙</div>
+          <div class="settings-row-text"><div class="settings-row-label">다크 모드</div></div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
       </div>
     </div>
 
@@ -3180,6 +3215,7 @@ let _pendingProduct = null;
 
 // ── Onboarding state ──
 let obStep = 0;
+let _returnFromFindGoal = false;
 const OB_TOTAL = 7; // 0-6
 let obWeight = 70;
 let obWeightUnit = 'kg';
@@ -3334,9 +3370,10 @@ function updateObButtons() {
 
 function obNext() {
   if (obStep === 5) {
-    // Calculate protein goal before showing step 5 result
     obProteinGoal = calcProteinGoal();
     document.getElementById('ob-goal-value').textContent = obProteinGoal;
+    // 설정에서 목표 찾기 플로우이면 바로 완료
+    if (_returnFromFindGoal) { obFinish(); return; }
   }
   if (obStep === 6) {
     // Done - go to auth
@@ -3395,17 +3432,64 @@ function obSecondary() {
 
 function obFinish() {
   if (whySlideTimer) clearInterval(whySlideTimer);
+
+  // 설정에서 목표 찾기 플로우: 앱으로 돌아가며 목표 적용
+  if (_returnFromFindGoal) {
+    _returnFromFindGoal = false;
+    const goalVal = calcProteinGoal();
+    const weightKg = obWeightUnit === 'kg' ? obWeight : Math.round(obWeight / 2.205);
+    const mult = weightKg > 0 ? (goalVal / weightKg).toFixed(2) : '1.50';
+    goalProtein = goalVal;
+    localStorage.setItem('protein_goal', goalVal);
+    localStorage.setItem('ob_weight', weightKg);
+    localStorage.setItem('ob_multiplier', mult);
+    const profile = JSON.parse(localStorage.getItem('profile') || '{}');
+    profile.weight = weightKg;
+    profile.multiplier = parseFloat(mult);
+    localStorage.setItem('profile', JSON.stringify(profile));
+    fetch('/api/user/profile', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ nickname: profile.nickname, display_name: profile.display_name, weight: weightKg, multiplier: parseFloat(mult) })
+    });
+    document.getElementById('onboarding-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'flex';
+    showToast('✅ 단백질 목표: ' + goalVal + 'g 으로 설정되었습니다');
+    updateSettingsValues();
+    loadMeals();
+    return;
+  }
+
   localStorage.setItem('ob_done', '1');
   localStorage.setItem('ob_weight', obWeightUnit === 'kg' ? obWeight : Math.round(obWeight / 2.205));
   localStorage.setItem('ob_multiplier', (calcProteinGoal() / (obWeightUnit === 'kg' ? obWeight : Math.round(obWeight / 2.205))).toFixed(2));
   document.getElementById('onboarding-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
 
-  // 회원가입 흐름에서 온보딩을 거쳤으면 → 가입 폼으로 자동 전환
   if (_returnToSignup) {
     _returnToSignup = false;
     if (!isSignupMode) _applySignupMode();
+  } else {
+    _applyLoginMode();
   }
+}
+
+function goDirectToLogin() {
+  if (whySlideTimer) clearInterval(whySlideTimer);
+  document.getElementById('onboarding-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  _applyLoginMode();
+}
+
+function showOnboarding(startStep) {
+  _returnFromFindGoal = true;
+  initOnboarding();
+  document.querySelectorAll('.ob-step').forEach(el => el.classList.remove('active', 'exit-left'));
+  obStep = startStep || 2;
+  document.getElementById(`ob-step-${obStep}`)?.classList.add('active');
+  document.getElementById('onboarding-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display = 'none';
+  updateObDots();
+  updateObButtons();
 }
 
 // ══════════════════════════════════════════
@@ -3542,10 +3626,10 @@ function applyUserData(userData) {
   };
   localStorage.setItem('profile', JSON.stringify(profile));
 
-  // 단백질 목표 계산
+  // 단백질 목표: 서버의 weight*multiplier로 계산, localStorage에 저장
   if (userData.weight && userData.multiplier) {
-    goalProtein = parseFloat(userData.weight) * parseFloat(userData.multiplier);
-    localStorage.setItem('protein_goal', Math.round(goalProtein));
+    goalProtein = Math.round(parseFloat(userData.weight) * parseFloat(userData.multiplier));
+    localStorage.setItem('protein_goal', goalProtein);
   } else if (localStorage.getItem('protein_goal')) {
     goalProtein = parseInt(localStorage.getItem('protein_goal'));
   }
@@ -3901,10 +3985,12 @@ function renderMiniCal() {
   document.getElementById('mc-month-label').textContent = `${mcYear}년 ${months[mcMonth]}`;
 
   const grid = document.getElementById('mc-grid');
-  const dayLabels = ['일','월','화','수','목','금','토'];
+  const weekStartMonday = localStorage.getItem('week_start') === 'monday';
+  const dayLabels = weekStartMonday ? ['월','화','수','목','금','토','일'] : ['일','월','화','수','목','금','토'];
   let html = dayLabels.map(l => `<div class="mc-day-hdr">${l}</div>`).join('');
 
-  const firstDay = new Date(mcYear, mcMonth, 1).getDay();
+  const rawFirstDay = new Date(mcYear, mcMonth, 1).getDay(); // 0=Sun
+  const firstDay = weekStartMonday ? (rawFirstDay === 0 ? 6 : rawFirstDay - 1) : rawFirstDay;
   const daysInMonth = new Date(mcYear, mcMonth + 1, 0).getDate();
   const todayD = new Date();
   const todayStr = `${todayD.getFullYear()}-${String(todayD.getMonth()+1).padStart(2,'0')}-${String(todayD.getDate()).padStart(2,'0')}`;
@@ -4686,14 +4772,17 @@ async function loadHistory() {
     container.style.transform = `translateX(${dir > 0 ? '20px' : '-20px'})`;
   }
 
-  ['일','월','화','수','목','금','토'].forEach(d => {
+  const calWeekStartMonday = localStorage.getItem('week_start') === 'monday';
+  const calDayLabels = calWeekStartMonday ? ['월','화','수','목','금','토','일'] : ['일','월','화','수','목','금','토'];
+  calDayLabels.forEach(d => {
     const h = document.createElement('div');
     h.className = 'cal-day-header';
     h.textContent = d;
     container.appendChild(h);
   });
 
-  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const rawFirstDay = new Date(calYear, calMonth, 1).getDay();
+  const firstDay = calWeekStartMonday ? (rawFirstDay === 0 ? 6 : rawFirstDay - 1) : rawFirstDay;
   const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
   const goal = res.goal || goalProtein;
 
@@ -5246,23 +5335,83 @@ function showSubSettings(type) {
       </div>
     `;
   } else if (type === 'protein-goal') {
-    const goal = localStorage.getItem('protein_goal') || '';
-    title.textContent = '단백질 목표';
+    const goal = localStorage.getItem('protein_goal') || goalProtein || '';
+    title.textContent = '단백질 목표 수정';
     body.innerHTML = `
       <div style="padding:16px 0;">
-        <div class="sub-field"><label>일일 단백질 목표 (g)</label>
-          <input type="number" id="sub-goal" value="${goal}" placeholder="120" min="0" step="1">
+        <p style="font-size:14px;color:var(--text-3);margin-bottom:20px;">현재 목표: <strong style="color:var(--text-1)">${goal ? goal + 'g' : '미설정'}</strong></p>
+        <div class="sub-field"><label>직접 입력 (g)</label>
+          <input type="number" id="sub-goal" value="${goal}" placeholder="예: 120" min="0" step="1"
+            style="font-size:18px;text-align:center;">
         </div>
         <p class="sub-note">권장량: 체중(kg) × 1.2~2.0g</p>
-        <button class="sub-save-btn" onclick="saveGoalSub()">저장</button>
+        <button class="sub-save-btn" onclick="saveGoalSub()">이 값으로 설정</button>
+        <div style="display:flex;align-items:center;gap:8px;margin:20px 0 12px;">
+          <div style="flex:1;height:1px;background:var(--separator);"></div>
+          <span style="font-size:13px;color:var(--text-3);">또는</span>
+          <div style="flex:1;height:1px;background:var(--separator);"></div>
+        </div>
+        <button onclick="startFindGoalFlow()"
+          style="width:100%;padding:14px;background:var(--bg-input);color:var(--text-1);border:1px solid var(--separator);border-radius:var(--r-full);cursor:pointer;font-size:15px;font-family:inherit;font-weight:600;">
+          🔍 목표 다시 찾기
+        </button>
+        <p class="sub-note" style="margin-top:8px;">처음 설정과 같은 방식으로 목표를 계산합니다.</p>
       </div>
     `;
-  } else if (type === 'find-goal') {
-    title.textContent = '단백질 목표 찾기';
-    // Reuse onboarding flow — just jump back to step 3
-    hideSubSettings();
-    hideSettings();
-    showOnboarding(3);
+  } else if (type === 'language') {
+    title.textContent = '언어';
+    body.innerHTML = `
+      <div style="padding:16px 0;">
+        <div class="sub-option-list">
+          <div class="sub-option-item selected" onclick="saveLanguageSub('ko', this)">
+            <span>🇰🇷</span><span>한국어</span>
+            <span class="sub-option-check">✓</span>
+          </div>
+          <div class="sub-option-item disabled">
+            <span>🇺🇸</span><span>English</span>
+            <span style="font-size:11px;color:var(--text-4);">준비 중</span>
+          </div>
+          <div class="sub-option-item disabled">
+            <span>🇯🇵</span><span>日本語</span>
+            <span style="font-size:11px;color:var(--text-4);">준비 중</span>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (type === 'week-start') {
+    const current = localStorage.getItem('week_start') || 'sunday';
+    title.textContent = '한 주의 시작';
+    body.innerHTML = `
+      <div style="padding:16px 0;">
+        <div class="sub-option-list">
+          <div class="sub-option-item ${current === 'sunday' ? 'selected' : ''}" onclick="saveWeekStartSub('sunday', this)">
+            <span>일요일</span>
+            <span class="sub-option-check" style="${current !== 'sunday' ? 'opacity:0' : ''}">✓</span>
+          </div>
+          <div class="sub-option-item ${current === 'monday' ? 'selected' : ''}" onclick="saveWeekStartSub('monday', this)">
+            <span>월요일</span>
+            <span class="sub-option-check" style="${current !== 'monday' ? 'opacity:0' : ''}">✓</span>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (type === 'unit') {
+    const current = localStorage.getItem('weight_unit') || 'kg';
+    title.textContent = '무게 단위';
+    body.innerHTML = `
+      <div style="padding:16px 0;">
+        <div class="sub-option-list">
+          <div class="sub-option-item ${current === 'kg' ? 'selected' : ''}" onclick="saveUnitSub('kg', this)">
+            <span>킬로그램 (kg)</span>
+            <span class="sub-option-check" style="${current !== 'kg' ? 'opacity:0' : ''}">✓</span>
+          </div>
+          <div class="sub-option-item ${current === 'lbs' ? 'selected' : ''}" onclick="saveUnitSub('lbs', this)">
+            <span>파운드 (lbs)</span>
+            <span class="sub-option-check" style="${current !== 'lbs' ? 'opacity:0' : ''}">✓</span>
+          </div>
+        </div>
+      </div>
+    `;
   } else if (type === 'wifi') {
     title.textContent = 'WiFi 설정';
     const token = localStorage.getItem('device_token') || '';
@@ -5326,7 +5475,10 @@ async function saveAccountSub() {
     const profile = JSON.parse(localStorage.getItem('profile') || '{}');
     profile.nickname = nickname;
     localStorage.setItem('profile', JSON.stringify(profile));
-    await fetch('/api/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nickname}) });
+    await fetch('/api/user/profile', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ nickname, display_name: profile.display_name, weight: profile.weight, multiplier: profile.multiplier })
+    });
   }
   if (pwNew) {
     if (pwNew !== pwConf) { showToast('새 비밀번호가 일치하지 않습니다'); return; }
@@ -5343,8 +5495,15 @@ async function saveWeightSub() {
   if (!w || w < 1) { showToast('올바른 체중을 입력하세요'); return; }
   const profile = JSON.parse(localStorage.getItem('profile') || '{}');
   profile.weight = w;
+  // 기존 단백질 목표를 유지하면서 multiplier 재계산
+  const currentGoal = goalProtein || parseInt(localStorage.getItem('protein_goal') || '0');
+  const mult = currentGoal > 0 ? parseFloat((currentGoal / w).toFixed(2)) : parseFloat(profile.multiplier || 1.5);
+  profile.multiplier = mult;
   localStorage.setItem('profile', JSON.stringify(profile));
-  await fetch('/api/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({weight:w}) });
+  await fetch('/api/user/profile', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ nickname: profile.nickname, display_name: profile.display_name, weight: w, multiplier: mult })
+  });
   showToast('✅ 체중 저장됨');
   hideSubSettings();
   updateSettingsValues();
@@ -5354,12 +5513,81 @@ async function saveGoalSub() {
   const g = parseInt(document.getElementById('sub-goal')?.value);
   if (!g || g < 1) { showToast('올바른 목표값을 입력하세요'); return; }
   localStorage.setItem('protein_goal', g);
-  await fetch('/api/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({protein_goal:g}) });
+  goalProtein = g;
+  const profile = JSON.parse(localStorage.getItem('profile') || '{}');
+  const w = parseFloat(profile.weight) || 0;
+  const mult = w > 0 ? parseFloat((g / w).toFixed(2)) : parseFloat(profile.multiplier || 1.5);
+  profile.multiplier = mult;
+  localStorage.setItem('profile', JSON.stringify(profile));
+  await fetch('/api/user/profile', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ nickname: profile.nickname, display_name: profile.display_name, weight: w, multiplier: mult })
+  });
   showToast('✅ 목표 저장됨');
   hideSubSettings();
-  proteinGoal = g;
   updateSettingsValues();
   loadMeals();
+}
+
+function startFindGoalFlow() {
+  hideSubSettings();
+  hideSettings();
+  showOnboarding(2);
+}
+
+function saveLanguageSub(lang, el) {
+  localStorage.setItem('app_language', lang);
+  document.querySelectorAll('.sub-option-item').forEach(x => {
+    x.classList.remove('selected');
+    const check = x.querySelector('.sub-option-check');
+    if (check) check.style.opacity = '0';
+  });
+  if (el && !el.classList.contains('disabled')) {
+    el.classList.add('selected');
+    const check = el.querySelector('.sub-option-check');
+    if (check) check.style.opacity = '1';
+  }
+  showToast('✅ 언어 설정 저장됨');
+  updateSettingsValues();
+}
+
+function saveWeekStartSub(val, el) {
+  localStorage.setItem('week_start', val);
+  document.querySelectorAll('.sub-option-item').forEach(x => {
+    x.classList.remove('selected');
+    const check = x.querySelector('.sub-option-check');
+    if (check) check.style.opacity = '0';
+  });
+  if (el) {
+    el.classList.add('selected');
+    const check = el.querySelector('.sub-option-check');
+    if (check) check.style.opacity = '1';
+  }
+  showToast('✅ 한 주의 시작 저장됨');
+  updateSettingsValues();
+  renderWeekStrip();
+  renderMiniCal();
+}
+
+function saveUnitSub(val, el) {
+  localStorage.setItem('weight_unit', val);
+  document.querySelectorAll('.sub-option-item').forEach(x => {
+    x.classList.remove('selected');
+    const check = x.querySelector('.sub-option-check');
+    if (check) check.style.opacity = '0';
+  });
+  if (el) {
+    el.classList.add('selected');
+    const check = el.querySelector('.sub-option-check');
+    if (check) check.style.opacity = '1';
+  }
+  showToast('✅ 무게 단위 저장됨');
+  updateSettingsValues();
+}
+
+function toggleDarkMode(enabled) {
+  document.body.classList.toggle('dark-mode', enabled);
+  localStorage.setItem('dark_mode', enabled ? '1' : '0');
 }
 
 async function sendWifiFromSettings(token) {
@@ -5435,10 +5663,26 @@ async function sendWifiFromSettings(token) {
 
 function updateSettingsValues() {
   const profile = JSON.parse(localStorage.getItem('profile') || '{}');
+  const unit = localStorage.getItem('weight_unit') || 'kg';
   const el = (id) => document.getElementById(id);
-  if (el('settings-weight-val'))  el('settings-weight-val').textContent  = profile.weight ? profile.weight + ' kg' : '—';
-  if (el('settings-goal-val'))    el('settings-goal-val').textContent    = (localStorage.getItem('protein_goal') || proteinGoal || '—') + (localStorage.getItem('protein_goal') ? ' g' : '');
+  if (el('settings-weight-val')) {
+    const w = profile.weight || 0;
+    el('settings-weight-val').textContent = w ? (unit === 'lbs' ? (w * 2.205).toFixed(1) + ' lbs' : w + ' kg') : '—';
+  }
+  if (el('settings-goal-val')) {
+    const g = localStorage.getItem('protein_goal') || goalProtein || '';
+    el('settings-goal-val').textContent = g ? g + ' g' : '—';
+  }
   if (el('settings-account-val')) el('settings-account-val').textContent = profile.nickname || '—';
+  if (el('settings-language-val')) el('settings-language-val').textContent = '한국어';
+  if (el('settings-weekstart-val')) {
+    el('settings-weekstart-val').textContent = (localStorage.getItem('week_start') === 'monday') ? '월요일' : '일요일';
+  }
+  if (el('settings-unit-val')) {
+    el('settings-unit-val').textContent = unit === 'lbs' ? '파운드 (lbs)' : '킬로그램 (kg)';
+  }
+  const dmToggle = el('dark-mode-toggle');
+  if (dmToggle) dmToggle.checked = document.body.classList.contains('dark-mode');
 }
 // ══════════════════════════════════════════
 let _wifiPollTimer = null;
@@ -5457,10 +5701,14 @@ function startWifiTriggerPolling(token) {
   }, 3000);
 }
 
-// 페이지 로드 시 기존 토큰으로 폴링 재시작
+// 페이지 로드 시 기존 토큰으로 폴링 재시작 + 다크모드/설정 초기화
 window.addEventListener('load', () => {
   const savedToken = localStorage.getItem('device_token');
   if (savedToken) startWifiTriggerPolling(savedToken);
+  // 다크모드 복원
+  if (localStorage.getItem('dark_mode') === '1') {
+    document.body.classList.add('dark-mode');
+  }
 });
 
 function showWifiModal(token) {
