@@ -54,6 +54,58 @@ body.dark-mode {
   --red-bg: #2e1a1a;
 }
 
+/* ── 다크모드 white 오버라이드 ── */
+body.dark-mode #tab-bar {
+  background: rgba(28,28,30,0.92);
+}
+body.dark-mode .settings-card,
+body.dark-mode .settings-input-card,
+body.dark-mode .modal-box,
+body.dark-mode .history-cal-card,
+body.dark-mode #day-detail-panel,
+body.dark-mode .stats-card,
+body.dark-mode .sheet,
+body.dark-mode .ob-why-card,
+body.dark-mode .ob-picker-wrap,
+body.dark-mode .ob-goal-display,
+body.dark-mode #mini-cal-popup,
+body.dark-mode .goal-card {
+  background: var(--bg-card);
+}
+body.dark-mode .ob-option {
+  background: var(--bg-input);
+  border-color: var(--separator);
+}
+body.dark-mode .ob-option.selected {
+  background: var(--blue-light);
+  border-color: var(--blue);
+}
+body.dark-mode .qty-input,
+body.dark-mode .search-input,
+body.dark-mode input[type="text"],
+body.dark-mode input[type="number"],
+body.dark-mode input[type="password"],
+body.dark-mode input[type="email"] {
+  background: var(--bg-input);
+  color: var(--text-1);
+  border-color: var(--separator);
+}
+body.dark-mode .search-item {
+  border-color: var(--separator);
+}
+body.dark-mode .cal-cell.success { background: #1a3a25; color: #5ec97a; }
+body.dark-mode .cal-cell.fail { background: #3a1a1a; color: #ff6b6b; }
+body.dark-mode .pdcaas-score-badge.high { background: #1a3a25; color: #5ec97a; }
+body.dark-mode .pdcaas-score-badge.mid { background: #3a2e00; color: #f0c000; }
+body.dark-mode .pdcaas-score-badge.low { background: #3a1a1a; color: #ff6b6b; }
+body.dark-mode .forecast-compare-card.raw,
+body.dark-mode .forecast-compare-card.eff,
+body.dark-mode .forecast-compare-card.opt { background: var(--bg-card); border-color: var(--separator); }
+body.dark-mode .pc-topnav { background: rgba(28,28,30,0.95); border-color: var(--separator); }
+body.dark-mode #onboarding-screen { background: var(--bg); }
+body.dark-mode .sub-option-item { background: var(--bg-input); }
+body.dark-mode .sub-option-item.selected { border-color: var(--blue); }
+
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 body {
@@ -1600,11 +1652,13 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px; background: var(--bg-card); border-radius: var(--r-md);
   cursor: pointer; font-size: 15px; color: var(--text-1);
-  border: 1.5px solid transparent; transition: border-color 0.15s;
+  border: 1.5px solid transparent; transition: border-color 0.15s, background 0.15s;
 }
-.sub-option-item.selected { border-color: var(--blue); color: var(--blue); }
+.sub-option-item.selected { border-color: var(--blue); background: var(--blue-light); }
 .sub-option-item.disabled { opacity: 0.4; cursor: default; }
 .sub-option-check { font-size: 16px; color: var(--blue); font-weight: 700; }
+.mult-opt { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.mult-opt.selected { border-color: var(--blue); background: var(--blue-light); }
 
 .wifi-status-badge {
   display: inline-flex; align-items: center; gap: 6px;
@@ -5324,29 +5378,69 @@ function showSubSettings(type) {
     `;
   } else if (type === 'weight') {
     const w = profile.weight || '';
+    const mult = parseFloat(profile.multiplier) || 1.5;
+    const previewGoal = w ? Math.round(parseFloat(w) * mult) : 0;
     title.textContent = '체중';
     body.innerHTML = `
       <div style="padding:16px 0;">
         <div class="sub-field"><label>체중 (kg)</label>
-          <input type="number" id="sub-weight" value="${w}" placeholder="70" min="0" step="0.1">
+          <input type="number" id="sub-weight" value="${w}" placeholder="70" min="0" step="0.1"
+            oninput="const v=parseFloat(this.value);const el=document.getElementById('sub-weight-preview');if(el)el.textContent=v>0?'→ 단백질 목표 '+Math.round(v*${mult})+'g':'';">
         </div>
-        <p class="sub-note">체중은 일일 단백질 목표 계산에 사용됩니다.</p>
+        <p id="sub-weight-preview" style="font-size:14px;color:var(--blue);text-align:center;font-weight:600;min-height:20px;">${previewGoal ? '→ 단백질 목표 ' + previewGoal + 'g' : ''}</p>
+        <p class="sub-note">체중 저장 시 단백질 목표가 자동으로 업데이트됩니다.</p>
         <button class="sub-save-btn" onclick="saveWeightSub()">저장</button>
       </div>
     `;
   } else if (type === 'protein-goal') {
-    const goal = localStorage.getItem('protein_goal') || goalProtein || '';
+    const w = parseFloat(profile.weight) || 0;
+    const currentMult = parseFloat(profile.multiplier) || 1.5;
+    const currentGoal = localStorage.getItem('protein_goal') || goalProtein || '';
+    const multOptions = [1.2, 1.4, 1.5, 1.6, 1.8, 2.0];
+    const closestMult = multOptions.reduce((a, b) => Math.abs(b - currentMult) < Math.abs(a - currentMult) ? b : a, currentMult);
     title.textContent = '단백질 목표 수정';
     body.innerHTML = `
       <div style="padding:16px 0;">
-        <p style="font-size:14px;color:var(--text-3);margin-bottom:20px;">현재 목표: <strong style="color:var(--text-1)">${goal ? goal + 'g' : '미설정'}</strong></p>
-        <div class="sub-field"><label>직접 입력 (g)</label>
-          <input type="number" id="sub-goal" value="${goal}" placeholder="예: 120" min="0" step="1"
-            style="font-size:18px;text-align:center;">
+        <div style="background:var(--bg-input);border-radius:var(--r-md);padding:14px 16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:14px;color:var(--text-3);">현재 체중</span>
+          <strong style="font-size:16px;color:var(--text-1);">${w ? w + ' kg' : '미설정'}</strong>
         </div>
-        <p class="sub-note">권장량: 체중(kg) × 1.2~2.0g</p>
-        <button class="sub-save-btn" onclick="saveGoalSub()">이 값으로 설정</button>
-        <div style="display:flex;align-items:center;gap:8px;margin:20px 0 12px;">
+        ${w ? `
+        <p style="font-size:14px;color:var(--text-2);margin-bottom:16px;font-weight:600;">단백질 배율 선택 (체중 × 배율 = 목표)</p>
+        <div class="sub-option-list" id="mult-option-list">
+          ${multOptions.map(m => {
+            const g = Math.round(w * m);
+            const sel = Math.abs(m - closestMult) < 0.05;
+            let label = '';
+            if (m <= 1.2) label = '최소 (일반인)';
+            else if (m <= 1.4) label = '보통';
+            else if (m <= 1.5) label = '권장';
+            else if (m <= 1.6) label = '활동적';
+            else if (m <= 1.8) label = '고강도 운동';
+            else label = '전문 운동선수';
+            return `<div class="sub-option-item mult-opt ${sel ? 'selected' : ''}"
+              data-mult="${m}" onclick="selectMultOpt(this, ${w})"
+              style="flex-direction:column;align-items:flex-start;gap:2px;">
+              <div style="display:flex;justify-content:space-between;width:100%;">
+                <span style="font-weight:600;">${m}배 <span style="font-size:12px;color:var(--text-3);font-weight:400;">(${label})</span></span>
+                <span style="font-weight:700;color:var(--blue);">${g}g</span>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div id="sub-mult-result" style="text-align:center;padding:14px 0 4px;font-size:15px;color:var(--text-3);">
+          목표: <strong style="font-size:22px;color:var(--blue);" id="sub-mult-goal">${Math.round(w * closestMult)}g</strong>
+        </div>
+        <input type="hidden" id="sub-selected-mult" value="${closestMult}">
+        <button class="sub-save-btn" onclick="saveGoalSub()">이 목표로 설정</button>
+        ` : `
+        <div style="text-align:center;padding:20px 0;">
+          <p style="color:var(--text-3);font-size:14px;line-height:1.6;">체중이 설정되어 있지 않습니다.<br>먼저 체중을 입력해주세요.</p>
+          <button onclick="hideSubSettings();showSubSettings('weight');"
+            class="sub-save-btn" style="margin-top:16px;">체중 설정하기</button>
+        </div>
+        `}
+        <div style="display:flex;align-items:center;gap:8px;margin:${w ? '20px' : '0px'} 0 12px;">
           <div style="flex:1;height:1px;background:var(--separator);"></div>
           <span style="font-size:13px;color:var(--text-3);">또는</span>
           <div style="flex:1;height:1px;background:var(--separator);"></div>
@@ -5494,36 +5588,53 @@ async function saveWeightSub() {
   const w = parseFloat(document.getElementById('sub-weight')?.value);
   if (!w || w < 1) { showToast('올바른 체중을 입력하세요'); return; }
   const profile = JSON.parse(localStorage.getItem('profile') || '{}');
+  const mult = parseFloat(profile.multiplier) || 1.5;
+  const newGoal = Math.round(w * mult);
   profile.weight = w;
-  // 기존 단백질 목표를 유지하면서 multiplier 재계산
-  const currentGoal = goalProtein || parseInt(localStorage.getItem('protein_goal') || '0');
-  const mult = currentGoal > 0 ? parseFloat((currentGoal / w).toFixed(2)) : parseFloat(profile.multiplier || 1.5);
-  profile.multiplier = mult;
   localStorage.setItem('profile', JSON.stringify(profile));
+  localStorage.setItem('protein_goal', newGoal);
+  goalProtein = newGoal;
   await fetch('/api/user/profile', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ nickname: profile.nickname, display_name: profile.display_name, weight: w, multiplier: mult })
   });
-  showToast('✅ 체중 저장됨');
+  showToast(`✅ 체중 저장됨 → 단백질 목표 ${newGoal}g 으로 업데이트`);
   hideSubSettings();
   updateSettingsValues();
+  loadMeals();
+}
+
+function selectMultOpt(el, weight) {
+  document.querySelectorAll('.mult-opt').forEach(x => x.classList.remove('selected'));
+  el.classList.add('selected');
+  const mult = parseFloat(el.dataset.mult);
+  const g = Math.round(weight * mult);
+  const goalEl = document.getElementById('sub-mult-goal');
+  if (goalEl) goalEl.textContent = g + 'g';
+  const multInput = document.getElementById('sub-selected-mult');
+  if (multInput) multInput.value = mult;
 }
 
 async function saveGoalSub() {
-  const g = parseInt(document.getElementById('sub-goal')?.value);
-  if (!g || g < 1) { showToast('올바른 목표값을 입력하세요'); return; }
-  localStorage.setItem('protein_goal', g);
-  goalProtein = g;
   const profile = JSON.parse(localStorage.getItem('profile') || '{}');
   const w = parseFloat(profile.weight) || 0;
-  const mult = w > 0 ? parseFloat((g / w).toFixed(2)) : parseFloat(profile.multiplier || 1.5);
+  // multiplier 방식
+  const multInput = document.getElementById('sub-selected-mult');
+  let mult, g;
+  if (multInput) {
+    mult = parseFloat(multInput.value) || parseFloat(profile.multiplier) || 1.5;
+    g = w > 0 ? Math.round(w * mult) : 0;
+  }
+  if (!g || g < 1) { showToast('체중을 먼저 설정해주세요'); return; }
+  localStorage.setItem('protein_goal', g);
+  goalProtein = g;
   profile.multiplier = mult;
   localStorage.setItem('profile', JSON.stringify(profile));
   await fetch('/api/user/profile', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ nickname: profile.nickname, display_name: profile.display_name, weight: w, multiplier: mult })
   });
-  showToast('✅ 목표 저장됨');
+  showToast('✅ 목표 저장됨: ' + g + 'g');
   hideSubSettings();
   updateSettingsValues();
   loadMeals();
