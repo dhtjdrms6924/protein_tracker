@@ -590,35 +590,63 @@ body {
 
 /* week strip - horizontal scroll, selected always centered */
 .week-strip-wrap {
+  position: relative;
   overflow: hidden;
   margin: 0 -20px;
   padding: 0 20px;
+  /* 중앙 선택 박스 */
+}
+/* 중앙 선택 하이라이트 박스 */
+.week-strip-wrap::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -60%);
+  width: calc((100vw - 40px) / 7);
+  height: 56px;
+  background: rgba(0,122,255,0.08);
+  border: 1.5px solid rgba(0,122,255,0.25);
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 2;
+}
+@media (min-width: 768px) {
+  .week-strip-wrap::before { width: 48px; }
 }
 .week-strip {
   display: flex;
   gap: 0;
   overflow-x: auto;
-  scroll-snap-type: x mandatory;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  padding: 2px 0 4px;
+  padding: 4px 0 6px;
+  /* 양쪽 끝 패딩으로 첫/마지막 날짜도 가운데 올 수 있게 */
+  scroll-behavior: smooth;
+  cursor: grab;
+  user-select: none;
 }
+.week-strip:active { cursor: grabbing; }
 .week-strip::-webkit-scrollbar { display: none; }
 
 .week-day-col {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   flex-shrink: 0;
-  /* 7 visible per screen */
   width: calc((100vw - 40px) / 7);
   min-width: 40px;
-  scroll-snap-align: center;
   cursor: pointer;
+  transition: opacity .1s;
 }
+.week-day-col:active { opacity: .7; }
 @media (min-width: 768px) {
   .week-day-col { width: 48px; }
 }
 .week-day-label {
   font-size: 12px; font-weight: 500; color: var(--text-3);
+  transition: color .15s;
+}
+.week-day-col.center-selected .week-day-label {
+  color: var(--blue);
+  font-weight: 700;
 }
 .week-day-num {
   width: 36px; height: 36px;
@@ -635,6 +663,10 @@ body {
 .week-day-num.selected:not(.today) {
   background: var(--text-1);
   color: white;
+}
+.week-day-col.center-selected .week-day-num:not(.today):not(.selected) {
+  background: rgba(0,122,255,0.1);
+  color: var(--blue);
 }
 .week-day-col.has-dot .week-day-num::after {
   content: '';
@@ -956,6 +988,8 @@ body {
   display: flex; align-items: flex-start;
   padding: 8px 0 0;
   z-index: 100;
+  /* 창 크기와 무관하게 항상 표시 */
+  max-width: 100vw;
 }
 
 .tab-item {
@@ -1935,8 +1969,8 @@ body {
   /* Show top nav bar on desktop */
   #pc-topnav { display: flex !important; }
   
-  /* Hide mobile tab bar */
-  #tab-bar { display: none; }
+  /* 모바일 탭바는 PC에서도 유지 (pane-tab-bar가 탭 역할) */
+  /* #tab-bar는 항상 표시 */
   
   /* Swipe container full width, no sidebar offset */
   #swipe-container {
@@ -3436,8 +3470,7 @@ function renderWeekStrip() {
   const d = new Date(currentDate + 'T00:00:00');
   const labels = ['일','월','화','수','목','금','토'];
 
-  // Build 5 weeks centered on current date for smooth sliding
-  const TOTAL_DAYS = 35;
+  const TOTAL_DAYS = 91; // 13주 — 충분히 길게
   const CENTER = Math.floor(TOTAL_DAYS / 2);
   let selectedIdx = CENTER;
 
@@ -3452,20 +3485,109 @@ function renderWeekStrip() {
     const col = document.createElement('div');
     col.className = 'week-day-col';
     col.dataset.date = dateStr;
+    col.dataset.idx = i;
     col.innerHTML = `
       <div class="week-day-label">${labels[day.getDay()]}</div>
       <div class="week-day-num ${isToday ? 'today' : ''} ${isSelected && !isToday ? 'selected' : ''}">${day.getDate()}</div>
     `;
-    col.addEventListener('click', () => selectDate(dateStr, dateStr > currentDate ? 'left' : 'right'));
     strip.appendChild(col);
   }
 
-  // Scroll selected to center after paint
+  // 중앙 선택 박스에 맞게 스크롤
   requestAnimationFrame(() => {
-    const colW = strip.querySelector('.week-day-col')?.offsetWidth || 48;
-    const stripW = strip.parentElement?.offsetWidth || window.innerWidth - 40;
-    const targetScroll = selectedIdx * colW - (stripW / 2 - colW / 2);
-    strip.scrollLeft = Math.max(0, targetScroll);
+    scrollStripToIdx(strip, selectedIdx, false);
+    updateCenterHighlight(strip);
+  });
+
+  // 드래그/스크롤로 날짜 선택
+  initStripScroll(strip);
+}
+
+function scrollStripToIdx(strip, idx, smooth) {
+  const colW = strip.querySelector('.week-day-col')?.offsetWidth || 44;
+  const stripW = strip.parentElement?.offsetWidth || (window.innerWidth - 40);
+  const target = idx * colW - (stripW / 2 - colW / 2);
+  if (smooth) {
+    strip.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+  } else {
+    strip.scrollLeft = Math.max(0, target);
+  }
+}
+
+function getCenterIdx(strip) {
+  const colW = strip.querySelector('.week-day-col')?.offsetWidth || 44;
+  const stripW = strip.parentElement?.offsetWidth || (window.innerWidth - 40);
+  return Math.round((strip.scrollLeft + stripW / 2 - colW / 2) / colW);
+}
+
+function updateCenterHighlight(strip) {
+  const centerIdx = getCenterIdx(strip);
+  strip.querySelectorAll('.week-day-col').forEach((col, i) => {
+    col.classList.toggle('center-selected', i === centerIdx);
+  });
+}
+
+let _stripScrollTimer = null;
+let _lastCenterIdx = -1;
+
+function initStripScroll(strip) {
+  // 스크롤 중 중앙 아이템 강조 + 스크롤 끝나면 스냅
+  strip.addEventListener('scroll', () => {
+    updateCenterHighlight(strip);
+    clearTimeout(_stripScrollTimer);
+    _stripScrollTimer = setTimeout(() => {
+      const centerIdx = getCenterIdx(strip);
+      const col = strip.querySelectorAll('.week-day-col')[centerIdx];
+      if (!col) return;
+      const dateStr = col.dataset.date;
+
+      // 진동 피드백 (날짜가 바뀔 때만)
+      if (centerIdx !== _lastCenterIdx) {
+        _lastCenterIdx = centerIdx;
+        if (navigator.vibrate) navigator.vibrate(8);
+      }
+
+      // 스냅
+      scrollStripToIdx(strip, centerIdx, true);
+
+      // 날짜 선택
+      if (dateStr !== currentDate) {
+        const direction = dateStr > currentDate ? 'left' : 'right';
+        selectDate(dateStr, direction);
+      }
+    }, 120);
+  }, { passive: true });
+
+  // 터치 드래그 끝나면 즉시 스냅
+  strip.addEventListener('touchend', () => {
+    clearTimeout(_stripScrollTimer);
+    setTimeout(() => {
+      const centerIdx = getCenterIdx(strip);
+      const col = strip.querySelectorAll('.week-day-col')[centerIdx];
+      if (!col) return;
+      scrollStripToIdx(strip, centerIdx, true);
+      const dateStr = col.dataset.date;
+      if (centerIdx !== _lastCenterIdx) {
+        _lastCenterIdx = centerIdx;
+        if (navigator.vibrate) navigator.vibrate(8);
+      }
+      if (dateStr !== currentDate) {
+        selectDate(dateStr, dateStr > currentDate ? 'left' : 'right');
+      }
+    }, 50);
+  }, { passive: true });
+
+  // 탭으로 날짜 선택 시에도 중앙 스크롤
+  strip.addEventListener('click', e => {
+    const col = e.target.closest('.week-day-col');
+    if (!col) return;
+    const idx = parseInt(col.dataset.idx);
+    const dateStr = col.dataset.date;
+    scrollStripToIdx(strip, idx, true);
+    if (navigator.vibrate) navigator.vibrate(8);
+    if (dateStr !== currentDate) {
+      selectDate(dateStr, dateStr > currentDate ? 'left' : 'right');
+    }
   });
 }
 
