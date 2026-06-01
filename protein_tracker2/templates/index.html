@@ -604,8 +604,7 @@ body {
   top: 2px;
   width: var(--box-w, 44px);
   height: calc(100% - 4px);
-  background: rgba(0,122,255,0.07);
-  border: 1.5px solid rgba(0,122,255,0.28);
+  background: rgba(142,142,147,0.15);
   border-radius: 12px;
   pointer-events: none;
   z-index: 2;
@@ -3701,6 +3700,17 @@ function selectDate(dateStr, direction) {
 }
 
 function goToday() {
+  if (today === currentDate) return;
+  const strip = document.getElementById('week-strip');
+  if (strip) {
+    const cols = strip.querySelectorAll('.week-day-col');
+    for (let i = 0; i < cols.length; i++) {
+      if (cols[i].dataset.date === today) {
+        scrollStripToIdx(strip, i, true);
+        break;
+      }
+    }
+  }
   selectDate(today, today > currentDate ? 'left' : 'right');
 }
 
