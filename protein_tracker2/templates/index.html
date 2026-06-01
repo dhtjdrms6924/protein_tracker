@@ -2031,9 +2031,15 @@ body {
   /* stats-card 정렬은 stats-inner가 담당 */
   
   /* History/settings screens */
-  .history-topbar { padding-top: 20px; max-width: 800px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
-  .history-cal-card { max-width: 800px; margin-left: auto; margin-right: auto; }
-  #day-detail-panel { max-width: 800px; margin-left: auto; margin-right: auto; }
+  #history-screen { align-items: center; }
+  .history-topbar { padding-top: 20px; width: 100%; max-width: 560px; margin: 0; padding-left: 20px; padding-right: 20px; box-sizing: border-box; }
+  .history-cal-card { width: 100%; max-width: 560px; margin: 0 0 16px; padding: 24px; box-sizing: border-box; }
+  #day-detail-panel { width: 100%; max-width: 560px; margin: 0 0 16px; box-sizing: border-box; }
+  .cal-grid { gap: 8px; }
+  .cal-cell { font-size: 16px; }
+  .cal-day-header { font-size: 13px; padding: 8px 0; }
+  .cal-month-label { font-size: 18px; }
+  .cal-nav-btn { width: 40px; height: 40px; font-size: 20px; }
   .settings-topbar { padding-top: 20px; }
   .settings-section { max-width: 640px; margin-left: auto; margin-right: auto; }
   
@@ -2154,6 +2160,65 @@ body {
 }
 .btn-meal-save { background: var(--green); color: white; }
 .btn-meal-cancel { background: var(--bg); color: var(--text-2); }
+
+/* ────────────── MULTI SELECT ────────────── */
+.meal-item .meal-check {
+  width: 22px; height: 22px;
+  border: 2px solid var(--text-4);
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  transition: background .15s, border-color .15s;
+}
+.meal-item.selecting .meal-check {
+  display: flex;
+  animation: checkIn .18s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes checkIn { from { opacity:0; transform:scale(0.5); } to { opacity:1; transform:scale(1); } }
+.meal-item.checked .meal-check {
+  background: var(--blue); border-color: var(--blue);
+}
+.meal-item.checked .meal-check::after {
+  content: '';
+  width: 5px; height: 9px;
+  border: 2px solid white; border-top: none; border-left: none;
+  transform: rotate(45deg) translate(-1px, -1px);
+  display: block;
+}
+.meal-item.checked { background: rgba(0,122,255,0.06); }
+.meal-item.selecting { cursor: default; user-select: none; }
+
+#multi-select-bar {
+  position: fixed;
+  bottom: var(--tab-h);
+  left: 0; right: 0;
+  background: white;
+  border-top: 1px solid var(--separator);
+  padding: 12px 16px calc(var(--safe-bottom) + 12px);
+  display: flex; align-items: center; gap: 10px;
+  z-index: 110;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  transform: translateY(100%);
+  transition: transform .25s cubic-bezier(0.4,0,0.2,1);
+}
+#multi-select-bar.open { transform: translateY(0); }
+.multi-select-count {
+  flex: 1; font-size: 15px; font-weight: 600; color: var(--text-1);
+}
+.btn-multi-delete {
+  padding: 10px 22px;
+  background: var(--red); color: white; border: none;
+  border-radius: var(--r-full);
+  font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer;
+}
+.btn-multi-delete:disabled { opacity: 0.4; }
+.btn-multi-cancel {
+  padding: 10px 16px;
+  background: var(--bg); color: var(--text-2); border: none;
+  border-radius: var(--r-full);
+  font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer;
+}
 
 /* admin card (hidden by default) */
 .admin-card {
@@ -2595,7 +2660,9 @@ body {
 <!-- ═══════════ HISTORY SCREEN ═══════════ -->
 <div id="history-screen">
   <div class="history-topbar">
-    <button class="history-back-btn" onclick="hideHistory()">‹</button>
+    <button class="settings-back-btn" onclick="hideHistory()">
+      <svg width="11" height="19" viewBox="0 0 11 19" fill="none"><path d="M10 1L1.5 9.5L10 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
     <span class="history-title">기록</span>
   </div>
   <div class="history-cal-card">
@@ -3078,6 +3145,13 @@ body {
   <div class="mc-grid" id="mc-grid"></div>
 </div>
 
+<!-- MULTI SELECT BAR -->
+<div id="multi-select-bar">
+  <span class="multi-select-count" id="multi-select-count">0개 선택됨</span>
+  <button class="btn-multi-cancel" onclick="exitSelectionMode()">취소</button>
+  <button class="btn-multi-delete" id="btn-multi-delete" onclick="deleteSelectedMeals()">삭제</button>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -3094,9 +3168,14 @@ const today = (() => {
 let currentDate = today;
 let goalProtein = 0;
 let selectedFile = null;
+let _selectionMode = false;
+let _selectedMealIds = new Set();
+let _lpTimer = null;
+let _lpMoved = false;
 let searchTimer = null;
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
+let _calAnimDir = 0;
 let analysisPeriod = 7;
 let forecastType = 'muscle';
 let analysisData = {};
@@ -4028,9 +4107,11 @@ async function loadMeals() {
     total += parseFloat(m.protein_g || 0);
     const curQty = parseAmountQty(m.amount);
     const div = document.createElement('div');
-    div.className = 'meal-item';
+    div.className = 'meal-item' + (_selectionMode ? ' selecting' + (_selectedMealIds.has(m.id) ? ' checked' : '') : '');
     div.id = `meal-item-${m.id}`;
+    div.dataset.mealId = m.id;
     div.innerHTML = `
+      <div class="meal-check"></div>
       <div class="meal-emoji">${m.emoji || '🍽️'}</div>
       <div class="meal-info">
         <div class="meal-name">${m.food_name}</div>
@@ -4038,7 +4119,26 @@ async function loadMeals() {
       </div>
       <div class="meal-protein">${parseFloat(m.protein_g).toFixed(1)}g</div>
     `;
-    div.onclick = () => showMealEdit(m.id, m.protein_g, m.food_name, curQty);
+    // 롱프레스 감지
+    div.addEventListener('touchstart', () => {
+      _lpMoved = false;
+      _lpTimer = setTimeout(() => {
+        _lpTimer = null;
+        if (!_lpMoved) enterSelectionMode(m.id);
+      }, 450);
+    }, { passive: true });
+    div.addEventListener('touchmove', () => {
+      _lpMoved = true;
+      if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+    }, { passive: true });
+    div.addEventListener('touchend', () => {
+      if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+    }, { passive: true });
+
+    div.onclick = () => {
+      if (_selectionMode) { toggleMealSelect(m.id); return; }
+      showMealEdit(m.id, m.protein_g, m.food_name, curQty);
+    };
     container.appendChild(div);
   });
   
@@ -4049,6 +4149,56 @@ function parseAmountQty(amount) {
   if (!amount) return 1;
   const m = String(amount).match(/^([\d.]+)/);
   return m ? (parseFloat(m[1]) || 1) : 1;
+}
+
+// ══════════════════════════════════════════
+//  MULTI SELECT
+// ══════════════════════════════════════════
+function enterSelectionMode(id) {
+  _selectionMode = true;
+  _selectedMealIds = new Set([id]);
+  if (navigator.vibrate) navigator.vibrate(40);
+  document.querySelectorAll('.meal-edit-row').forEach(el => el.remove());
+  _applySelectionUI();
+}
+
+function toggleMealSelect(id) {
+  if (_selectedMealIds.has(id)) _selectedMealIds.delete(id);
+  else _selectedMealIds.add(id);
+  _applySelectionUI();
+}
+
+function _applySelectionUI() {
+  const count = _selectedMealIds.size;
+  document.querySelectorAll('.meal-item').forEach(item => {
+    const mid = parseInt(item.dataset.mealId);
+    item.classList.toggle('selecting', _selectionMode);
+    item.classList.toggle('checked', _selectedMealIds.has(mid));
+  });
+  const bar = document.getElementById('multi-select-bar');
+  if (bar) bar.classList.toggle('open', _selectionMode);
+  const countEl = document.getElementById('multi-select-count');
+  if (countEl) countEl.textContent = `${count}개 선택됨`;
+  const delBtn = document.getElementById('btn-multi-delete');
+  if (delBtn) delBtn.disabled = count === 0;
+}
+
+function exitSelectionMode() {
+  _selectionMode = false;
+  _selectedMealIds = new Set();
+  document.querySelectorAll('.meal-item').forEach(item => item.classList.remove('selecting', 'checked'));
+  const bar = document.getElementById('multi-select-bar');
+  if (bar) bar.classList.remove('open');
+}
+
+async function deleteSelectedMeals() {
+  const ids = [..._selectedMealIds];
+  if (!ids.length) return;
+  const count = ids.length;
+  exitSelectionMode();
+  await Promise.all(ids.map(id => fetch(`/api/meals?id=${id}`, { method: 'DELETE' })));
+  loadMeals();
+  showToast(`✅ ${count}개 삭제됨`);
 }
 
 function showMealEdit(id, protein, name, curQty) {
@@ -4448,12 +4598,13 @@ function addMealFromAISearch(aiId, name, protein, kcal, fat, carb, unit) {
 //  CALENDAR / HISTORY
 // ══════════════════════════════════════════
 function changeMonth(delta) {
+  _calAnimDir = delta;
   calMonth += delta;
   if (calMonth > 11) { calMonth = 0; calYear++; }
   if (calMonth < 0) { calMonth = 11; calYear--; }
   const now = new Date();
   const nextBtn = document.getElementById('cal-next-btn');
-  if (nextBtn) nextBtn.style.visibility = 
+  if (nextBtn) nextBtn.style.visibility =
     (calYear > now.getFullYear() || (calYear === now.getFullYear() && calMonth >= now.getMonth()))
     ? 'hidden' : 'visible';
   closeDayDetail();
@@ -4468,22 +4619,43 @@ async function loadHistory() {
   if (nextBtn) nextBtn.style.visibility =
     (calYear > now.getFullYear() || (calYear === now.getFullYear() && calMonth >= now.getMonth()))
     ? 'hidden' : 'visible';
-  
-  const res = await fetch(`/api/stats/monthly?month=${monthStr}`).then(r => r.json());
+
   const container = document.getElementById('cal-grid');
+  const dir = _calAnimDir;
+  _calAnimDir = 0;
+
+  // 월 전환 슬라이드 아웃
+  if (dir !== 0) {
+    container.style.transition = 'opacity 0.12s ease, transform 0.12s ease';
+    container.style.opacity = '0';
+    container.style.transform = `translateX(${dir > 0 ? '-20px' : '20px'})`;
+  }
+
+  // fetch와 애니메이션 대기를 병렬 처리
+  const [res] = await Promise.all([
+    fetch(`/api/stats/monthly?month=${monthStr}`).then(r => r.json()),
+    dir !== 0 ? new Promise(r => setTimeout(r, 130)) : Promise.resolve()
+  ]);
+
+  // 새 그리드 렌더링
   container.innerHTML = '';
-  
+  container.style.transition = 'none';
+  if (dir !== 0) {
+    container.style.opacity = '0';
+    container.style.transform = `translateX(${dir > 0 ? '20px' : '-20px'})`;
+  }
+
   ['일','월','화','수','목','금','토'].forEach(d => {
     const h = document.createElement('div');
     h.className = 'cal-day-header';
     h.textContent = d;
     container.appendChild(h);
   });
-  
+
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
   const goal = res.goal || goalProtein;
-  
+
   for (let i = 0; i < firstDay; i++) {
     const e = document.createElement('div');
     e.className = 'cal-cell empty';
@@ -4494,16 +4666,25 @@ async function loadHistory() {
     const dayData = (res.data || []).find(d => d.date === dayStr);
     const total = dayData ? dayData.total : 0;
     const isToday = dayStr === today;
-    
+
     let cls = 'cal-cell';
     if (isToday) cls += ' today';
     else if (total > 0) cls += goal > 0 && total >= goal ? ' success' : ' fail';
-    
+
     const cell = document.createElement('div');
     cell.className = cls;
     cell.innerHTML = `<div>${i}</div>${total > 0 ? `<div class="cal-g">${total.toFixed(0)}g</div>` : ''}`;
     cell.onclick = () => openDayDetail(dayStr, goal);
     container.appendChild(cell);
+  }
+
+  // 슬라이드 인
+  if (dir !== 0) {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      container.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+      container.style.opacity = '1';
+      container.style.transform = 'translateX(0)';
+    }));
   }
 }
 
