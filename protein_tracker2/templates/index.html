@@ -3443,7 +3443,9 @@ async function doLogout() {
 }
 
 function showApp(userData) {
+  localStorage.setItem('ob_done', '1'); // 로그인 성공 시 온보딩 완료 처리
   document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('onboarding-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'flex';
   applyUserData(userData);
   initApp(userData);
@@ -5609,17 +5611,10 @@ window.addEventListener('load', async () => {
       document.getElementById('auth-screen').style.display = 'none';
       showApp(data);
     } else {
-      // 로그인 안됨 → 무조건 앱 숨기기
+      // 로그인 안됨 → 항상 로그인 화면 (기기/브라우저 무관하게 일관된 UX)
       document.getElementById('app-screen').style.display = 'none';
-
-      const hasSeenOnboarding = localStorage.getItem('ob_done');
-      if (hasSeenOnboarding) {
-        document.getElementById('onboarding-screen').style.display = 'none';
-        document.getElementById('auth-screen').style.display = 'flex';
-      } else {
-        document.getElementById('auth-screen').style.display = 'none';
-        initOnboarding();
-      }
+      document.getElementById('onboarding-screen').style.display = 'none';
+      document.getElementById('auth-screen').style.display = 'flex';
     }
   } catch(e) {
     // 네트워크 오류 시에도 로그인 화면 표시
