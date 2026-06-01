@@ -1896,23 +1896,16 @@ body {
   box-shadow: 0 1px 4px rgba(0,0,0,0.12);
 }
 
-/* ────────────── DATE SLIDE ANIMATION ────────────── */
+/* ────────────── DATE FADE ANIMATION ────────────── */
 #main-content-wrap {
-  will-change: transform, opacity;
-  transition: transform .28s cubic-bezier(0.4,0,0.2,1), opacity .2s ease;
+  will-change: opacity;
+  transition: opacity .2s ease;
 }
-#main-content-wrap.slide-out-left {
-  transform: translateX(-32px);
+#main-content-wrap.fade-out {
   opacity: 0;
   pointer-events: none;
 }
-#main-content-wrap.slide-out-right {
-  transform: translateX(32px);
-  opacity: 0;
-  pointer-events: none;
-}
-#main-content-wrap.slide-in {
-  transform: translateX(0);
+#main-content-wrap.fade-in {
   opacity: 1;
 }
 .today-btn {
@@ -3590,13 +3583,13 @@ function snapToCenter(strip, vibrate) {
 }
 
 function selectDate(dateStr, direction) {
+  if (dateStr === currentDate) return;
   const wrap = document.getElementById('main-content-wrap');
-  const outCls = direction === 'right' ? 'slide-out-right' : 'slide-out-left';
 
-  // 슬라이드 아웃
+  // 페이드 아웃
   if (wrap) {
-    wrap.classList.remove('slide-in', 'slide-out-left', 'slide-out-right');
-    wrap.classList.add(outCls);
+    wrap.classList.remove('fade-in');
+    wrap.classList.add('fade-out');
   }
 
   setTimeout(() => {
@@ -3605,30 +3598,20 @@ function selectDate(dateStr, direction) {
     updateMainDateLabel();
     loadMeals();
 
-    // 반대 방향에서 슬라이드 인
-    if (wrap) {
-      const inFrom = direction === 'right' ? 'slide-out-left' : 'slide-out-right';
-      wrap.classList.remove('slide-out-left', 'slide-out-right');
-      wrap.classList.add(inFrom);
-      // 다음 프레임에 transition 적용
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          wrap.classList.remove('slide-out-left', 'slide-out-right');
-          wrap.classList.add('slide-in');
-        });
-      });
-    }
-
     // 오늘 버튼 표시/숨김
     const todayBtn = document.getElementById('today-btn');
     if (todayBtn) todayBtn.style.display = dateStr === today ? 'none' : 'flex';
-  }, 200);
+
+    // 페이드 인
+    if (wrap) {
+      wrap.classList.remove('fade-out');
+      wrap.classList.add('fade-in');
+    }
+  }, 180);
 }
 
 function goToday() {
-  const prevDate = currentDate;
-  const direction = prevDate > today ? 'right' : 'left';
-  selectDate(today, direction);
+  selectDate(today, today > currentDate ? 'left' : 'right');
 }
 
 // ══════════════════════════════════════════
@@ -3728,31 +3711,40 @@ function swipeTo(idx) {
 }
 
 function initSwipeGesture() {
-  let startX = 0, startY = 0, dragging = false;
+  let startX = 0, startY = 0, dragging = false, blocked = false;
   const container = document.getElementById('swipe-container');
-  
+
   container.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
     dragging = false;
+    // week-strip 위에서 시작한 터치는 페인 스와이프 차단
+    const strip = document.getElementById('week-strip');
+    blocked = strip ? strip.contains(e.target) : false;
   }, { passive: true });
-  
+
   container.addEventListener('touchmove', e => {
+    if (blocked) return;
     const dx = e.touches[0].clientX - startX;
     const dy = e.touches[0].clientY - startY;
-    if (!dragging && Math.abs(dx) > 12 && Math.abs(dy) < Math.abs(dx) * 0.8) {
-      dragging = true;
+    // 수직 이동이 수평보다 크면 스크롤로 판단, 페인 스와이프 안함
+    if (!dragging) {
+      if (Math.abs(dy) > Math.abs(dx)) { blocked = true; return; }
+      if (Math.abs(dx) > 16) dragging = true;
     }
   }, { passive: true });
-  
+
   container.addEventListener('touchend', e => {
-    if (!dragging) return;
+    if (!dragging || blocked) { dragging = false; blocked = false; return; }
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
-    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
+    // 임계값 상향: 80px 이상, 수평 비율 강화
+    if (Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx) * 0.4) {
+      dragging = false; blocked = false; return;
+    }
     if (dx < 0 && currentSwipePane < 2) swipeTo(currentSwipePane + 1);
     else if (dx > 0 && currentSwipePane > 0) swipeTo(currentSwipePane - 1);
-    dragging = false;
+    dragging = false; blocked = false;
   }, { passive: true });
 }
 
