@@ -633,6 +633,10 @@ body {
   transition: opacity .1s;
 }
 .week-day-col:active { opacity: .7; }
+.week-day-col.future {
+  opacity: 0.28;
+  pointer-events: none;
+}
 @media (min-width: 768px) {
   .week-day-col { width: 48px; }
 }
@@ -1295,14 +1299,16 @@ body {
   position: fixed; inset: 0; z-index: 50;
   background: var(--bg);
   flex-direction: column;
-  overflow-y: auto;
-  padding-bottom: calc(var(--tab-h) + 16px);
+  overflow: hidden;
 }
 /* 통계 내부 컨테이너 - 모든 자식 중앙 정렬 */
 .stats-inner {
   width: 100%;
   max-width: 800px;
   margin: 0 auto;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* stats is actually shown via tab button toggling visibility of swipe area, 
@@ -1940,6 +1946,7 @@ body {
 /* ────────────── SPINNER ────────────── */
 @keyframes galleryHintIn { from { transform:translateY(16px);opacity:0; } to { transform:translateY(0);opacity:1; } }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes editRowIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
 .spinner {
   display: inline-block;
   width: 14px; height: 14px;
@@ -2127,6 +2134,7 @@ body {
   padding: 10px 14px;
   display: flex; gap: 8px; align-items: center;
   flex-wrap: wrap;
+  animation: editRowIn 0.2s cubic-bezier(0.4,0,0.2,1) forwards;
 }
 .meal-edit-row input {
   width: 70px; padding: 6px;
@@ -3479,8 +3487,9 @@ function renderWeekStrip() {
     const isSelected = dateStr === currentDate;
     if (isSelected) selectedIdx = i;
 
+    const isFuture = dateStr > today;
     const col = document.createElement('div');
-    col.className = 'week-day-col';
+    col.className = 'week-day-col' + (isFuture ? ' future' : '');
     col.dataset.date = dateStr;
     col.dataset.idx = i;
     col.innerHTML = `
@@ -3636,9 +3645,19 @@ function initStripScroll(strip) {
 }
 
 function snapToCenter(strip, vibrate) {
-  const centerIdx = getCenterIdx(strip);
-  const col = strip.querySelectorAll('.week-day-col')[centerIdx];
+  let centerIdx = getCenterIdx(strip);
+  const cols = strip.querySelectorAll('.week-day-col');
+  let col = cols[centerIdx];
   if (!col) return;
+
+  // 미래 날짜로 snap되면 오늘로 되돌리기
+  if (col.dataset.date > today) {
+    for (let i = cols.length - 1; i >= 0; i--) {
+      if (cols[i].dataset.date <= today) { centerIdx = i; col = cols[i]; break; }
+    }
+    scrollStripToIdx(strip, centerIdx, true);
+  }
+
   scrollStripToIdx(strip, centerIdx, true);
   updateCenterHighlight(strip);
   const dateStr = col.dataset.date;
@@ -4037,6 +4056,10 @@ function parseAmountQty(amount) {
 }
 
 function showMealEdit(id, protein, name, curQty) {
+  // 다른 항목의 편집 창 모두 닫기
+  document.querySelectorAll('.meal-edit-row').forEach(el => {
+    if (el.id !== `meal-edit-${id}`) el.remove();
+  });
   const existing = document.getElementById(`meal-edit-${id}`);
   if (existing) { existing.remove(); return; }
   const item = document.getElementById(`meal-item-${id}`);
