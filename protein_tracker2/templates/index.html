@@ -3386,33 +3386,59 @@ function obSecondary() {
 
 function obFinish() {
   if (whySlideTimer) clearInterval(whySlideTimer);
-  // 온보딩 완료 표시
   localStorage.setItem('ob_done', '1');
   localStorage.setItem('ob_weight', obWeightUnit === 'kg' ? obWeight : Math.round(obWeight / 2.205));
   localStorage.setItem('ob_multiplier', (calcProteinGoal() / (obWeightUnit === 'kg' ? obWeight : Math.round(obWeight / 2.205))).toFixed(2));
   document.getElementById('onboarding-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
+
+  // 회원가입 흐름에서 온보딩을 거쳤으면 → 가입 폼으로 자동 전환
+  if (_returnToSignup) {
+    _returnToSignup = false;
+    if (!isSignupMode) _applySignupMode();
+  }
 }
 
 // ══════════════════════════════════════════
 //  AUTH
 // ══════════════════════════════════════════
 let isSignupMode = false;
+let _returnToSignup = false;
+
+function _applySignupMode() {
+  isSignupMode = true;
+  document.getElementById('auth-subtitle').textContent = '새 계정 만들기';
+  document.getElementById('auth-main-btn').textContent = '회원가입';
+  document.getElementById('auth-main-btn').onclick = doSignup;
+  document.getElementById('auth-sub-btn').textContent = '로그인으로';
+  document.getElementById('auth-toggle-text').innerHTML = '이미 계정이 있으신가요? <span onclick="toggleAuthMode()">로그인</span>';
+  const sf = document.getElementById('auth-signup-fields');
+  sf.style.display = 'flex'; sf.style.flexDirection = 'column'; sf.style.gap = '10px';
+  document.getElementById('auth-msg').textContent = '';
+}
+
+function _applyLoginMode() {
+  isSignupMode = false;
+  document.getElementById('auth-subtitle').textContent = '계정에 로그인하세요';
+  document.getElementById('auth-main-btn').textContent = '로그인';
+  document.getElementById('auth-main-btn').onclick = doLogin;
+  document.getElementById('auth-sub-btn').textContent = '회원가입';
+  document.getElementById('auth-toggle-text').innerHTML = '계정이 없으신가요? <span onclick="toggleAuthMode()">회원가입</span>';
+  document.getElementById('auth-signup-fields').style.display = 'none';
+  document.getElementById('auth-msg').textContent = '';
+}
 
 function toggleAuthMode() {
-  isSignupMode = !isSignupMode;
-  document.getElementById('auth-subtitle').textContent = isSignupMode ? '새 계정 만들기' : '계정에 로그인하세요';
-  document.getElementById('auth-main-btn').textContent = isSignupMode ? '회원가입' : '로그인';
-  document.getElementById('auth-main-btn').onclick = isSignupMode ? doSignup : doLogin;
-  document.getElementById('auth-sub-btn').textContent = isSignupMode ? '로그인으로' : '회원가입';
-  document.getElementById('auth-toggle-text').innerHTML = isSignupMode
-    ? '이미 계정이 있으신가요? <span onclick="toggleAuthMode()">로그인</span>'
-    : '계정이 없으신가요? <span onclick="toggleAuthMode()">회원가입</span>';
-  const sf = document.getElementById('auth-signup-fields');
-  sf.style.display = isSignupMode ? 'flex' : 'none';
-  sf.style.flexDirection = 'column';
-  sf.style.gap = '10px';
-  document.getElementById('auth-msg').textContent = '';
+  if (!isSignupMode) {
+    // 로그인 → 회원가입: 온보딩부터 시작
+    _returnToSignup = true;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('onboarding-screen').style.display = 'flex';
+    initOnboarding();
+  } else {
+    // 회원가입 → 로그인
+    _applyLoginMode();
+  }
 }
 
 function setAuthMsg(msg, isError) {
