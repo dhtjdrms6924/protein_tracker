@@ -599,15 +599,19 @@ body {
 .week-strip-wrap::after {
   content: '';
   position: absolute;
-  /* JS가 --box-left, --box-w 변수로 위치 조정 */
-  left: var(--box-left, calc(50% - 22px));
+  /* 항상 wrap 중앙 고정 — 리사이즈해도 정확히 맞음 */
+  left: 50%;
+  transform: translateX(-50%);
   top: 2px;
-  width: var(--box-w, 44px);
+  width: var(--box-w, calc((100vw - 40px) / 7));
   height: calc(100% - 4px);
   background: rgba(142,142,147,0.15);
   border-radius: 12px;
   pointer-events: none;
   z-index: 2;
+}
+@media (min-width: 768px) {
+  .week-strip-wrap::after { width: var(--box-w, 48px); }
 }
 
 .week-strip {
@@ -3556,17 +3560,9 @@ function scrollStripToIdx(strip, idx, smooth) {
 function updateBoxPosition(strip) {
   const wrap = strip.parentElement;
   if (!wrap) return;
-  const colW = getColW(strip);
-  const visW = getStripVisibleW(strip);
-  // strip 안에서 가시 영역 중앙 위치
-  // strip은 overflow:auto이고 wrap 안에 있음
-  // strip의 실제 화면 left 좌표
-  const stripRect = strip.getBoundingClientRect();
-  const centerScreen = stripRect.left + visW / 2;
-  const wrapRect = wrap.getBoundingClientRect();
-  const boxLeft = centerScreen - wrapRect.left - colW / 2;
-  wrap.style.setProperty('--box-left', boxLeft + 'px');
-  wrap.style.setProperty('--box-w', colW + 'px');
+  // left는 CSS left:50% transform:translateX(-50%)으로 항상 중앙 고정
+  // 너비만 실제 컬럼 크기로 맞춤
+  wrap.style.setProperty('--box-w', getColW(strip) + 'px');
 }
 
 function getCenterIdx(strip) {
