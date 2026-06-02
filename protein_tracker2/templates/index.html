@@ -2730,12 +2730,40 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
 
     <!-- Pane 1: Album -->
     <div class="swipe-pane" id="pane-album">
-      <div class="album-topbar">
-        <div class="album-topbar-title">앨범</div>
+
+      <!-- 일반 유저: 앨범 -->
+      <div id="pane1-album-view">
+        <div class="album-topbar">
+          <div class="album-topbar-title">앨범</div>
+        </div>
+        <div id="album-content">
+          <div class="album-empty" id="album-empty">아직 업로드한 사진이 없어요.</div>
+        </div>
       </div>
-      <div id="album-content">
-        <div class="album-empty" id="album-empty">아직 업로드한 사진이 없어요.</div>
+
+      <!-- 관리자: DB 관리 -->
+      <div id="pane1-admin-view" style="display:none;">
+        <div class="album-topbar">
+          <div class="album-topbar-title">DB 관리</div>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:16px;">
+          <div style="background:var(--card-bg,#fff);border-radius:14px;padding:16px;border:1px solid var(--separator,#e5e5ea);">
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--text-1,#000);">
+              AI 검색 캐시 <span id="cache-count" style="font-size:13px;font-weight:400;color:var(--text-3,#8e8e93);"></span>
+            </div>
+            <div style="font-size:12px;color:var(--text-3,#8e8e93);margin-bottom:12px;">수정 후 "DB 추가" 버튼으로 정식 DB에 등록할 수 있어요</div>
+            <div id="cache-list"></div>
+          </div>
+          <div style="background:var(--card-bg,#fff);border-radius:14px;padding:16px;border:1px solid var(--separator,#e5e5ea);">
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--text-1,#000);">
+              커스텀 음식 DB <span id="custom-count" style="font-size:13px;font-weight:400;color:var(--text-3,#8e8e93);"></span>
+            </div>
+            <div style="font-size:12px;color:var(--text-3,#8e8e93);margin-bottom:12px;">승격된 음식은 모든 유저의 일반 검색에서 바로 나타나요</div>
+            <div id="custom-list"></div>
+          </div>
+        </div>
       </div>
+
       <div style="height: calc(var(--tab-h) + 20px);"></div>
     </div><!-- /pane-album -->
 
@@ -2820,7 +2848,7 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
   <div id="pane-tab-bar">
     <div id="pane-tabs">
       <button class="pane-tab active" id="ptab-0" onclick="swipeTo(0); hideStats();">기록</button>
-      <button class="pane-tab" id="ptab-1" onclick="swipeTo(1);">앨범</button>
+      <button class="pane-tab" id="ptab-1" onclick="swipeTo(1);"><span id="ptab-1-label">앨범</span></button>
       <button class="pane-tab" id="ptab-2" onclick="swipeTo(2);">소셜</button>
     </div>
   </div>
@@ -2835,11 +2863,14 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
       <span class="tab-label">기록</span>
     </div>
     <div class="tab-item" id="tab-album" onclick="swipeTo(1)">
-      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg id="tab-album-svg-album" class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
         <polyline points="21 15 16 10 5 21"/>
       </svg>
-      <span class="tab-label">앨범</span>
+      <svg id="tab-album-svg-admin" class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+        <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
+      </svg>
+      <span class="tab-label" id="tab-album-label">앨범</span>
     </div>
     <div class="tab-plus-wrap">
       <button class="tab-plus-btn" onclick="openAddSheet()" aria-label="음식 추가">
@@ -3054,19 +3085,7 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
     </div>
 
     <!-- Admin (hidden) -->
-    <div id="admin-section" style="display:none;">
-      <div class="settings-section-label">관리자</div>
-      <div class="settings-card">
-        <div class="admin-card">
-          <div style="font-size:15px;font-weight:700;margin-bottom:10px;">AI 검색 캐시 <span id="cache-count"></span></div>
-          <div id="cache-list"></div>
-        </div>
-        <div class="admin-card">
-          <div style="font-size:15px;font-weight:700;margin-bottom:10px;">커스텀 음식 DB <span id="custom-count"></span></div>
-          <div id="custom-list"></div>
-        </div>
-      </div>
-    </div>
+    <div id="admin-section" style="display:none;"></div>
 
     <div style="height:48px;"></div>
   </div>
@@ -3690,7 +3709,33 @@ function applyUserData(userData) {
 
   // 관리자 섹션 표시
   const adminSection = document.getElementById('admin-section');
-  if (adminSection) adminSection.style.display = userData.is_admin ? 'block' : 'none';
+  if (adminSection) adminSection.style.display = 'none'; // 설정 화면 admin 섹션 숨김 (탭으로 이동)
+
+  // 관리자 전역 플래그 + 탭 UI 전환
+  window._isAdmin = !!userData.is_admin;
+  if (userData.is_admin) {
+    // pane1 콘텐츠
+    const v = document.getElementById('pane1-album-view');
+    const a = document.getElementById('pane1-admin-view');
+    if (v) v.style.display = 'none';
+    if (a) a.style.display = 'block';
+    // 탭 라벨
+    const p = document.getElementById('ptab-1-label');
+    const l = document.getElementById('tab-album-label');
+    if (p) p.textContent = 'DB 관리';
+    if (l) l.textContent = 'DB 관리';
+    // 아이콘
+    const si = document.getElementById('tab-album-svg-album');
+    const sa = document.getElementById('tab-album-svg-admin');
+    if (si) si.style.display = 'none';
+    if (sa) sa.style.display = 'block';
+    // 사이드바
+    const dn = document.getElementById('dsnav-album');
+    if (dn) {
+      dn.querySelector('.ds-nav-icon').textContent = '🗄️';
+      dn.querySelector('.ds-nav-label').textContent = 'DB 관리';
+    }
+  }
 }
 
 // ══════════════════════════════════════════
@@ -4085,7 +4130,10 @@ function swipeTo(idx) {
     if (el) el.classList.toggle('active', i === idx);
   });
 
-  if (idx === 1) loadAlbum();
+  if (idx === 1) {
+    if (window._isAdmin) loadAdminData();
+    else loadAlbum();
+  }
   if (idx === 3) loadAnalysis();
 }
 
