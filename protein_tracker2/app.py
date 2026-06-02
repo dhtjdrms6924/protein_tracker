@@ -1404,6 +1404,26 @@ def api_admin_custom_delete():
     conn.close()
     return jsonify({"status": "ok"})
 
+@app.route("/api/admin/custom/update", methods=["POST"])
+def api_admin_custom_update():
+    """커스텀 DB 항목 수정"""
+    if not require_admin():
+        return jsonify({"error": "관리자 권한이 필요합니다."}), 403
+    data = request.json
+    custom_id = data.get("custom_id")
+    name = data.get("name", "").strip()
+    protein_g = data.get("protein_g", 0)
+    energy_kcal = data.get("energy_kcal", 0)
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE custom_foods SET name=%s, protein_g=%s, energy_kcal=%s WHERE id=%s
+    """, (name, protein_g, energy_kcal, custom_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "ok"})
+
 @app.route("/api/admin/set-admin", methods=["POST"])
 def api_admin_set():
     """최초 1회 — DB에 관리자가 없을 때만 설정 가능"""

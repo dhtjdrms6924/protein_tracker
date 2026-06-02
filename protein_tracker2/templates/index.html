@@ -6071,16 +6071,58 @@ async function loadCustomList() {
   if (!Array.isArray(res)) { container.innerHTML = '<div style="color:var(--red);font-size:14px;">권한 없음</div>'; return; }
   if (countEl) countEl.textContent = `(${res.length}개)`;
   if (!res.length) { container.innerHTML = '<div style="color:var(--text-3);font-size:14px;">없음</div>'; return; }
-  container.innerHTML = res.map(c => `<div style="padding:10px 0;border-bottom:1px solid var(--separator);">
-    <div style="display:flex;justify-content:space-between;">
-      <div><div style="font-weight:600;font-size:14px;">${c.name}</div><div style="font-size:13px;color:var(--text-3);">단백질 ${c.protein_g}g · ${c.energy_kcal}kcal</div></div>
-      <button onclick="deleteCustom(${c.id})" style="background:var(--red-bg);color:var(--red);border:1px solid #fecaca;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:inherit;">삭제</button>
-    </div>
-  </div>`).join('');
+  container.innerHTML = res.map(c => `
+    <div id="custom-row-${c.id}" style="padding:10px 0;border-bottom:1px solid var(--separator);">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-weight:600;font-size:14px;">${c.name}</div>
+          <div style="font-size:13px;color:var(--text-3);">단백질 ${c.protein_g}g · ${c.energy_kcal}kcal</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="toggleCustomEdit(${c.id})" style="background:var(--bg-input,#f2f2f7);color:var(--text-2,#3c3c43);border:1px solid var(--separator,#e5e5ea);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:inherit;">수정</button>
+          <button onclick="deleteCustom(${c.id})" style="background:var(--red-bg,#fff1f0);color:var(--red,#ff3b30);border:1px solid #fecaca;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:inherit;">삭제</button>
+        </div>
+      </div>
+      <div id="custom-edit-${c.id}" style="display:none;margin-top:8px;background:var(--bg-input,#f2f2f7);border-radius:8px;padding:10px;">
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <input id="custom-name-${c.id}" value="${c.name}" placeholder="음식명" style="padding:6px 10px;border-radius:6px;border:1px solid var(--separator);font-size:13px;font-family:inherit;background:var(--bg-card);color:var(--text-1);">
+          <div style="display:flex;gap:6px;">
+            <input id="custom-protein-${c.id}" type="number" value="${c.protein_g}" placeholder="단백질(g)" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--separator);font-size:13px;font-family:inherit;background:var(--bg-card);color:var(--text-1);">
+            <input id="custom-kcal-${c.id}" type="number" value="${c.energy_kcal}" placeholder="칼로리(kcal)" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--separator);font-size:13px;font-family:inherit;background:var(--bg-card);color:var(--text-1);">
+          </div>
+          <button onclick="saveCustomEdit(${c.id})"
+            style="background:#007aff;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px;font-family:inherit;">저장</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleCustomEdit(id) {
+  const el = document.getElementById(`custom-edit-${id}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveCustomEdit(id) {
+  const name = document.getElementById(`custom-name-${id}`)?.value.trim();
+  const protein_g = parseFloat(document.getElementById(`custom-protein-${id}`)?.value) || 0;
+  const energy_kcal = parseFloat(document.getElementById(`custom-kcal-${id}`)?.value) || 0;
+  if (!name) return alert('음식명을 입력하세요.');
+  await fetch('/api/admin/custom/update', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({custom_id: id, name, protein_g, energy_kcal})
+  });
+  await loadCustomList();
 }
 
 async function promoteToCustom(id) {
-  await fetch(`/api/admin/promote`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: id})});
+  await fetch('/api/admin/promote', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({cache_id: id})
+  });
+  // DB 추가 후 캐시에서 삭제
+  await fetch(`/api/admin/cache/delete?id=${id}`, {method: 'DELETE'});
   await loadAdminData();
 }
 
