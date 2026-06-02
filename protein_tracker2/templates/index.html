@@ -3707,29 +3707,24 @@ function applyUserData(userData) {
     goalProtein = parseInt(localStorage.getItem('protein_goal'));
   }
 
-  // 관리자 섹션 표시
-  const adminSection = document.getElementById('admin-section');
-  if (adminSection) adminSection.style.display = 'none'; // 설정 화면 admin 섹션 숨김 (탭으로 이동)
-
   // 관리자 전역 플래그 + 탭 UI 전환
   window._isAdmin = !!userData.is_admin;
+  const adminSection = document.getElementById('admin-section');
+  if (adminSection) adminSection.style.display = 'none';
+
   if (userData.is_admin) {
-    // pane1 콘텐츠
     const v = document.getElementById('pane1-album-view');
     const a = document.getElementById('pane1-admin-view');
     if (v) v.style.display = 'none';
     if (a) a.style.display = 'block';
-    // 탭 라벨
     const p = document.getElementById('ptab-1-label');
     const l = document.getElementById('tab-album-label');
     if (p) p.textContent = 'DB 관리';
     if (l) l.textContent = 'DB 관리';
-    // 아이콘
     const si = document.getElementById('tab-album-svg-album');
     const sa = document.getElementById('tab-album-svg-admin');
     if (si) si.style.display = 'none';
     if (sa) sa.style.display = 'block';
-    // 사이드바
     const dn = document.getElementById('dsnav-album');
     if (dn) {
       dn.querySelector('.ds-nav-icon').textContent = '🗄️';
@@ -5999,18 +5994,73 @@ async function loadCacheList() {
   if (!Array.isArray(res)) { container.innerHTML = '<div style="color:var(--red);font-size:14px;">권한 없음</div>'; return; }
   if (countEl) countEl.textContent = `(${res.length}개)`;
   if (!res.length) { container.innerHTML = '<div style="color:var(--text-3);font-size:14px;">캐시 없음</div>'; return; }
-  container.innerHTML = res.map(c => `<div style="padding:10px 0;border-bottom:1px solid var(--separator);">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-      <div>
-        <div style="font-weight:600;font-size:14px;">${c.food_name}</div>
-        <div style="font-size:13px;color:var(--text-3);">단백질 ${c.protein_g}g · ${c.energy_kcal}kcal · ${c.search_count}회</div>
+  container.innerHTML = res.map(c => `
+    <div id="cache-row-${c.id}" style="padding:10px 0;border-bottom:1px solid var(--separator);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:14px;" id="cache-name-display-${c.id}">${c.food_name}</div>
+          <div style="font-size:13px;color:var(--text-3);">
+            단백질 <span id="cache-protein-display-${c.id}">${c.protein_g}</span>g ·
+            <span id="cache-kcal-display-${c.id}">${c.energy_kcal}</span>kcal ·
+            ${c.search_count}회
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button onclick="toggleCacheEdit(${c.id})" style="background:var(--bg-input,#f2f2f7);color:var(--text-2,#3c3c43);border:1px solid var(--separator,#e5e5ea);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:inherit;">수정</button>
+          <button onclick="promoteToCustom(${c.id})" style="background:#e8f8ec;color:#1d7a3c;border:1px solid #a3e6b3;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:inherit;">DB 추가</button>
+          <button onclick="deleteCache(${c.id})" style="background:var(--red-bg,#fff1f0);color:var(--red,#ff3b30);border:1px solid #fecaca;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:inherit;">삭제</button>
+        </div>
       </div>
-      <div style="display:flex;gap:6px;">
-        <button onclick="promoteToCustom(${c.id})" style="background:#e8f8ec;color:#1d7a3c;border:1px solid #a3e6b3;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:inherit;">DB 추가</button>
-        <button onclick="deleteCache(${c.id})" style="background:var(--red-bg);color:var(--red);border:1px solid #fecaca;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:inherit;">삭제</button>
+      <!-- 수정 폼 (기본 숨김) -->
+      <div id="cache-edit-${c.id}" style="display:none;margin-top:10px;background:var(--bg-alt,#f8f8f8);border-radius:10px;padding:12px;border:1px solid var(--separator,#e5e5ea);">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;">
+          <div style="display:flex;flex-direction:column;gap:3px;flex:2;min-width:120px;">
+            <label style="font-size:11px;color:var(--text-3);">음식명</label>
+            <input id="cache-edit-name-${c.id}" value="${c.food_name.replace(/"/g,'&quot;')}"
+              style="padding:7px 10px;border:1px solid var(--separator,#e5e5ea);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:var(--text-1,#000);">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:70px;">
+            <label style="font-size:11px;color:var(--text-3);">단백질(g)</label>
+            <input id="cache-edit-protein-${c.id}" type="number" value="${c.protein_g}" step="0.1"
+              style="padding:7px 10px;border:1px solid var(--separator,#e5e5ea);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:var(--text-1,#000);">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:70px;">
+            <label style="font-size:11px;color:var(--text-3);">칼로리(kcal)</label>
+            <input id="cache-edit-kcal-${c.id}" type="number" value="${c.energy_kcal}" step="1"
+              style="padding:7px 10px;border:1px solid var(--separator,#e5e5ea);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:var(--text-1,#000);">
+          </div>
+          <button onclick="saveCacheEdit(${c.id})"
+            style="padding:7px 16px;background:#007aff;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;flex-shrink:0;">
+            저장
+          </button>
+        </div>
       </div>
     </div>
-  </div>`).join('');
+  `).join('');
+}
+
+function toggleCacheEdit(id) {
+  const el = document.getElementById(`cache-edit-${id}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveCacheEdit(id) {
+  const name = document.getElementById(`cache-edit-name-${id}`).value.trim();
+  const protein = parseFloat(document.getElementById(`cache-edit-protein-${id}`).value) || 0;
+  const kcal = parseFloat(document.getElementById(`cache-edit-kcal-${id}`).value) || 0;
+  if (!name) return;
+  await fetch('/api/admin/cache/update', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ cache_id: id, name, protein_g: protein, energy_kcal: kcal })
+  });
+  // 화면 즉시 반영
+  const nd = document.getElementById(`cache-name-display-${id}`);
+  const pd = document.getElementById(`cache-protein-display-${id}`);
+  const kd = document.getElementById(`cache-kcal-display-${id}`);
+  if (nd) nd.textContent = name;
+  if (pd) pd.textContent = protein;
+  if (kd) kd.textContent = kcal;
+  document.getElementById(`cache-edit-${id}`).style.display = 'none';
 }
 
 async function loadCustomList() {
