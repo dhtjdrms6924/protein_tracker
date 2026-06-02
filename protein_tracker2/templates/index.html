@@ -6080,17 +6080,17 @@ async function loadCustomList() {
 }
 
 async function promoteToCustom(id) {
-  await fetch(`/api/admin/promote/${id}`, {method:'POST'});
+  await fetch(`/api/admin/promote`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: id})});
   await loadAdminData();
 }
 
 async function deleteCache(id) {
-  await fetch(`/api/admin/cache/${id}`, {method:'DELETE'});
+  await fetch(`/api/admin/cache/delete?id=${id}`, {method:'DELETE'});
   await loadCacheList();
 }
 
 async function deleteCustom(id) {
-  await fetch(`/api/admin/custom/${id}`, {method:'DELETE'});
+  await fetch(`/api/admin/custom/delete?id=${id}`, {method:'DELETE'});
   await loadCustomList();
 }
 
