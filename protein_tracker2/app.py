@@ -9,6 +9,24 @@ from psycopg2.extras import RealDictCursor
 import sqlite3
 import cloudinary
 import cloudinary.uploader
+import firebase_admin
+from firebase_admin import credentials, messaging as fcm_messaging
+
+# Firebase Admin 초기화
+_firebase_initialized = False
+def init_firebase():
+    global _firebase_initialized
+    if _firebase_initialized:
+        return
+    cred_path = os.environ.get("FIREBASE_CREDENTIALS", "firebase-adminsdk.json")
+    if os.path.exists(cred_path):
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+        _firebase_initialized = True
+    else:
+        print("⚠️  Firebase credentials 파일 없음 — 푸시 알림 비활성화")
+
+init_firebase()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "protein-tracker-secret-2024")
@@ -156,6 +174,28 @@ def init_db():
         created_at TEXT
     )""")
 
+    # FCM 푸시 토큰 테이블
+    cur.execute("""CREATE TABLE IF NOT EXISTS push_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        token TEXT NOT NULL,
+        platform TEXT DEFAULT 'web',
+        created_at TEXT,
+        UNIQUE(user_id, token)
+    )""")
+
+    # 알림 설정 테이블
+    cur.execute("""CREATE TABLE IF NOT EXISTS notification_settings (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL UNIQUE,
+        enabled BOOLEAN DEFAULT FALSE,
+        remind_enabled BOOLEAN DEFAULT TRUE,
+        remind_times TEXT DEFAULT '[]',
+        weekly_report BOOLEAN DEFAULT TRUE,
+        smart_push BOOLEAN DEFAULT TRUE,
+        updated_at TEXT
+    )""")
+
     conn.commit()
     cur.close()
     conn.close()
@@ -164,7 +204,318 @@ init_db()
 
 
 # ─────────────────────────────────────────
-# 음식 DB 검색 (food_nutrition SQLite 유지)
+# FCM 푸시 알림 헬퍼
+# ─────────────────────────────────────────
+def send_push_to_user(user_id, title, body, data=None):
+    """user_id의 모든 등록된 FCM 토큰에 푸시 발송"""
+    if not _firebase_initialized:
+        return
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT token FROM push_tokens WHERE user_id=%s", (user_id,))
+        tokens = [r["token"] for r in cur.fetchall()]
+        cur.close()
+        conn.close()
+        if not tokens:
+            return
+        for token in tokens:
+            try:
+                msg = fcm_messaging.Message(
+                    notification=fcm_messaging.Notification(title=title, body=body),
+                    data=data or {},
+                    token=token,
+                    android=fcm_messaging.AndroidConfig(priority="high"),
+                    apns=fcm_messaging.APNSConfig(
+                        payload=fcm_messaging.APNSPayload(
+                            aps=fcm_messaging.Aps(sound="default")
+                        )
+                    )
+                )
+                fcm_messaging.send(msg)
+            except Exception as e:
+                print(f"FCM 발송 실패 (token={token[:20]}...): {e}")
+                # 만료된 토큰 삭제
+                if "registration-token-not-registered" in str(e) or "invalid-argument" in str(e):
+                    try:
+                        conn2 = get_conn()
+                        cur2 = conn2.cursor()
+                        cur2.execute("DELETE FROM push_tokens WHERE token=%s", (token,))
+                        conn2.commit()
+                        cur2.close()
+                        conn2.close()
+                    except:
+                        pass
+    except Exception as e:
+        print(f"send_push_to_user 오류: {e}")
+
+
+def get_notification_settings(user_id):
+    """유저의 알림 설정 반환"""
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM notification_settings WHERE user_id=%s", (user_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row:
+            d = dict(row)
+            try:
+                d["remind_times"] = json.loads(d.get("remind_times") or "[]")
+            except:
+                d["remind_times"] = []
+            return d
+        return {"enabled": False, "remind_enabled": True, "remind_times": [],
+                "weekly_report": True, "smart_push": True}
+    except Exception as e:
+        print(f"알림 설정 조회 실패: {e}")
+        return {}
+
+
+# ─────────────────────────────────────────
+# 알림 API
+# ─────────────────────────────────────────
+@app.route("/api/push/register", methods=["POST"])
+def api_push_register():
+    """FCM 토큰 등록"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인 필요"}), 401
+    data = request.json
+    token = data.get("token", "").strip()
+    platform = data.get("platform", "web")
+    if not token:
+        return jsonify({"error": "토큰 없음"}), 400
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO push_tokens (user_id, token, platform, created_at)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (user_id, token) DO UPDATE SET platform=EXCLUDED.platform, created_at=EXCLUDED.created_at
+        """, (user_id, token, platform, datetime.now().isoformat()))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/push/unregister", methods=["POST"])
+def api_push_unregister():
+    """FCM 토큰 삭제 (알림 끄기)"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인 필요"}), 401
+    token = request.json.get("token", "")
+    conn = get_conn()
+    cur = conn.cursor()
+    if token:
+        cur.execute("DELETE FROM push_tokens WHERE user_id=%s AND token=%s", (user_id, token))
+    else:
+        cur.execute("DELETE FROM push_tokens WHERE user_id=%s", (user_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/notification/settings", methods=["GET", "POST"])
+def api_notification_settings():
+    """알림 설정 조회/저장"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인 필요"}), 401
+    if request.method == "GET":
+        return jsonify(get_notification_settings(user_id))
+    data = request.json
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO notification_settings
+            (user_id, enabled, remind_enabled, remind_times, weekly_report, smart_push, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (user_id) DO UPDATE SET
+            enabled=EXCLUDED.enabled,
+            remind_enabled=EXCLUDED.remind_enabled,
+            remind_times=EXCLUDED.remind_times,
+            weekly_report=EXCLUDED.weekly_report,
+            smart_push=EXCLUDED.smart_push,
+            updated_at=EXCLUDED.updated_at
+    """, (
+        user_id,
+        data.get("enabled", False),
+        data.get("remind_enabled", True),
+        json.dumps(data.get("remind_times", [])),
+        data.get("weekly_report", True),
+        data.get("smart_push", True),
+        datetime.now().isoformat()
+    ))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/notification/send-smart", methods=["POST"])
+def api_send_smart_notify():
+    """스마트 알림 즉시 발송 (테스트 또는 식사 기록 후 자동 호출)"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인 필요"}), 401
+    settings = get_notification_settings(user_id)
+    if not settings.get("enabled") or not settings.get("smart_push"):
+        return jsonify({"skipped": True})
+
+    conn = get_conn()
+    cur = conn.cursor()
+    today = datetime.now().strftime("%Y-%m-%d")
+    cur.execute("SELECT SUM(protein_g) as total FROM meals WHERE user_id=%s AND date=%s", (user_id, today))
+    row = cur.fetchone()
+    cur.execute("SELECT weight, multiplier FROM users WHERE id=%s", (user_id,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    total = float(row["total"] or 0) if row else 0
+    goal = float(user["weight"] or 0) * float(user["multiplier"] or 1.5) if user else 0
+    remaining = max(0, goal - total)
+
+    if remaining <= 0:
+        send_push_to_user(user_id, "🎉 오늘 목표 달성!", f"오늘 단백질 목표 {goal:.0f}g를 달성했어요!")
+    else:
+        import datetime as dt
+        hour = dt.datetime.now().hour
+        if 14 <= hour <= 16:
+            timing = "운동 전 1~2시간"
+        elif 18 <= hour <= 20:
+            timing = "운동 직후"
+        else:
+            timing = "지금"
+        send_push_to_user(
+            user_id, "💪 단백질 섭취 타이밍!",
+            f"{timing}이 프로틴 섭취 최적 시간이에요. 약 {remaining:.0f}g 남았어요.",
+            {"type": "smart_push", "remaining": str(remaining)}
+        )
+    return jsonify({"status": "ok", "remaining": remaining})
+
+
+@app.route("/api/notification/weekly-report", methods=["POST"])
+def api_weekly_report_now():
+    """주간 리포트 즉시 발송 (스케줄러 또는 테스트용)"""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "로그인 필요"}), 401
+    _send_weekly_report(user_id)
+    return jsonify({"status": "ok"})
+
+
+def _send_weekly_report(user_id):
+    """주간 리포트 계산 및 발송"""
+    try:
+        settings = get_notification_settings(user_id)
+        if not settings.get("enabled") or not settings.get("weekly_report"):
+            return
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT date, SUM(protein_g) as total
+            FROM meals WHERE user_id=%s
+              AND date >= (CURRENT_DATE - INTERVAL '7 days')::TEXT
+            GROUP BY date ORDER BY date
+        """, (user_id,))
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.execute("SELECT weight, multiplier, nickname FROM users WHERE id=%s", (user_id,))
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        goal = float(user["weight"] or 0) * float(user["multiplier"] or 1.5) if user else 0
+        if not rows:
+            return
+        avg = sum(float(r["total"]) for r in rows) / len(rows)
+        days_met = sum(1 for r in rows if float(r["total"]) >= goal)
+        total_days = len(rows)
+
+        if days_met >= 5:
+            msg = f"이번 주 {days_met}일 목표 달성! 🔥 평균 {avg:.0f}g 섭취했어요. 훌륭해요!"
+        elif days_met >= 3:
+            msg = f"이번 주 {days_met}/{total_days}일 달성. 평균 {avg:.0f}g. 조금만 더 노력해봐요!"
+        else:
+            short = goal - avg
+            msg = f"이번 주 평균 {avg:.0f}g 섭취. 목표까지 {short:.0f}g 부족해요. 프로틴을 챙겨보세요! 💪"
+
+        send_push_to_user(user_id, "📊 주간 단백질 리포트", msg, {"type": "weekly_report"})
+    except Exception as e:
+        print(f"주간 리포트 발송 실패 (user {user_id}): {e}")
+
+
+# ─────────────────────────────────────────
+# 알림 스케줄러 (앱 시작 시 백그라운드 실행)
+# ─────────────────────────────────────────
+def start_notification_scheduler():
+    import threading
+    import time as _time
+    import datetime as dt
+
+    def scheduler_loop():
+        print("🔔 알림 스케줄러 시작")
+        while True:
+            try:
+                now = dt.datetime.now()
+                current_time = now.strftime("%H:%M")
+                weekday = now.weekday()  # 0=월 6=일
+
+                conn = get_conn()
+                cur = conn.cursor()
+                cur.execute("SELECT user_id FROM notification_settings WHERE enabled=TRUE")
+                users = [r["user_id"] for r in cur.fetchall()]
+                cur.close()
+                conn.close()
+
+                for uid in users:
+                    s = get_notification_settings(uid)
+                    if not s.get("enabled"):
+                        continue
+
+                    # ① 설정된 시간 알림
+                    if s.get("remind_enabled"):
+                        for t in s.get("remind_times", []):
+                            if t == current_time:
+                                conn2 = get_conn()
+                                cur2 = conn2.cursor()
+                                today = now.strftime("%Y-%m-%d")
+                                cur2.execute("SELECT SUM(protein_g) as total FROM meals WHERE user_id=%s AND date=%s", (uid, today))
+                                row = cur2.fetchone()
+                                cur2.execute("SELECT weight, multiplier FROM users WHERE id=%s", (uid,))
+                                user = cur2.fetchone()
+                                cur2.close()
+                                conn2.close()
+                                total = float(row["total"] or 0) if row else 0
+                                goal = float(user["weight"] or 0) * float(user["multiplier"] or 1.5) if user else 0
+                                remaining = max(0, goal - total)
+                                if remaining > 0:
+                                    send_push_to_user(uid, "⏰ 단백질 섭취 시간!",
+                                        f"아직 {remaining:.0f}g 남았어요. 지금 프로틴을 챙겨보세요!",
+                                        {"type": "remind"})
+
+                    # ② 주간 리포트 (매주 일요일 오전 9시)
+                    if s.get("weekly_report") and weekday == 6 and current_time == "09:00":
+                        _send_weekly_report(uid)
+
+            except Exception as e:
+                print(f"스케줄러 오류: {e}")
+
+            _time.sleep(60)  # 1분마다 체크
+
+    t = threading.Thread(target=scheduler_loop, daemon=True)
+    t.start()
+
+start_notification_scheduler()
+
+
 # ─────────────────────────────────────────
 def find_food_in_db(search_keyword):
     """
@@ -530,6 +881,12 @@ def api_change_password():
 def index():
     return render_template("index.html")
 
+@app.route("/firebase-messaging-sw.js")
+def firebase_sw():
+    from flask import send_from_directory
+    return send_from_directory(app.root_path, "firebase-messaging-sw.js",
+                               mimetype="application/javascript")
+
 @app.route("/api/search")
 def api_search():
     q = request.args.get("q", "").strip()
@@ -747,6 +1104,38 @@ def api_analyze():
             "details": str(e)
         }), 500
 
+def _maybe_send_smart_push(user_id):
+    """식사 기록 후 스마트 알림 발송 (30분 내 중복 방지)"""
+    try:
+        import datetime as dt
+        settings = get_notification_settings(user_id)
+        if not settings.get("enabled") or not settings.get("smart_push"):
+            return
+        conn = get_conn()
+        cur = conn.cursor()
+        today = dt.datetime.now().strftime("%Y-%m-%d")
+        cur.execute("SELECT SUM(protein_g) as total FROM meals WHERE user_id=%s AND date=%s", (user_id, today))
+        row = cur.fetchone()
+        cur.execute("SELECT weight, multiplier FROM users WHERE id=%s", (user_id,))
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
+        total = float(row["total"] or 0) if row else 0
+        goal = float(user["weight"] or 0) * float(user["multiplier"] or 1.5) if user else 0
+        remaining = max(0, goal - total)
+        hour = dt.datetime.now().hour
+        if remaining <= 0:
+            send_push_to_user(user_id, "🎉 오늘 목표 달성!", f"오늘 단백질 목표 {goal:.0f}g를 달성했어요!")
+        elif remaining < goal * 0.3:
+            send_push_to_user(user_id, "💪 거의 다 왔어요!", f"목표까지 {remaining:.0f}g만 더! 프로틴 한 스쿱이면 충분해요.")
+        elif 14 <= hour <= 16:
+            send_push_to_user(user_id, "🏋️ 운동 전 최적 타이밍!", f"지금 프로틴 {remaining:.0f}g 중 일부를 섭취하면 운동 효과 UP!")
+        elif 19 <= hour <= 21:
+            send_push_to_user(user_id, "🌙 취침 전 단백질 체크", f"오늘 {remaining:.0f}g 남았어요. 카제인 프로틴이 있다면 지금이 좋아요.")
+    except Exception as e:
+        print(f"스마트 푸시 오류: {e}")
+
+
 @app.route("/api/meals", methods=["GET", "POST", "DELETE"])
 def api_meals():
     user_id = session.get("user_id")
@@ -766,6 +1155,9 @@ def api_meals():
         conn.commit()
         cur.close()
         conn.close()
+        # 식사 기록 후 스마트 알림 (비동기)
+        import threading
+        threading.Thread(target=_maybe_send_smart_push, args=(user_id,), daemon=True).start()
         return jsonify({"status": "ok"})
     if request.method == "DELETE":
         meal_id = request.args.get("id")
@@ -1399,26 +1791,6 @@ def api_admin_custom_delete():
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("DELETE FROM custom_foods WHERE id=%s", (custom_id,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({"status": "ok"})
-
-@app.route("/api/admin/custom/update", methods=["POST"])
-def api_admin_custom_update():
-    """커스텀 DB 항목 수정"""
-    if not require_admin():
-        return jsonify({"error": "관리자 권한이 필요합니다."}), 403
-    data = request.json
-    custom_id = data.get("custom_id")
-    name = data.get("name", "").strip()
-    protein_g = data.get("protein_g", 0)
-    energy_kcal = data.get("energy_kcal", 0)
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        UPDATE custom_foods SET name=%s, protein_g=%s, energy_kcal=%s WHERE id=%s
-    """, (name, protein_g, energy_kcal, custom_id))
     conn.commit()
     cur.close()
     conn.close()

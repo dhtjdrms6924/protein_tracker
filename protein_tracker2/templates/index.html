@@ -3028,6 +3028,85 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
       </div>
     </div>
 
+    <!-- 알림 섹션 -->
+    <div class="settings-section-label">알림</div>
+    <div class="settings-card">
+      <div class="settings-row" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="settings-row-icon">🔔</div>
+          <div class="settings-row-text">
+            <div class="settings-row-label">알림 받기</div>
+            <div class="settings-row-sub" id="notif-main-sub">꺼짐</div>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notif-main-toggle" onchange="onNotifMainToggle(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- 알림 세부 설정 (알림 켜야 보임) -->
+    <div id="notif-detail-section" style="display:none;">
+      <div class="settings-card" style="margin-top:0;">
+
+        <!-- 스마트 알림 -->
+        <div class="settings-row" style="justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="settings-row-icon">🧠</div>
+            <div class="settings-row-text">
+              <div class="settings-row-label">스마트 알림</div>
+              <div class="settings-row-sub">식사 기록 후 최적 섭취 타이밍 안내</div>
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notif-smart-toggle" onchange="saveNotifSettings()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- 주간 리포트 -->
+        <div class="settings-row" style="justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="settings-row-icon">📊</div>
+            <div class="settings-row-text">
+              <div class="settings-row-label">주간 리포트</div>
+              <div class="settings-row-sub">매주 일요일 오전 9시</div>
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notif-weekly-toggle" onchange="saveNotifSettings()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- 리마인더 -->
+        <div class="settings-row" style="justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="settings-row-icon">⏰</div>
+            <div class="settings-row-text">
+              <div class="settings-row-label">시간 리마인더</div>
+              <div class="settings-row-sub">지정한 시간에 단백질 섭취 알림</div>
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notif-remind-toggle" onchange="onRemindToggle(this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- 리마인더 시간 추가 -->
+        <div id="notif-remind-times-section" style="display:none;padding:8px 16px 12px;">
+          <div id="notif-time-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="time" id="notif-time-input" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--separator);font-size:14px;background:var(--bg-card);color:var(--text-1);font-family:inherit;">
+            <button onclick="addRemindTime()" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-family:inherit;cursor:pointer;">추가</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     <!-- 디스펜서 섹션 -->
     <div class="settings-section-label">디스펜서</div>
     <div class="settings-card">
@@ -4231,6 +4310,7 @@ function showSettings() {
   pushHistory({screen:'settings'});
   document.getElementById('settings-screen').style.display = 'flex';
   updateSettingsValues();
+  loadNotifSettings();
 }
 
 function hideSettings() {
@@ -6071,68 +6151,26 @@ async function loadCustomList() {
   if (!Array.isArray(res)) { container.innerHTML = '<div style="color:var(--red);font-size:14px;">권한 없음</div>'; return; }
   if (countEl) countEl.textContent = `(${res.length}개)`;
   if (!res.length) { container.innerHTML = '<div style="color:var(--text-3);font-size:14px;">없음</div>'; return; }
-  container.innerHTML = res.map(c => `
-    <div id="custom-row-${c.id}" style="padding:10px 0;border-bottom:1px solid var(--separator);">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="font-weight:600;font-size:14px;">${c.name}</div>
-          <div style="font-size:13px;color:var(--text-3);">단백질 ${c.protein_g}g · ${c.energy_kcal}kcal</div>
-        </div>
-        <div style="display:flex;gap:6px;">
-          <button onclick="toggleCustomEdit(${c.id})" style="background:var(--bg-input,#f2f2f7);color:var(--text-2,#3c3c43);border:1px solid var(--separator,#e5e5ea);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:inherit;">수정</button>
-          <button onclick="deleteCustom(${c.id})" style="background:var(--red-bg,#fff1f0);color:var(--red,#ff3b30);border:1px solid #fecaca;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:inherit;">삭제</button>
-        </div>
-      </div>
-      <div id="custom-edit-${c.id}" style="display:none;margin-top:8px;background:var(--bg-input,#f2f2f7);border-radius:8px;padding:10px;">
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          <input id="custom-name-${c.id}" value="${c.name}" placeholder="음식명" style="padding:6px 10px;border-radius:6px;border:1px solid var(--separator);font-size:13px;font-family:inherit;background:var(--bg-card);color:var(--text-1);">
-          <div style="display:flex;gap:6px;">
-            <input id="custom-protein-${c.id}" type="number" value="${c.protein_g}" placeholder="단백질(g)" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--separator);font-size:13px;font-family:inherit;background:var(--bg-card);color:var(--text-1);">
-            <input id="custom-kcal-${c.id}" type="number" value="${c.energy_kcal}" placeholder="칼로리(kcal)" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--separator);font-size:13px;font-family:inherit;background:var(--bg-card);color:var(--text-1);">
-          </div>
-          <button onclick="saveCustomEdit(${c.id})"
-            style="background:#007aff;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px;font-family:inherit;">저장</button>
-        </div>
-      </div>
-    </div>`).join('');
-}
-
-function toggleCustomEdit(id) {
-  const el = document.getElementById(`custom-edit-${id}`);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
-
-async function saveCustomEdit(id) {
-  const name = document.getElementById(`custom-name-${id}`)?.value.trim();
-  const protein_g = parseFloat(document.getElementById(`custom-protein-${id}`)?.value) || 0;
-  const energy_kcal = parseFloat(document.getElementById(`custom-kcal-${id}`)?.value) || 0;
-  if (!name) return alert('음식명을 입력하세요.');
-  await fetch('/api/admin/custom/update', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({custom_id: id, name, protein_g, energy_kcal})
-  });
-  await loadCustomList();
+  container.innerHTML = res.map(c => `<div style="padding:10px 0;border-bottom:1px solid var(--separator);">
+    <div style="display:flex;justify-content:space-between;">
+      <div><div style="font-weight:600;font-size:14px;">${c.name}</div><div style="font-size:13px;color:var(--text-3);">단백질 ${c.protein_g}g · ${c.energy_kcal}kcal</div></div>
+      <button onclick="deleteCustom(${c.id})" style="background:var(--red-bg);color:var(--red);border:1px solid #fecaca;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:inherit;">삭제</button>
+    </div>
+  </div>`).join('');
 }
 
 async function promoteToCustom(id) {
-  await fetch('/api/admin/promote', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({cache_id: id})
-  });
-  // DB 추가 후 캐시에서 삭제
-  await fetch(`/api/admin/cache/delete?id=${id}`, {method: 'DELETE'});
+  await fetch(`/api/admin/promote/${id}`, {method:'POST'});
   await loadAdminData();
 }
 
 async function deleteCache(id) {
-  await fetch(`/api/admin/cache/delete?id=${id}`, {method:'DELETE'});
+  await fetch(`/api/admin/cache/${id}`, {method:'DELETE'});
   await loadCacheList();
 }
 
 async function deleteCustom(id) {
-  await fetch(`/api/admin/custom/delete?id=${id}`, {method:'DELETE'});
+  await fetch(`/api/admin/custom/${id}`, {method:'DELETE'});
   await loadCustomList();
 }
 
@@ -6244,6 +6282,166 @@ window.addEventListener('load', async () => {
   const storedToken = localStorage.getItem('device_token');
   if (storedToken) startWifiTriggerPolling(storedToken);
 });
+
+// ══════════════════════════════════════════
+//  FCM / 알림 설정
+// ══════════════════════════════════════════
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD-Gwg_r4x4CwRI3guw_kTE_41_obTqFb4",
+  authDomain: "protein-tracker-f90d3.firebaseapp.com",
+  projectId: "protein-tracker-f90d3",
+  storageBucket: "protein-tracker-f90d3.firebasestorage.app",
+  messagingSenderId: "431023920323",
+  appId: "1:431023920323:web:d888dd8f6812f6c701be76"
+};
+const VAPID_KEY = "BCXE4xIQOaJNs39J4rznf_sEHus71u18tuYEyok_egS2RGqA66X4ZA28TXF6SiVX-JKM3S-oLFL4NHAirJY7dOQ";
+
+let _fcmApp = null, _fcmMessaging = null;
+
+async function initFCM() {
+  try {
+    // Android WebView: 네이티브에서 토큰을 직접 전달받음 (별도 초기화 불필요)
+    const ua = navigator.userAgent;
+    if (/Android/.test(ua) && /wv/.test(ua)) return;
+
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+    const { getMessaging, getToken, onMessage } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js");
+
+    _fcmApp = initializeApp(FIREBASE_CONFIG);
+    _fcmMessaging = getMessaging(_fcmApp);
+
+    // Service Worker 등록 (iOS Safari PWA + Chrome)
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      const token = await getToken(_fcmMessaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+      if (token) {
+        await registerPushToken(token, 'web');
+      }
+    }
+
+    // 포그라운드 메시지 처리
+    onMessage(_fcmMessaging, (payload) => {
+      const { title, body } = payload.notification || {};
+      showToast(`${title}: ${body}`);
+    });
+  } catch(e) {
+    console.warn("FCM 초기화 실패:", e);
+  }
+}
+
+async function registerPushToken(token, platform) {
+  try {
+    await fetch('/api/push/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token, platform })
+    });
+  } catch(e) {}
+}
+
+// Android WebView에서 네이티브가 호출하는 함수
+window.onFcmToken = async function(token) {
+  await registerPushToken(token, 'android');
+};
+
+async function loadNotifSettings() {
+  try {
+    const res = await fetch('/api/notification/settings').then(r => r.json());
+    const enabled = !!res.enabled;
+    document.getElementById('notif-main-toggle').checked = enabled;
+    document.getElementById('notif-main-sub').textContent = enabled ? '켜짐' : '꺼짐';
+    document.getElementById('notif-detail-section').style.display = enabled ? 'block' : 'none';
+    if (enabled) {
+      document.getElementById('notif-smart-toggle').checked = !!res.smart_push;
+      document.getElementById('notif-weekly-toggle').checked = !!res.weekly_report;
+      document.getElementById('notif-remind-toggle').checked = !!res.remind_enabled;
+      document.getElementById('notif-remind-times-section').style.display = res.remind_enabled ? 'block' : 'none';
+      renderRemindTimes(res.remind_times || []);
+    }
+  } catch(e) {}
+}
+
+function renderRemindTimes(times) {
+  const el = document.getElementById('notif-time-list');
+  if (!el) return;
+  el.innerHTML = times.map(t => `
+    <span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg-input);border:1px solid var(--separator);border-radius:20px;padding:4px 10px;font-size:13px;">
+      ${t}
+      <button onclick="removeRemindTime('${t}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:0;line-height:1;">×</button>
+    </span>`).join('');
+}
+
+function getRemindTimes() {
+  const el = document.getElementById('notif-time-list');
+  if (!el) return [];
+  return [...el.querySelectorAll('span')].map(s => s.textContent.trim().replace('×','').trim());
+}
+
+function addRemindTime() {
+  const input = document.getElementById('notif-time-input');
+  const val = input?.value;
+  if (!val) return;
+  const times = getRemindTimes();
+  if (times.includes(val)) { showToast('이미 추가된 시간이에요'); return; }
+  times.push(val);
+  times.sort();
+  renderRemindTimes(times);
+  input.value = '';
+  saveNotifSettings();
+}
+
+function removeRemindTime(t) {
+  const times = getRemindTimes().filter(x => x !== t);
+  renderRemindTimes(times);
+  saveNotifSettings();
+}
+
+async function onNotifMainToggle(checked) {
+  document.getElementById('notif-main-sub').textContent = checked ? '켜짐' : '꺼짐';
+  document.getElementById('notif-detail-section').style.display = checked ? 'block' : 'none';
+
+  if (checked) {
+    // 권한 요청
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      showToast('알림 권한이 필요해요. 브라우저 설정에서 허용해주세요.');
+      document.getElementById('notif-main-toggle').checked = false;
+      document.getElementById('notif-main-sub').textContent = '꺼짐';
+      document.getElementById('notif-detail-section').style.display = 'none';
+      return;
+    }
+    await initFCM();
+    // 기본값 켜기
+    document.getElementById('notif-smart-toggle').checked = true;
+    document.getElementById('notif-weekly-toggle').checked = true;
+    document.getElementById('notif-remind-toggle').checked = false;
+  } else {
+    // 토큰 삭제
+    await fetch('/api/push/unregister', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({}) });
+  }
+  await saveNotifSettings();
+}
+
+function onRemindToggle(checked) {
+  document.getElementById('notif-remind-times-section').style.display = checked ? 'block' : 'none';
+  saveNotifSettings();
+}
+
+async function saveNotifSettings() {
+  const enabled = document.getElementById('notif-main-toggle')?.checked || false;
+  const smart_push = document.getElementById('notif-smart-toggle')?.checked || false;
+  const weekly_report = document.getElementById('notif-weekly-toggle')?.checked || false;
+  const remind_enabled = document.getElementById('notif-remind-toggle')?.checked || false;
+  const remind_times = getRemindTimes();
+  await fetch('/api/notification/settings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ enabled, smart_push, weekly_report, remind_enabled, remind_times })
+  });
+}
+
+
 
 </script>
 </body>
