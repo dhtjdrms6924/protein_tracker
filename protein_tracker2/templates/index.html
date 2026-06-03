@@ -752,7 +752,11 @@ body {
   color: white;
 }
 .week-day-num.selected:not(.today) {
-  background: var(--text-1);
+  background: #1c1c1e;
+  color: white;
+}
+body.dark-mode .week-day-num.selected:not(.today) {
+  background: var(--blue);
   color: white;
 }
 .week-day-col.center-selected .week-day-num:not(.today):not(.selected) {
@@ -1100,14 +1104,14 @@ body {
 #pane-social {
   background: var(--bg);
   display: flex; flex-direction: column;
-  align-items: center;
-  padding: 0 28px;
+  align-items: center; justify-content: center;
+  min-height: calc(100vh - var(--tab-h));
+  padding: 40px 28px;
+  box-sizing: border-box;
 }
 
 .social-placeholder {
-  margin: auto;
   text-align: center;
-  padding: 40px 0;
 }
 .social-placeholder-icon { font-size: 56px; margin-bottom: 20px; }
 .social-placeholder-title {
@@ -4375,11 +4379,19 @@ function swipeTo(idx) {
     if (el) el.classList.toggle('active', i === idx);
   });
 
-  // 앨범 제외한 탭은 스크롤 최상단으로 (rAF로 transform 이후 처리)
+  // 앨범 제외한 탭은 스크롤 최상단으로
   if (idx !== 1) {
     const paneIds = ['pane-main', 'pane-album', 'pane-social', 'pane-stats'];
-    const pane = document.getElementById(paneIds[idx]);
-    if (pane) requestAnimationFrame(() => { pane.scrollTop = 0; });
+    const paneId = paneIds[idx];
+    // rAF + setTimeout 이중 보장 (transform 350ms 애니메이션 이후)
+    requestAnimationFrame(() => {
+      const pane = document.getElementById(paneId);
+      if (pane) pane.scrollTop = 0;
+    });
+    setTimeout(() => {
+      const pane = document.getElementById(paneId);
+      if (pane) pane.scrollTop = 0;
+    }, 360);
   }
 
   if (idx === 1) {
@@ -4469,6 +4481,30 @@ function showHistory() {
   calYear = new Date(currentDate + 'T00:00:00').getFullYear();
   calMonth = new Date(currentDate + 'T00:00:00').getMonth();
   loadHistory();
+  initCalSwipe();
+}
+
+function initCalSwipe() {
+  const card = document.getElementById('history-screen');
+  if (!card || card._swipeInited) return;
+  card._swipeInited = true;
+  let sx = 0, sy = 0, tracking = false;
+  card.addEventListener('touchstart', e => {
+    // 날짜 상세 패널이 열려있으면 스와이프 차단
+    if (document.getElementById('day-detail-panel')?.classList.contains('show')) return;
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+    tracking = true;
+  }, { passive: true });
+  card.addEventListener('touchend', e => {
+    if (!tracking) return;
+    tracking = false;
+    if (document.getElementById('day-detail-panel')?.classList.contains('show')) return;
+    const dx = e.changedTouches[0].clientX - sx;
+    const dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.7) return;
+    changeMonth(dx < 0 ? 1 : -1);
+  }, { passive: true });
 }
 
 function hideHistory() {
