@@ -76,6 +76,24 @@ body.dark-mode .ob-option {
   background: var(--bg-input);
   border-color: var(--separator);
 }
+body.dark-mode .tab-plus-btn {
+  background: var(--blue);
+}
+body.dark-mode .tab-plus-icon {
+  color: white;
+}
+body.dark-mode .mc-picker-wrap {
+  background: var(--bg-input);
+}
+body.dark-mode .mc-picker-highlight {
+  background: var(--bg-card);
+}
+body.dark-mode .mc-picker-overlay-top {
+  background: linear-gradient(to bottom, var(--bg-input) 0%, transparent 100%);
+}
+body.dark-mode .mc-picker-overlay-bot {
+  background: linear-gradient(to top, var(--bg-input) 0%, transparent 100%);
+}
 body.dark-mode .ob-option.selected {
   background: var(--blue-light);
   border-color: var(--blue);
@@ -786,27 +804,73 @@ body {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 12px;
 }
-.mc-ym-nav {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 4px;
-}
-.mc-ym-nav + .mc-ym-nav {
-  border-bottom: 1px solid var(--separator);
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-}
 .mc-nav-btn {
   width: 36px; height: 36px; border: none; background: transparent;
   border-radius: var(--r-full); font-size: 22px; color: var(--blue);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
-.mc-ym-label {
-  font-size: 18px; font-weight: 800; color: var(--text-1);
-  flex: 1; text-align: center;
-}
 .mc-month-label {
   font-size: 16px; font-weight: 800; color: var(--text-1);
   cursor: pointer;
+}
+
+/* ── 미니캘 드럼 피커 ── */
+.mc-pickers-row {
+  display: flex; gap: 8px; margin-bottom: 12px;
+}
+.mc-picker-wrap {
+  flex: 1;
+  background: var(--bg-input);
+  border-radius: var(--r-md);
+  position: relative;
+  overflow: hidden;
+  height: 144px;
+}
+.mc-picker-highlight {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  left: 6px; right: 6px;
+  height: 48px;
+  background: var(--bg-card);
+  border-radius: var(--r-sm);
+  pointer-events: none; z-index: 1;
+}
+.mc-picker-overlay-top,
+.mc-picker-overlay-bot {
+  position: absolute; left: 0; right: 0; height: 50px;
+  pointer-events: none; z-index: 3;
+}
+.mc-picker-overlay-top {
+  top: 0;
+  background: linear-gradient(to bottom, var(--bg-input) 0%, transparent 100%);
+}
+.mc-picker-overlay-bot {
+  bottom: 0;
+  background: linear-gradient(to top, var(--bg-input) 0%, transparent 100%);
+}
+.mc-picker-scroll {
+  height: 144px;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 48px 0;
+  box-sizing: border-box;
+  position: relative; z-index: 2;
+}
+.mc-picker-scroll::-webkit-scrollbar { display: none; }
+.mc-picker-item {
+  height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 500;
+  color: var(--text-3);
+  scroll-snap-align: center;
+  cursor: pointer;
+}
+.mc-picker-item.selected {
+  color: var(--text-1);
+  font-weight: 700;
+  font-size: 17px;
 }
 .mc-today-btn {
   padding: 4px 12px; border: 1px solid var(--blue);
@@ -3347,15 +3411,19 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
 <!-- MINI CALENDAR POPUP -->
 <div id="mini-cal-overlay" onclick="closeMiniCal()"></div>
 <div id="mini-cal-popup">
-  <div class="mc-ym-nav">
-    <button class="mc-nav-btn" onclick="mcChangeYear(-1)">‹</button>
-    <span class="mc-ym-label" id="mc-year-label">2026년</span>
-    <button class="mc-nav-btn" onclick="mcChangeYear(1)">›</button>
-  </div>
-  <div class="mc-ym-nav">
-    <button class="mc-nav-btn" onclick="mcChangeMonth(-1)">‹</button>
-    <span class="mc-ym-label" id="mc-month-label">5월</span>
-    <button class="mc-nav-btn" onclick="mcChangeMonth(1)">›</button>
+  <div class="mc-pickers-row">
+    <div class="mc-picker-wrap">
+      <div class="mc-picker-highlight"></div>
+      <div class="mc-picker-overlay-top"></div>
+      <div class="mc-picker-overlay-bot"></div>
+      <div class="mc-picker-scroll" id="mc-year-scroll"></div>
+    </div>
+    <div class="mc-picker-wrap">
+      <div class="mc-picker-highlight"></div>
+      <div class="mc-picker-overlay-top"></div>
+      <div class="mc-picker-overlay-bot"></div>
+      <div class="mc-picker-scroll" id="mc-month-scroll"></div>
+    </div>
   </div>
   <div class="mc-grid" id="mc-grid"></div>
   <div style="text-align:center;margin-top:8px;">
@@ -4123,7 +4191,17 @@ function selectDate(dateStr, direction) {
   setTimeout(() => {
     if (token !== _selectDateToken) return; // 더 최신 호출이 있으면 무시
     currentDate = dateStr;
-    updateWeekStripSelection(); // renderWeekStrip 대신 시각만 업데이트
+    // 스트립에 날짜가 있으면 스크롤, 없으면 전체 재렌더
+    const strip = document.getElementById('week-strip');
+    const cols = strip ? strip.querySelectorAll('.week-day-col') : [];
+    let newIdx = -1;
+    cols.forEach((col, i) => { if (col.dataset.date === dateStr) newIdx = i; });
+    if (newIdx >= 0) {
+      updateWeekStripSelection();
+      scrollStripToIdx(strip, newIdx, true);
+    } else {
+      renderWeekStrip();
+    }
     updateMainDateLabel();
     loadMeals();
 
@@ -4165,9 +4243,16 @@ function openMiniCal() {
   const d = new Date(currentDate + 'T00:00:00');
   mcYear = d.getFullYear();
   mcMonth = d.getMonth();
-  renderMiniCal();
+  buildMcPickers();
+  renderMcGrid();
   document.getElementById('mini-cal-overlay').classList.add('open');
   document.getElementById('mini-cal-popup').classList.add('open');
+}
+
+function renderMiniCal() {
+  // legacy alias - not used directly, kept for safety
+  buildMcPickers();
+  renderMcGrid();
 }
 
 function closeMiniCal() {
@@ -4175,16 +4260,62 @@ function closeMiniCal() {
   document.getElementById('mini-cal-popup').classList.remove('open');
 }
 
-function mcChangeYear(delta) {
-  mcYear += delta;
-  renderMiniCal();
-}
+const MC_MIN_YEAR = 2020;
+const MC_MAX_YEAR = 2035;
 
-function mcChangeMonth(delta) {
-  mcMonth += delta;
-  if (mcMonth < 0) { mcMonth = 11; mcYear--; }
-  if (mcMonth > 11) { mcMonth = 0; mcYear++; }
-  renderMiniCal();
+function buildMcPickers() {
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+  // ── 년도 피커 ──
+  const yearScroll = document.getElementById('mc-year-scroll');
+  yearScroll.innerHTML = '';
+  for (let y = MC_MIN_YEAR; y <= MC_MAX_YEAR; y++) {
+    const el = document.createElement('div');
+    el.className = 'mc-picker-item' + (y === mcYear ? ' selected' : '');
+    el.textContent = y + '년';
+    yearScroll.appendChild(el);
+  }
+  yearScroll.scrollTop = (mcYear - MC_MIN_YEAR) * 48;
+  yearScroll._ignoreScroll = false;
+  yearScroll.addEventListener('scroll', () => {
+    if (yearScroll._ignoreScroll) return;
+    clearTimeout(yearScroll._st);
+    yearScroll._st = setTimeout(() => {
+      const idx = Math.round(yearScroll.scrollTop / 48);
+      const clamped = Math.max(0, Math.min(MC_MAX_YEAR - MC_MIN_YEAR, idx));
+      yearScroll._ignoreScroll = true;
+      yearScroll.scrollTop = clamped * 48;
+      yearScroll._ignoreScroll = false;
+      yearScroll.querySelectorAll('.mc-picker-item').forEach((el, i) => el.classList.toggle('selected', i === clamped));
+      const newYear = MC_MIN_YEAR + clamped;
+      if (newYear !== mcYear) { mcYear = newYear; renderMcGrid(); }
+    }, 80);
+  }, { passive: true });
+
+  // ── 월 피커 ──
+  const monthScroll = document.getElementById('mc-month-scroll');
+  monthScroll.innerHTML = '';
+  months.forEach((m, i) => {
+    const el = document.createElement('div');
+    el.className = 'mc-picker-item' + (i === mcMonth ? ' selected' : '');
+    el.textContent = m;
+    monthScroll.appendChild(el);
+  });
+  monthScroll.scrollTop = mcMonth * 48;
+  monthScroll._ignoreScroll = false;
+  monthScroll.addEventListener('scroll', () => {
+    if (monthScroll._ignoreScroll) return;
+    clearTimeout(monthScroll._st);
+    monthScroll._st = setTimeout(() => {
+      const idx = Math.round(monthScroll.scrollTop / 48);
+      const clamped = Math.max(0, Math.min(11, idx));
+      monthScroll._ignoreScroll = true;
+      monthScroll.scrollTop = clamped * 48;
+      monthScroll._ignoreScroll = false;
+      monthScroll.querySelectorAll('.mc-picker-item').forEach((el, i) => el.classList.toggle('selected', i === clamped));
+      if (clamped !== mcMonth) { mcMonth = clamped; renderMcGrid(); }
+    }, 80);
+  }, { passive: true });
 }
 
 function mcGoToday() {
@@ -4196,11 +4327,7 @@ function mcGoToday() {
   selectDate(todayStr);
 }
 
-function renderMiniCal() {
-  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  document.getElementById('mc-year-label').textContent = `${mcYear}년`;
-  document.getElementById('mc-month-label').textContent = months[mcMonth];
-
+function renderMcGrid() {
   const grid = document.getElementById('mc-grid');
   const weekStartMonday = localStorage.getItem('week_start') === 'monday';
   const dayLabels = weekStartMonday ? ['월','화','수','목','금','토','일'] : ['일','월','화','수','목','금','토'];
@@ -4248,11 +4375,11 @@ function swipeTo(idx) {
     if (el) el.classList.toggle('active', i === idx);
   });
 
-  // 앨범 제외한 탭은 스크롤 최상단으로
+  // 앨범 제외한 탭은 스크롤 최상단으로 (rAF로 transform 이후 처리)
   if (idx !== 1) {
     const paneIds = ['pane-main', 'pane-album', 'pane-social', 'pane-stats'];
     const pane = document.getElementById(paneIds[idx]);
-    if (pane) pane.scrollTop = 0;
+    if (pane) requestAnimationFrame(() => { pane.scrollTop = 0; });
   }
 
   if (idx === 1) {
