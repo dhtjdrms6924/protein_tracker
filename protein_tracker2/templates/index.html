@@ -1532,7 +1532,14 @@ body.dark-mode .cal-legend-dot.zone-red    { background: #3a1a1a; border-color: 
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   display: none;
 }
-#day-detail-panel.show { display: block; }
+@keyframes detailSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#day-detail-panel.show {
+  display: block;
+  animation: detailSlideIn 0.22s cubic-bezier(0.4,0,0.2,1) both;
+}
 
 .detail-header {
   padding: 14px 16px 10px;
@@ -4554,7 +4561,6 @@ function rebuildDpDays() {
 function buildDpScroll(id, labels, selectedIdx, onChange) {
   const el = document.getElementById(id);
   if (!el) return;
-  if (el._dpHandler) el.removeEventListener('scroll', el._dpHandler);
   el.innerHTML = '';
   labels.forEach((lbl, i) => {
     const item = document.createElement('div');
@@ -4562,28 +4568,18 @@ function buildDpScroll(id, labels, selectedIdx, onChange) {
     item.textContent = lbl;
     el.appendChild(item);
   });
-  // scrollTop 설정 (rAF로 DOM 반영 후)
-  requestAnimationFrame(() => { el.scrollTop = selectedIdx * 60; });
-
-  el._dpHandler = () => {
-    clearTimeout(el._dpSt);
-    el._dpSt = setTimeout(() => {
-      const idx = Math.max(0, Math.min(labels.length - 1, Math.round(el.scrollTop / 60)));
-      el.scrollTop = idx * 60;
-      el.querySelectorAll('.dp-picker-item').forEach((it, i) => it.classList.toggle('selected', i === idx));
-      onChange(idx);
-    }, 80);
-  };
-  el.addEventListener('scroll', el._dpHandler, { passive: true });
+  setupPickerScroll(el, labels.length, selectedIdx, 60, onChange);
 }
 
 function openDatePickerForHistory() {
   const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-01`;
-  openDatePicker(dateStr, selected => {
+  openDatePicker(dateStr, async selected => {
     const d = new Date(selected + 'T00:00:00');
     calYear = d.getFullYear();
     calMonth = d.getMonth();
-    loadHistory();
+    await loadHistory();
+    // 선택한 날짜가 미래가 아니면 자동으로 기록 목록 열기
+    if (selected <= today) openDayDetail(selected, goalProtein);
   });
 }
 
@@ -4618,10 +4614,38 @@ function closeMiniCal() {
 const MC_MIN_YEAR = 2020;
 const MC_MAX_YEAR = 2035;
 
+// ── 공통 드럼롤 피커 스크롤 핸들러 ──
+function setupPickerScroll(el, count, initialIdx, itemH, onSelect) {
+  if (!el) return;
+  if (el._pickerHandler) el.removeEventListener('scroll', el._pickerHandler);
+  if (el._pickerEndHandler) el.removeEventListener('scrollend', el._pickerEndHandler);
+  clearTimeout(el._initScrollT);
+
+  let lastIdx = initialIdx;
+  let debounceT;
+
+  const fire = () => {
+    const idx = Math.max(0, Math.min(count - 1, Math.round(el.scrollTop / itemH)));
+    [...el.children].forEach((it, i) => it.classList.toggle('selected', i === idx));
+    if (idx !== lastIdx) { lastIdx = idx; onSelect(idx); }
+  };
+
+  el._pickerHandler = () => { clearTimeout(debounceT); debounceT = setTimeout(fire, 100); };
+  el.addEventListener('scroll', el._pickerHandler, { passive: true });
+
+  // scrollend: 스냅 완료 후 정확한 시점에 발화
+  if ('onscrollend' in window) {
+    el._pickerEndHandler = fire;
+    el.addEventListener('scrollend', fire, { passive: true });
+  }
+
+  // 초기 위치 — popup 렌더링 후 적용
+  el._initScrollT = setTimeout(() => { el.scrollTop = initialIdx * itemH; }, 50);
+}
+
 function buildMcPickers() {
   const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 
-  // ── 년도 피커 ──
   const yearScroll = document.getElementById('mc-year-scroll');
   yearScroll.innerHTML = '';
   for (let y = MC_MIN_YEAR; y <= MC_MAX_YEAR; y++) {
@@ -4630,24 +4654,11 @@ function buildMcPickers() {
     el.textContent = y + '년';
     yearScroll.appendChild(el);
   }
-  yearScroll.scrollTop = (mcYear - MC_MIN_YEAR) * 48;
-  yearScroll._ignoreScroll = false;
-  yearScroll.addEventListener('scroll', () => {
-    if (yearScroll._ignoreScroll) return;
-    clearTimeout(yearScroll._st);
-    yearScroll._st = setTimeout(() => {
-      const idx = Math.round(yearScroll.scrollTop / 48);
-      const clamped = Math.max(0, Math.min(MC_MAX_YEAR - MC_MIN_YEAR, idx));
-      yearScroll._ignoreScroll = true;
-      yearScroll.scrollTop = clamped * 48;
-      yearScroll._ignoreScroll = false;
-      yearScroll.querySelectorAll('.mc-picker-item').forEach((el, i) => el.classList.toggle('selected', i === clamped));
-      const newYear = MC_MIN_YEAR + clamped;
-      if (newYear !== mcYear) { mcYear = newYear; renderMcGrid(); }
-    }, 80);
-  }, { passive: true });
+  setupPickerScroll(yearScroll, MC_MAX_YEAR - MC_MIN_YEAR + 1, mcYear - MC_MIN_YEAR, 48, idx => {
+    const newYear = MC_MIN_YEAR + idx;
+    if (newYear !== mcYear) { mcYear = newYear; renderMcGrid(); }
+  });
 
-  // ── 월 피커 ──
   const monthScroll = document.getElementById('mc-month-scroll');
   monthScroll.innerHTML = '';
   months.forEach((m, i) => {
@@ -4656,21 +4667,9 @@ function buildMcPickers() {
     el.textContent = m;
     monthScroll.appendChild(el);
   });
-  monthScroll.scrollTop = mcMonth * 48;
-  monthScroll._ignoreScroll = false;
-  monthScroll.addEventListener('scroll', () => {
-    if (monthScroll._ignoreScroll) return;
-    clearTimeout(monthScroll._st);
-    monthScroll._st = setTimeout(() => {
-      const idx = Math.round(monthScroll.scrollTop / 48);
-      const clamped = Math.max(0, Math.min(11, idx));
-      monthScroll._ignoreScroll = true;
-      monthScroll.scrollTop = clamped * 48;
-      monthScroll._ignoreScroll = false;
-      monthScroll.querySelectorAll('.mc-picker-item').forEach((el, i) => el.classList.toggle('selected', i === clamped));
-      if (clamped !== mcMonth) { mcMonth = clamped; renderMcGrid(); }
-    }, 80);
-  }, { passive: true });
+  setupPickerScroll(monthScroll, 12, mcMonth, 48, idx => {
+    if (idx !== mcMonth) { mcMonth = idx; renderMcGrid(); }
+  });
 }
 
 function mcGoToday() {
@@ -4851,8 +4850,6 @@ function initCalSwipe() {
   card._swipeInited = true;
   let sx = 0, sy = 0, tracking = false;
   card.addEventListener('touchstart', e => {
-    // 날짜 상세 패널이 열려있으면 스와이프 차단
-    if (document.getElementById('day-detail-panel')?.classList.contains('show')) return;
     sx = e.touches[0].clientX;
     sy = e.touches[0].clientY;
     tracking = true;
@@ -4860,10 +4857,12 @@ function initCalSwipe() {
   card.addEventListener('touchend', e => {
     if (!tracking) return;
     tracking = false;
-    if (document.getElementById('day-detail-panel')?.classList.contains('show')) return;
     const dx = e.changedTouches[0].clientX - sx;
     const dy = e.changedTouches[0].clientY - sy;
     if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.7) return;
+    // 기록 목록이 열려있으면 먼저 닫고 이동
+    const panel = document.getElementById('day-detail-panel');
+    if (panel?.classList.contains('show')) closeDayDetail();
     changeMonth(dx < 0 ? 1 : -1);
   }, { passive: true });
 }
