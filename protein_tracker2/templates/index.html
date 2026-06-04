@@ -82,6 +82,14 @@ body.dark-mode .tab-plus-btn {
 body.dark-mode .tab-plus-icon {
   color: white;
 }
+body.dark-mode #date-picker-sheet { background: var(--bg-card); }
+body.dark-mode .dp-picker-highlight { background: var(--bg-input); }
+body.dark-mode .dp-picker-overlay-top {
+  background: linear-gradient(to bottom, var(--bg-card) 0%, transparent 100%);
+}
+body.dark-mode .dp-picker-overlay-bot {
+  background: linear-gradient(to top, var(--bg-card) 0%, transparent 100%);
+}
 body.dark-mode .mc-picker-wrap {
   background: var(--bg-input);
 }
@@ -128,15 +136,20 @@ body.dark-mode .sub-option-item.selected { border-color: var(--blue); }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
   background: var(--bg);
   color: var(--text-1);
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
 }
 
 /* ────────────── ONBOARDING ────────────── */
@@ -589,7 +602,7 @@ body {
 #app-screen {
   display: none;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100%;
   position: relative;
   overflow: hidden;
 }
@@ -609,6 +622,7 @@ body {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   flex-shrink: 0;
 }
@@ -817,6 +831,103 @@ body.dark-mode .week-day-num.selected:not(.today) {
   font-size: 16px; font-weight: 800; color: var(--text-1);
   cursor: pointer;
 }
+
+/* ── 날짜 선택 바텀시트 (드럼롤) ── */
+#date-picker-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.45);
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s;
+}
+#date-picker-overlay.open { opacity: 1; pointer-events: all; }
+
+#date-picker-sheet {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 501;
+  background: var(--bg-card);
+  border-radius: 20px 20px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 8px);
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(0.4,0,0.2,1);
+  max-width: 480px;
+  margin: 0 auto;
+}
+#date-picker-sheet.open { transform: translateY(0); }
+
+.dp-header {
+  padding: 16px 20px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--separator);
+}
+.dp-header-label {
+  font-size: 17px; font-weight: 700; color: var(--text-1);
+}
+.dp-pickers-row {
+  display: flex; padding: 0 12px;
+}
+.dp-picker-wrap {
+  flex: 1; position: relative; overflow: hidden; height: 180px;
+}
+.dp-picker-highlight {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  left: 4px; right: 4px; height: 60px;
+  background: var(--bg-input);
+  border-radius: var(--r-md);
+  pointer-events: none; z-index: 1;
+}
+.dp-picker-overlay-top, .dp-picker-overlay-bot {
+  position: absolute; left: 0; right: 0; height: 64px;
+  pointer-events: none; z-index: 3;
+}
+.dp-picker-overlay-top {
+  top: 0;
+  background: linear-gradient(to bottom, var(--bg-card) 0%, transparent 100%);
+}
+.dp-picker-overlay-bot {
+  bottom: 0;
+  background: linear-gradient(to top, var(--bg-card) 0%, transparent 100%);
+}
+.dp-picker-scroll {
+  height: 180px;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 60px 0;
+  box-sizing: border-box;
+  position: relative; z-index: 2;
+}
+.dp-picker-scroll::-webkit-scrollbar { display: none; }
+.dp-picker-item {
+  height: 60px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 500;
+  color: var(--text-3);
+  scroll-snap-align: center;
+}
+.dp-picker-item.selected {
+  color: var(--text-1); font-weight: 700; font-size: 22px;
+}
+.dp-actions {
+  display: flex; margin-top: 12px;
+  border-top: 1px solid var(--separator);
+}
+.dp-action-btn {
+  flex: 1; padding: 17px;
+  background: none; border: none;
+  font-size: 17px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  color: var(--blue);
+}
+.dp-action-btn + .dp-action-btn { border-left: 1px solid var(--separator); }
+.dp-action-btn.cancel { color: var(--text-3); }
+
+/* 캘린더 월 레이블 클릭 가능 표시 */
+.cal-month-label-btn {
+  cursor: pointer; display: flex; align-items: center; gap: 4px;
+}
+.cal-month-label-btn svg { opacity: 0.5; }
 
 /* ── 미니캘 드럼 피커 ── */
 .mc-pickers-row {
@@ -1105,9 +1216,7 @@ body.dark-mode .week-day-num.selected:not(.today) {
   background: var(--bg);
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  min-height: calc(100vh - var(--tab-h));
   padding: 40px 28px;
-  box-sizing: border-box;
 }
 
 .social-placeholder {
@@ -2759,7 +2868,7 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
     <div class="swipe-pane" id="pane-main">
       <div class="main-topbar">
         <div class="main-topbar-row1">
-          <button class="main-date-btn" onclick="openMiniCal()">
+          <button class="main-date-btn" onclick="openDatePicker()">
             <span id="main-year-month-label">2026년 5월</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;opacity:0.6;"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
@@ -3006,7 +3115,10 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
   <div class="history-cal-card">
     <div class="cal-nav">
       <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
-      <span class="cal-month-label" id="cal-month-label"></span>
+      <button class="cal-month-label-btn" id="cal-month-label" onclick="openDatePickerForHistory()">
+        <span></span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
       <button class="cal-nav-btn" id="cal-next-btn" onclick="changeMonth(1)">›</button>
     </div>
     <div class="cal-grid" id="cal-grid"></div>
@@ -3409,6 +3521,38 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
       <button class="modal-cancel" onclick="closeGoalEdit()">취소</button>
       <button class="modal-confirm" style="background:var(--blue);" onclick="saveGoalEdit()">저장</button>
     </div>
+  </div>
+</div>
+
+<!-- DATE PICKER SHEET (드럼롤) -->
+<div id="date-picker-overlay" onclick="closeDatePicker()"></div>
+<div id="date-picker-sheet">
+  <div class="dp-header">
+    <span class="dp-header-label" id="dp-header-label">2026년 06월</span>
+  </div>
+  <div class="dp-pickers-row">
+    <div class="dp-picker-wrap">
+      <div class="dp-picker-highlight"></div>
+      <div class="dp-picker-overlay-top"></div>
+      <div class="dp-picker-overlay-bot"></div>
+      <div class="dp-picker-scroll" id="dp-year-scroll"></div>
+    </div>
+    <div class="dp-picker-wrap">
+      <div class="dp-picker-highlight"></div>
+      <div class="dp-picker-overlay-top"></div>
+      <div class="dp-picker-overlay-bot"></div>
+      <div class="dp-picker-scroll" id="dp-month-scroll"></div>
+    </div>
+    <div class="dp-picker-wrap">
+      <div class="dp-picker-highlight"></div>
+      <div class="dp-picker-overlay-top"></div>
+      <div class="dp-picker-overlay-bot"></div>
+      <div class="dp-picker-scroll" id="dp-day-scroll"></div>
+    </div>
+  </div>
+  <div class="dp-actions">
+    <button class="dp-action-btn cancel" onclick="closeDatePicker()">취소</button>
+    <button class="dp-action-btn" onclick="confirmDatePicker()">완료</button>
   </div>
 </div>
 
@@ -4237,6 +4381,129 @@ function goToday() {
 }
 
 // ══════════════════════════════════════════
+//  날짜 선택 바텀시트 (드럼롤)
+// ══════════════════════════════════════════
+const DP_MIN_YEAR = 2020;
+const DP_MAX_YEAR = 2035;
+let dpYear = new Date().getFullYear();
+let dpMonth = new Date().getMonth() + 1;
+let dpDay = new Date().getDate();
+let _dpOnConfirm = null;
+
+function openDatePicker(dateStr, onConfirm) {
+  const d = new Date((dateStr || currentDate) + 'T00:00:00');
+  dpYear = d.getFullYear();
+  dpMonth = d.getMonth() + 1;
+  dpDay = d.getDate();
+  _dpOnConfirm = onConfirm || null;
+  pushHistory({screen:'date-picker'});
+  buildDpPickers();
+  updateDpHeader();
+  document.getElementById('date-picker-overlay').classList.add('open');
+  document.getElementById('date-picker-sheet').classList.add('open');
+}
+
+function closeDatePicker() {
+  document.getElementById('date-picker-overlay').classList.remove('open');
+  document.getElementById('date-picker-sheet').classList.remove('open');
+  _dpOnConfirm = null;
+}
+
+function confirmDatePicker() {
+  const mm = String(dpMonth).padStart(2,'0');
+  const dd = String(dpDay).padStart(2,'0');
+  const dateStr = `${dpYear}-${mm}-${dd}`;
+  document.getElementById('date-picker-overlay').classList.remove('open');
+  document.getElementById('date-picker-sheet').classList.remove('open');
+  if (_dpOnConfirm) {
+    const cb = _dpOnConfirm;
+    _dpOnConfirm = null;
+    cb(dateStr);
+  } else {
+    if (dateStr !== currentDate) {
+      selectDate(dateStr, dateStr > currentDate ? 'left' : 'right');
+    }
+  }
+}
+
+function updateDpHeader() {
+  const el = document.getElementById('dp-header-label');
+  if (el) el.textContent = `${dpYear}년 ${String(dpMonth).padStart(2,'0')}월`;
+}
+
+function dpDaysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+
+function buildDpPickers() {
+  buildDpScroll('dp-year-scroll',
+    Array.from({length: DP_MAX_YEAR - DP_MIN_YEAR + 1}, (_, i) => (DP_MIN_YEAR + i) + '년'),
+    dpYear - DP_MIN_YEAR,
+    idx => {
+      dpYear = DP_MIN_YEAR + idx;
+      const max = dpDaysInMonth(dpYear, dpMonth);
+      if (dpDay > max) { dpDay = max; rebuildDpDays(); }
+      updateDpHeader();
+    }
+  );
+  buildDpScroll('dp-month-scroll',
+    Array.from({length: 12}, (_, i) => String(i+1).padStart(2,'0') + '월'),
+    dpMonth - 1,
+    idx => {
+      dpMonth = idx + 1;
+      const max = dpDaysInMonth(dpYear, dpMonth);
+      if (dpDay > max) { dpDay = max; rebuildDpDays(); }
+      updateDpHeader();
+    }
+  );
+  rebuildDpDays();
+}
+
+function rebuildDpDays() {
+  const max = dpDaysInMonth(dpYear, dpMonth);
+  const sel = Math.min(dpDay - 1, max - 1);
+  buildDpScroll('dp-day-scroll',
+    Array.from({length: max}, (_, i) => String(i+1).padStart(2,'0') + '일'),
+    sel,
+    idx => { dpDay = idx + 1; }
+  );
+}
+
+function buildDpScroll(id, labels, selectedIdx, onChange) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el._dpHandler) el.removeEventListener('scroll', el._dpHandler);
+  el.innerHTML = '';
+  labels.forEach((lbl, i) => {
+    const item = document.createElement('div');
+    item.className = 'dp-picker-item' + (i === selectedIdx ? ' selected' : '');
+    item.textContent = lbl;
+    el.appendChild(item);
+  });
+  // scrollTop 설정 (rAF로 DOM 반영 후)
+  requestAnimationFrame(() => { el.scrollTop = selectedIdx * 60; });
+
+  el._dpHandler = () => {
+    clearTimeout(el._dpSt);
+    el._dpSt = setTimeout(() => {
+      const idx = Math.max(0, Math.min(labels.length - 1, Math.round(el.scrollTop / 60)));
+      el.scrollTop = idx * 60;
+      el.querySelectorAll('.dp-picker-item').forEach((it, i) => it.classList.toggle('selected', i === idx));
+      onChange(idx);
+    }, 80);
+  };
+  el.addEventListener('scroll', el._dpHandler, { passive: true });
+}
+
+function openDatePickerForHistory() {
+  const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-01`;
+  openDatePicker(dateStr, selected => {
+    const d = new Date(selected + 'T00:00:00');
+    calYear = d.getFullYear();
+    calMonth = d.getMonth();
+    loadHistory();
+  });
+}
+
+// ══════════════════════════════════════════
 //  MINI CALENDAR POPUP
 // ══════════════════════════════════════════
 let mcYear = new Date().getFullYear();
@@ -4379,19 +4646,11 @@ function swipeTo(idx) {
     if (el) el.classList.toggle('active', i === idx);
   });
 
-  // 앨범 제외한 탭은 스크롤 최상단으로
+  // 앨범 제외한 탭은 항상 최상단에서 시작
   if (idx !== 1) {
-    const paneIds = ['pane-main', 'pane-album', 'pane-social', 'pane-stats'];
-    const paneId = paneIds[idx];
-    // rAF + setTimeout 이중 보장 (transform 350ms 애니메이션 이후)
-    requestAnimationFrame(() => {
-      const pane = document.getElementById(paneId);
-      if (pane) pane.scrollTop = 0;
-    });
-    setTimeout(() => {
-      const pane = document.getElementById(paneId);
-      if (pane) pane.scrollTop = 0;
-    }, 360);
+    const ids = ['pane-main', null, 'pane-social', 'pane-stats'];
+    const pane = document.getElementById(ids[idx]);
+    if (pane) { pane.scrollTop = 0; }
   }
 
   if (idx === 1) {
@@ -5130,7 +5389,8 @@ function changeMonth(delta) {
 
 async function loadHistory() {
   const monthStr = `${calYear}-${String(calMonth + 1).padStart(2,'0')}`;
-  document.getElementById('cal-month-label').textContent = `${calYear}년 ${calMonth + 1}월`;
+  const calLabelBtn = document.getElementById('cal-month-label');
+  if (calLabelBtn) { const sp = calLabelBtn.querySelector('span'); if (sp) sp.textContent = `${calYear}년 ${calMonth + 1}월`; }
   const now = new Date();
   const nextBtn = document.getElementById('cal-next-btn');
   if (nextBtn) nextBtn.style.visibility =
@@ -6427,6 +6687,9 @@ window.addEventListener('popstate', () => {
   }
   if (document.getElementById('goal-modal').classList.contains('open')) {
     closeGoalEdit(); pushHistory({screen:'main'}); return;
+  }
+  if (document.getElementById('date-picker-sheet').classList.contains('open')) {
+    closeDatePicker(); pushHistory({screen:'main'}); return;
   }
   if (document.getElementById('mini-cal-popup').classList.contains('open')) {
     closeMiniCal(); pushHistory({screen:'main'}); return;
