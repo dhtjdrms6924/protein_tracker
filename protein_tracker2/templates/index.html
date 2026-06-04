@@ -1718,8 +1718,8 @@ body.dark-mode .cal-legend-dot.zone-red    { background: #3a1a1a; border-color: 
   height: 8px; border-radius: 4px; background: var(--bg);
   overflow: hidden; display: flex;
 }
-.pdcaas-bar-eff { background: var(--green); border-radius: 4px; }
-.pdcaas-bar-lost { background: #ffb3ae; border-radius: 0 4px 4px 0; }
+.pdcaas-bar-eff { background: var(--green); }
+.pdcaas-bar-lost { background: #ffb3ae; }
 .pdcaas-bar-footer {
   display: flex; justify-content: space-between;
   font-size: 11px; color: var(--text-3); margin-top: 3px;
@@ -2267,6 +2267,54 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
 @keyframes galleryHintIn { from { transform:translateY(16px);opacity:0; } to { transform:translateY(0);opacity:1; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes editRowIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+
+/* ── 화면전환 애니메이션 ── */
+@keyframes screenSlideIn {
+  from { transform: translateX(48px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes screenSlideOut {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(48px); opacity: 0; }
+}
+@keyframes notifExpand {
+  from { max-height: 0; opacity: 0; }
+  to   { max-height: 600px; opacity: 1; }
+}
+@keyframes notifCollapse {
+  from { max-height: 600px; opacity: 1; }
+  to   { max-height: 0; opacity: 0; }
+}
+
+.screen-anim-in {
+  animation: screenSlideIn 0.26s cubic-bezier(0.4,0,0.2,1) both;
+}
+.screen-anim-out {
+  animation: screenSlideOut 0.22s cubic-bezier(0.4,0,0.2,1) both;
+}
+
+/* 알림 세부 아코디언 */
+#notif-detail-section {
+  overflow: hidden;
+}
+#notif-detail-section.expanding {
+  animation: notifExpand 0.3s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+#notif-detail-section.collapsing {
+  animation: notifCollapse 0.25s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+/* 알림 토글 카드 확장 시 아랫쪽 라운드 제거 */
+#notif-main-card.expanded {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+/* 알림 세부 카드 상단 라운드 제거 */
+#notif-detail-section > .settings-card {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin-top: 0;
+  border-top: 1px solid var(--separator);
+}
 .spinner {
   display: inline-block;
   width: 14px; height: 14px;
@@ -3153,10 +3201,10 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
     </div>
     <div class="cal-grid" id="cal-grid"></div>
     <div class="cal-legend">
-      <div class="cal-legend-item"><span class="cal-legend-dot zone-green"></span>달성 (100%+)</div>
-      <div class="cal-legend-item"><span class="cal-legend-dot zone-blue"></span>근접 (67~99%)</div>
-      <div class="cal-legend-item"><span class="cal-legend-dot zone-orange"></span>절반 (33~66%)</div>
-      <div class="cal-legend-item"><span class="cal-legend-dot zone-red"></span>부족 (~32%)</div>
+      <div class="cal-legend-item"><span class="cal-legend-dot zone-green"></span>달성</div>
+      <div class="cal-legend-item"><span class="cal-legend-dot zone-blue"></span>근접</div>
+      <div class="cal-legend-item"><span class="cal-legend-dot zone-orange"></span>절반</div>
+      <div class="cal-legend-item"><span class="cal-legend-dot zone-red"></span>부족</div>
     </div>
   </div>
   <div id="day-detail-panel">
@@ -3275,7 +3323,7 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
 
     <!-- 알림 섹션 -->
     <div class="settings-section-label">알림</div>
-    <div class="settings-card">
+    <div class="settings-card" id="notif-main-card">
       <div class="settings-row" style="justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:12px;">
           <div class="settings-row-icon">🔔</div>
@@ -3293,7 +3341,7 @@ input:checked + .toggle-slider:before { transform: translateX(20px); }
 
     <!-- 알림 세부 설정 (알림 켜야 보임) -->
     <div id="notif-detail-section" style="display:none;">
-      <div class="settings-card" style="margin-top:0;">
+      <div class="settings-card">
 
         <!-- 스마트 알림 -->
         <div class="settings-row" style="justify-content:space-between;">
@@ -4767,14 +4815,32 @@ function statsSwipeEnd(e) {
 }
 
 // ══════════════════════════════════════════
-//  SCREEN NAVIGATION
+//  SCREEN NAVIGATION (with animation)
 // ══════════════════════════════════════════
+function screenShow(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('screen-anim-out');
+  el.style.display = 'flex';
+  el.classList.add('screen-anim-in');
+  el.addEventListener('animationend', () => el.classList.remove('screen-anim-in'), { once: true });
+  return el;
+}
+function screenHide(id, onDone) {
+  const el = document.getElementById(id);
+  el.classList.remove('screen-anim-in');
+  el.classList.add('screen-anim-out');
+  el.addEventListener('animationend', () => {
+    el.classList.remove('screen-anim-out');
+    el.style.display = 'none';
+    if (onDone) onDone();
+  }, { once: true });
+}
+
 function showHistory() {
   pushHistory({screen:'history'});
-  const screen = document.getElementById('history-screen');
-  screen.style.display = 'flex';
   calYear = new Date(currentDate + 'T00:00:00').getFullYear();
   calMonth = new Date(currentDate + 'T00:00:00').getMonth();
+  screenShow('history-screen');
   loadHistory();
   initCalSwipe();
 }
@@ -4803,7 +4869,7 @@ function initCalSwipe() {
 }
 
 function hideHistory() {
-  document.getElementById('history-screen').style.display = 'none';
+  screenHide('history-screen');
 }
 
 function showStats() {
@@ -4817,14 +4883,15 @@ function hideStats() {
 
 function showSettings() {
   pushHistory({screen:'settings'});
-  document.getElementById('settings-screen').style.display = 'flex';
+  screenShow('settings-screen');
   updateSettingsValues();
   loadNotifSettings();
 }
 
 function hideSettings() {
-  document.getElementById('settings-screen').style.display = 'none';
-  document.getElementById('sub-settings-screen').style.display = 'none';
+  screenHide('settings-screen', () => {
+    document.getElementById('sub-settings-screen').style.display = 'none';
+  });
 }
 
 // ══════════════════════════════════════════
@@ -5985,15 +6052,14 @@ async function deleteAccount() {
 //  SUB-SETTINGS PANEL
 // ══════════════════════════════════════════
 function hideSubSettings() {
-  document.getElementById('sub-settings-screen').style.display = 'none';
+  screenHide('sub-settings-screen');
 }
 
 function showSubSettings(type) {
   pushHistory({screen:'sub-settings'});
-  const screen = document.getElementById('sub-settings-screen');
+  const screen = screenShow('sub-settings-screen');
   const title  = document.getElementById('sub-settings-title');
   const body   = document.getElementById('sub-settings-body');
-  screen.style.display = 'flex';
 
   const profile = JSON.parse(localStorage.getItem('profile') || '{}');
 
@@ -6872,6 +6938,7 @@ async function loadNotifSettings() {
     document.getElementById('notif-main-toggle').checked = enabled;
     document.getElementById('notif-main-sub').textContent = enabled ? '켜짐' : '꺼짐';
     document.getElementById('notif-detail-section').style.display = enabled ? 'block' : 'none';
+    document.getElementById('notif-main-card')?.classList.toggle('expanded', enabled);
     if (enabled) {
       document.getElementById('notif-smart-toggle').checked = !!res.smart_push;
       document.getElementById('notif-weekly-toggle').checked = !!res.weekly_report;
@@ -6919,7 +6986,23 @@ function removeRemindTime(t) {
 
 async function onNotifMainToggle(checked) {
   document.getElementById('notif-main-sub').textContent = checked ? '켜짐' : '꺼짐';
-  document.getElementById('notif-detail-section').style.display = checked ? 'block' : 'none';
+  const section = document.getElementById('notif-detail-section');
+  const card = document.getElementById('notif-main-card');
+  if (checked) {
+    card.classList.add('expanded');
+    section.style.display = 'block';
+    section.classList.remove('collapsing');
+    section.classList.add('expanding');
+    section.addEventListener('animationend', () => section.classList.remove('expanding'), { once: true });
+  } else {
+    card.classList.remove('expanded');
+    section.classList.remove('expanding');
+    section.classList.add('collapsing');
+    section.addEventListener('animationend', () => {
+      section.classList.remove('collapsing');
+      section.style.display = 'none';
+    }, { once: true });
+  }
 
   if (checked) {
     // 권한 요청
@@ -6929,6 +7012,7 @@ async function onNotifMainToggle(checked) {
       document.getElementById('notif-main-toggle').checked = false;
       document.getElementById('notif-main-sub').textContent = '꺼짐';
       document.getElementById('notif-detail-section').style.display = 'none';
+      document.getElementById('notif-main-card')?.classList.remove('expanded');
       return;
     }
     await initFCM();
